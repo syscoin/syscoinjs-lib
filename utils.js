@@ -48,7 +48,7 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   
   this.accounts = []
   // try to restore, if it does not succeed then initialize from scratch
-  if (!this.restore(password)) {
+  if (!this.password || !this.restore(this.password)) {
     this.fromSeed = BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
     this.createAccount()
     this.mnemonic = mnemonic // serialized
@@ -89,7 +89,7 @@ HDSigner.prototype.restore = function (password) {
 }
 // encrypt to password and backup to local storage for persistence
 HDSigner.prototype.backup = function () {
-  if (!localStorage) { return }
+  if (!localStorage || !this.password) { return }
   let key = 'syscoin_hdsigner'
   if (this.isTestnet) {
     key += '_testnet'

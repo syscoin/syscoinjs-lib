@@ -24,20 +24,11 @@ SyscoinJSLib.prototype.setAccountIndex = function (accountIndex) {
   this.accountIndex = accountIndex
 }
 
-SyscoinJSLib.prototype.createTransaction = async function (changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
-  if (!utxos) {
-    if (fromXpubOrAddress) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, fromXpubOrAddress)
-    } else if(this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
-    }
-  }
-  const res = syscointx.createTransaction(utxos, changeAddress, outputsArr, feeRate, this.network)
-  return this.notarizeAndSign(res, !!fromXpubOrAddress, utxos.assets)
-}
-
 SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) {
   const sigs = new Map()
+  if(!assets) {
+    return sigs
+  }
   let txHex = null
   for (const [assetGuid, valueAssetObj] of assets.entries()) {
     if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
@@ -77,7 +68,7 @@ SyscoinJSLib.prototype.createAndSignPSBTFromRes = function (res, sign, ownedInde
   return psbt
 }
 
-SyscoinJSLib.prototype.notarizeAndSign = async function (res, sign, assets) {
+SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
   const ownedIndexes = new Map()
   // if from address is passed in, we don't sign and pass back unsigned transaction
   if (sign) {
@@ -131,6 +122,19 @@ SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
   return psbt
 }
 
+
+SyscoinJSLib.prototype.createTransaction = async function (changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
+  if (!utxos) {
+    if (fromXpubOrAddress) {
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, fromXpubOrAddress)
+    } else if(this.HDSigner) {
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+    }
+  }
+  const res = syscointx.createTransaction(utxos, changeAddress, outputsArr, feeRate, this.network)
+  return this.sign(res, !!fromXpubOrAddress, utxos.assets)
+}
+
 SyscoinJSLib.prototype.assetNew = async function (assetOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
@@ -140,7 +144,7 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, sysChangeAddress, f
     }
   }
   const res = syscointx.assetNew(assetOpts, utxos, sysChangeAddress, feeRate, this.network)
-  const pbst = await this.notarizeAndSign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const pbst = await this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
   return pbst
 }
 
@@ -154,7 +158,7 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, asset
   }
 
   const res = syscointx.assetUpdate(assetGuid, assetOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.notarizeAndSign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
   return pbst
 }
 
@@ -167,7 +171,7 @@ SyscoinJSLib.prototype.assetSend = async function (assetMap, sysChangeAddress, f
     }
   }
   const res = syscointx.assetSend(utxos, assetMap, sysChangeAddress, feeRate, sysChangeAddress, feeRate, this.network)
-  const pbst = this.notarizeAndSign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
   return pbst
 }
 
@@ -180,7 +184,7 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (assetMap, sysChange
     }
   }
   const res = syscointx.assetSend(utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.notarizeAndSign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
   return pbst
 }
 
@@ -193,7 +197,7 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, assetMap
     }
   }
   const res = syscointx.assetAllocationBurn(assetOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.notarizeAndSign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
   return pbst
 }
 
@@ -206,7 +210,7 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, assetMap
     }
   }
   const res = syscointx.assetAllocationMint(assetOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.notarizeAndSign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
   return pbst
 }
 
@@ -219,7 +223,7 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (assetMap, 
     }
   }
   const res = syscointx.syscoinBurnToAssetAllocation(utxos, assetMap, sysChangeAddress, dataAmount, feeRate, this.network)
-  const pbst = this.notarizeAndSign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
   return pbst
 }
 
