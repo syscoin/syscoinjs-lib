@@ -34,21 +34,23 @@ const syscoinPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, testn
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 
-function HDSigner (mnemonic, password, networks, SLIP44, pubTypes, isTestnet) {
-  if (isTestnet) {
-    this.network = networks.mainnet || bitcoinNetworks.mainnet
+function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
+  this.isTestnet = isTestnet || false
+  if (this.isTestnet) {
+    this.network = networks.mainnet || syscoinNetworks.mainnet
   } else {
-    this.network = networks.testnet || bitcoinNetworks.testnet
+    this.network = networks.testnet || syscoinNetworks.testnet
   }
-  this.networks = networks
+  SLIP44 = SLIP44 || syscoinSLIP44
+  this.networks = networks || syscoinNetworks
   this.password = password
-  this.pubTypes = pubTypes
-  this.isTestnet = isTestnet
+  this.pubTypes = pubTypes || (this.isTestnet? syscoinPubTypes.testnet: syscoinPubTypes.mainnet)
+  
   this.accounts = []
   // try to restore, if it does not succeed then initialize from scratch
-  if (!this.restore(password, pubTypes, networks, isTestnet)) {
-    this.fromSeed = BIP84.fromSeed(mnemonic, isTestnet, SLIP44, pubTypes, this.network)
-    this.createAccount(networks)
+  if (!this.restore(password)) {
+    this.fromSeed = BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
+    this.createAccount()
     this.mnemonic = mnemonic // serialized
     this.changeIndexes = [] // serialized
     this.receivingIndexes = [] // serialized
@@ -56,10 +58,10 @@ function HDSigner (mnemonic, password, networks, SLIP44, pubTypes, isTestnet) {
   }
 }
 // restore on load from local storage and decrypt data to de-serialize objects
-HDSigner.prototype.restore = function (password, pubTypes, networks, isTestnet) {
+HDSigner.prototype.restore = function (password) {
   if (!localStorage) { return }
   let key = networks.mainnet.bech32 + '_hdsigner'
-  if (isTestnet) {
+  if (this.isTestnet) {
     key = networks.testnet.bech32 + '_hdsigner'
   }
   const ciphertext = localStorage.getItem(key)
@@ -81,7 +83,7 @@ HDSigner.prototype.restore = function (password, pubTypes, networks, isTestnet) 
   }
   for (var i = 0; i <= this.accountIndex; i++) {
     const child = this.fromSeed.deriveAccount(i)
-    this.accounts.push(BIP84.fromZPrv(child, pubTypes, networks))
+    this.accounts.push(BIP84.fromZPrv(child, this.pubTypes, this.networks))
   }
   return true
 }
@@ -208,5 +210,5 @@ module.exports = {
   fetchBackendTxs: fetchBackendTxs,
   fetchBackendAsset: fetchBackendAsset,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
-  decodeFromBase64: decodeFromBase64,
+  decodeFromBase64: decodeFromBase64
 }
