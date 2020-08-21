@@ -87,7 +87,7 @@ The below examples are implemented as integration tests, they should be very eas
 Otherwise, pull requests are appreciated.
 Some examples interact (via HTTPS) with a 3rd Party Blockchain Provider (3PBP).
 
-- [Obtaining Syscion network parameters and creating HD signer](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/hdsigner.spec.ts)
+- [Obtaining Syscoin network parameters and creating HD signer](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/hdsigner.spec.ts)
 - [Create standard Syscoin transaction](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/systx.spec.ts)
 - [Create new SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetnew.spec.ts)
 - [Updating SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetupdate.spec.ts)
