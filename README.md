@@ -1,95 +1,127 @@
-# syscoinjs-lib
+# SyscoinJS (syscoinjs-lib)
+[![Build Status](https://travis-ci.org/syscoin/syscoinjs-lib.png?branch=master)](https://travis-ci.org/syscoin/syscoinjs-lib)
+[![NPM](https://img.shields.io/npm/v/syscoinjs-lib.svg)](https://www.npmjs.org/package/syscoinjs-lib)
 
-[![TRAVIS](https://secure.travis-ci.org/bitcoinjs/coinselect.png)](http://travis-ci.org/syscoin/coinselect)
-[![NPM](http://img.shields.io/npm/v/coinselect.svg)](https://www.npmjs.org/package/coinselect)
+[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
-[![js-standard-style](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
+A javascript Syscoin library for node.js and browsers. Written in TypeScript (WIP), but committing the JS files to verify.
 
-An unspent transaction output (UTXO) selection module for syscoin.
+Released under the terms of the [MIT LICENSE](LICENSE).
 
-**WARNING:** Value units are in `satoshi`s, **not** Syscoin.
-
-
-## Algorithms
-Module | Algorithm | Re-orders UTXOs?
--|-|-
-`require('coinselectsyscoin')` | Blackjack, with Accumulative fallback | By Descending Value
-`require('coinselectsyscoin/accumulative')` | Accumulative - accumulates inputs until the target value (+fees) is reached, skipping detrimental inputs | -
-`require('coinselectsyscoin/blackjack')` | Blackjack - accumulates inputs until the target value (+fees) is matched, does not accumulate inputs that go over the target value (within a threshold) | -
-`require('coinselectsyscoin/break')` | Break - breaks the input values into equal denominations of `output` (as provided) | -
-`require('coinselectsyscoin/split')` | Split - splits the input values evenly between all `outputs`, any provided `output` with `.value` remains unchanged | -
+## Should I use this in production?
+If you are thinking of using the *master* branch of this library in production, **stop**.
+Master is not stable; it is our development branch, and [only tagged releases may be classified as stable](https://github.com/syscoin/syscoinjs-lib/tags).
 
 
-**Note:** Each algorithm will add a change output if the `input - output - fee` value difference is over a dust threshold.
-This is calculated independently by `utils.finalize`, irrespective of the algorithm chosen, for the purposes of safety.
+## Can I trust this code?
+> Don't trust. Verify.
 
-**Pro-tip:** if you want to send-all inputs to an output address, `coinselectsyscoin/split` with a partial output (`.address` defined, no `.value`) can be used to send-all, while leaving an appropriate amount for the `fee`. 
+We recommend every user of this library and the [syscoin](https://github.com/syscoin) ecosystem audit and verify any underlying code for its validity and suitability,  including reviewing any and all of your project's dependencies.
 
-## Example
+Mistakes and bugs happen, but with your help in resolving and reporting [issues](https://github.com/syscoin/syscoinjs-lib/issues), together we can produce open source software that is:
 
-``` javascript
-let coinSelect = require('coinselectsyscoin')
-let feeRate = 55 // satoshis per byte
-let utxos = [
-  ...,
-  {
-    txId: '...',
-    vout: 0,
-    ...,
-    value: 10000,
-    // For use with PSBT:
-    // not needed for coinSelect, but will be passed on to inputs later
-    nonWitnessUtxo: Buffer.from('...full raw hex of txId tx...', 'hex'),
-    // OR
-    // if your utxo is a segwit output, you can use witnessUtxo instead
-    witnessUtxo: {
-      script: Buffer.from('... scriptPubkey hex...', 'hex'),
-      value: 10000 // 0.0001 BTC and is the exact same as the value above
-    }
-  }
-]
-let targets = [
-  ...,
-  {
-    address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
-    value: 5000
-  }
-]
+- Easy to audit and verify,
+- Tested, with test coverage >95%,
+- Advanced and feature rich,
+- Standardized, using [prettier](https://github.com/prettier/prettier) and Node `Buffer`'s throughout, and
+- Friendly, with a strong and helpful community, ready to answer questions.
 
-// ...
-let { inputs, outputs, fee } = coinSelect(utxos, targets, feeRate)
 
-// the accumulated fee is always returned for analysis
-console.log(fee)
+## Documentation
+Presently,  we do not have any formal documentation other than our [examples](#examples), please [ask for help](https://github.com/syscoin/syscoinjs-lib/issues/new) if our examples aren't enough to guide you.
 
-// .inputs and .outputs will be undefined if no solution was found
-if (!inputs || !outputs) return
 
-let psbt = new bitcoin.Psbt()
-
-inputs.forEach(input =>
-  psbt.addInput({
-    hash: input.txId,
-    index: input.vout,
-    nonWitnessUtxo: input.nonWitnessUtxo,
-    // OR (not both)
-    witnessUtxo: input.witnessUtxo,
-  })
-)
-outputs.forEach(output => {
-  // watch out, outputs may have been added that you need to provide
-  // an output address/script for
-  if (!output.address) {
-    output.address = wallet.getChangeAddress()
-    wallet.nextChangeAddress()
-  }
-
-  psbt.addOutput({
-    address: output.address,
-    value: output.value,
-  })
-})
+## Installation
+``` bash
+npm install syscoinjs-lib
 ```
 
+Typically we support the [Node Maintenance LTS version](https://github.com/nodejs/Release).
+If in doubt, see the [.travis.yml](.travis.yml) for what versions are used by our continuous integration tests.
 
-## License [MIT](LICENSE)
+**WARNING**: We presently don't provide any tooling to verify that the release on `npm` matches GitHub.  As such, you should verify anything downloaded by `npm` against your own verified copy.
+
+
+## Usage
+Crypto is hard.
+
+When working with private keys, the random number generator is fundamentally one of the most important parts of any software you write.
+For random number generation, we *default* to the [`randombytes`](https://github.com/crypto-browserify/randombytes) module, which uses [`window.crypto.getRandomValues`](https://developer.mozilla.org/en-US/docs/Web/API/window.crypto.getRandomValues) in the browser, or Node js' [`crypto.randomBytes`](https://nodejs.org/api/crypto.html#crypto_crypto_randombytes_size_callback), depending on your build system.
+Although this default is ~OK, there is no simple way to detect if the underlying RNG provided is good enough, or if it is **catastrophically bad**.
+You should always verify this yourself to your own standards.
+
+This library uses [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) which uses [tiny-secp256k1](https://github.com/bitcoinjs/tiny-secp256k1), which uses [RFC6979](https://tools.ietf.org/html/rfc6979) to help prevent `k` re-use and exploitation.
+Unfortunately, this isn't a silver bullet.
+Often, Javascript itself is working against us by bypassing these counter-measures.
+
+Problems in [`Buffer (UInt8Array)`](https://github.com/feross/buffer), for example, can trivially result in **catastrophic fund loss** without any warning.
+It can do this through undermining your random number generation, accidentally producing a [duplicate `k` value](https://www.nilsschneider.net/2013/01/28/recovering-bitcoin-private-keys.html), sending Bitcoin to a malformed output script, or any of a million different ways.
+Running tests in your target environment is important and a recommended step to verify continuously.
+
+Finally, **adhere to best practice**.
+We are not an authorative source of best practice, but, at the very least:
+
+* [Don't re-use addresses](https://en.bitcoin.it/wiki/Address_reuse).
+* Don't share BIP32 extended public keys ('xpubs'). [They are a liability](https://bitcoin.stackexchange.com/questions/56916/derivation-of-parent-private-key-from-non-hardened-child), and it only takes 1 misplaced private key (or a buggy implementation!) and you are vulnerable to **catastrophic fund loss**.
+* [Don't use `Math.random`](https://security.stackexchange.com/questions/181580/why-is-math-random-not-designed-to-be-cryptographically-secure) - in any way - don't.
+* Enforce that users always verify (manually) a freshly-decoded human-readable version of their intended transaction before broadcast.
+* [Don't *ask* users to generate mnemonics](https://en.bitcoin.it/wiki/Brainwallet#cite_note-1), or 'brain wallets',  humans are terrible random number generators.
+* Lastly, if you can, use [Typescript](https://www.typescriptlang.org/) or similar.
+
+
+### Browser
+The recommended method of using `syscoinjs-lib` in your browser is through [Browserify](https://github.com/substack/node-browserify).
+If you're familiar with how to use browserify, ignore this and carry on, otherwise, it is recommended to read the tutorial at https://browserify.org/.
+
+**NOTE**: We use Node Maintenance LTS features, if you need strict ES5, use [`--transform babelify`](https://github.com/babel/babelify) in conjunction with your `browserify` step (using an [`es2015`](https://babeljs.io/docs/plugins/preset-es2015/) preset).
+
+**WARNING**: iOS devices have [problems](https://github.com/feross/buffer/issues/136), use atleast [buffer@5.0.5](https://github.com/feross/buffer/pull/155) or greater,  and enforce the test suites (for `Buffer`, and any other dependency) pass before use.
+
+### Typescript or VSCode users
+Type declarations for Typescript are included in this library. Normal installation should include all the needed type information.
+
+## Examples
+If you are looking to generate addresses, use WIFs or anything specific around crafting or doing blockchainy things not related to transaction creation, you may use [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) and use the Syscoin network parameters (see obtaining Syscoin Network example below).
+
+The below examples are implemented as integration tests, they should be very easy to understand.
+Otherwise, pull requests are appreciated.
+Some examples interact (via HTTPS) with a 3rd Party Blockchain Provider (3PBP).
+
+- [Obtaining Syscion network parameters and creating HD signer](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/hdsigner.spec.ts)
+- [Create standard Syscoin transaction](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/systx.spec.ts)
+- [Create new SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetnew.spec.ts)
+- [Updating SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetupdate.spec.ts)
+- [Distributing SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetsend.spec.ts)
+- [Sending SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetallocationsend.spec.ts)
+- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burntoeth.spec.ts)
+- [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burnsysxtosys.spec.ts)
+- [Burning SYS for SYSX SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burnsystosysx.spec.ts)
+- [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetallocationmint.spec.ts)
+
+If you have a use case that you feel could be listed here, please [ask for it](https://github.com/syscoin/syscoinjs-lib/issues/new)!
+
+
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+
+### Running the test suite
+
+``` bash
+npm test
+npm run-script coverage
+```
+
+## Complementing Libraries
+- [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) - A javascript Bitcoin library for node.js and browsers. Configurable with Syscoin network settings to work with Syscoin addresses and message signing.
+- [BIP84](https://github.com/Anderson-Juhasc/bip84) - P2WPKH/P2WSH HD wallet derivation library for BECH32 addresses
+- [syscoinjs-tx](https://github.com/syscoin/syscoinjs-tx) - A raw transaction creation library using coinselectsyscoin for input selection.
+- [coinselectsyscoin](https://github.com/syscoin/coinselectsyscoin) - A fee-optimizing, transaction input selection module for syscoinjs-tx.
+- [crypto-js](https://github.com/brix/crypto-js) - JavaScript library of crypto standards. Used for AES Encrypt/Decrypt of sensitive HD wallet info to local storage.
+- [axios](https://github.com/axios/axios) - Promise based HTTP client for the browser and node.js. Used for backend communication with a Blockbook API as well as notary endpoints where applicable.
+
+
+
+
+
+## LICENSE [MIT](LICENSE)
