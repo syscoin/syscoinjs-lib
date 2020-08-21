@@ -4,7 +4,7 @@
 
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
-A javascript Syscoin library for node.js and browsers. Written in TypeScript (WIP), but committing the JS files to verify.
+A javascript Syscoin library for node.js and browsers.
 
 Released under the terms of the [MIT LICENSE](LICENSE).
 
@@ -66,7 +66,6 @@ We are not an authorative source of best practice, but, at the very least:
 * [Don't use `Math.random`](https://security.stackexchange.com/questions/181580/why-is-math-random-not-designed-to-be-cryptographically-secure) - in any way - don't.
 * Enforce that users always verify (manually) a freshly-decoded human-readable version of their intended transaction before broadcast.
 * [Don't *ask* users to generate mnemonics](https://en.bitcoin.it/wiki/Brainwallet#cite_note-1), or 'brain wallets',  humans are terrible random number generators.
-* Lastly, if you can, use [Typescript](https://www.typescriptlang.org/) or similar.
 
 
 ### Browser
@@ -76,9 +75,6 @@ If you're familiar with how to use browserify, ignore this and carry on, otherwi
 **NOTE**: We use Node Maintenance LTS features, if you need strict ES5, use [`--transform babelify`](https://github.com/babel/babelify) in conjunction with your `browserify` step (using an [`es2015`](https://babeljs.io/docs/plugins/preset-es2015/) preset).
 
 **WARNING**: iOS devices have [problems](https://github.com/feross/buffer/issues/136), use atleast [buffer@5.0.5](https://github.com/feross/buffer/pull/155) or greater,  and enforce the test suites (for `Buffer`, and any other dependency) pass before use.
-
-### Typescript or VSCode users
-Type declarations for Typescript are included in this library. Normal installation should include all the needed type information.
 
 ## Examples
 If you are looking to generate addresses, use WIFs or anything specific around crafting or doing blockchainy things not related to transaction creation, you may use [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) and use the Syscoin network parameters (see obtaining Syscoin Network example below).
