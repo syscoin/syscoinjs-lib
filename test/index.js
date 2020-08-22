@@ -9,7 +9,7 @@ fixtures.forEach(function (f) {
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
     if (f.version === sjs.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
-      const res = syscoinjs.assetAllocationSend( f.assetMap, f.sysChangeAddress, f.dataAmount, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const res = syscoinjs.syscoinBurnToAssetAllocation( f.assetMap, f.sysChangeAddress, f.dataAmount, f.feeRate, f.sysFromXpubOrAddress, utxos)
       const psbt = await syscoinjs.sign(res, !!f.sysFromXpubOrAddress, utxos.assets)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
     } else if (f.version === sjs.utils.SYSCOIN_TX_VERSION_ASSET_ACTIVATE) {
