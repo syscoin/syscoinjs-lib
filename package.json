@@ -49,6 +49,6 @@
     "axios": "^0.19.2",
     "crypto-js": "^4.0.0",
     "bitcoinjs-lib": "^5.1.10",
-    "syscointx-js": "^1.0.4"
+    "syscointx-js": "^1.0.6"
   }
 }

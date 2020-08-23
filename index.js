@@ -123,7 +123,7 @@ SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
 }
 
 
-SyscoinJSLib.prototype.createTransaction = async function (changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
   if (!utxos) {
     if (fromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, fromXpubOrAddress)
@@ -131,11 +131,11 @@ SyscoinJSLib.prototype.createTransaction = async function (changeAddress, output
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.createTransaction(utxos, changeAddress, outputsArr, feeRate, this.network)
+  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
   return this.sign(res, !!fromXpubOrAddress, utxos.assets)
 }
 
-SyscoinJSLib.prototype.assetNew = async function (assetOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -143,12 +143,12 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, sysChangeAddress, f
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.assetNew(assetOpts, utxos, sysChangeAddress, feeRate, this.network)
-  const pbst = await this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
-  return pbst
+  const res = syscointx.assetNew(assetOpts, txOpts, utxos, sysChangeAddress, feeRate, this.network)
+  const psbt = await this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
-SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -157,12 +157,12 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, asset
     }
   }
 
-  const res = syscointx.assetUpdate(assetGuid, assetOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
-  return pbst
+  const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
+  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
-SyscoinJSLib.prototype.assetSend = async function (assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -170,12 +170,12 @@ SyscoinJSLib.prototype.assetSend = async function (assetMap, sysChangeAddress, f
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.assetSend(utxos, assetMap, sysChangeAddress, feeRate, sysChangeAddress, feeRate, this.network)
-  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
-  return pbst
+  const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, sysChangeAddress, feeRate, this.network)
+  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
-SyscoinJSLib.prototype.assetAllocationSend = async function (assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -183,12 +183,13 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (assetMap, sysChange
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.assetSend(utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
-  return pbst
+  
+  const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
+  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
-SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -196,12 +197,12 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, assetMap
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.assetAllocationBurn(assetOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
-  return pbst
+  const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
+  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
-SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -209,12 +210,12 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, assetMap
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.assetAllocationMint(assetOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
-  return pbst
+  const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
+  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
-SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (assetMap, sysChangeAddress, dataAmount, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, dataAmount, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -222,9 +223,9 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (assetMap, 
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.syscoinBurnToAssetAllocation(utxos, assetMap, sysChangeAddress, dataAmount, feeRate, this.network)
-  const pbst = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
-  return pbst
+  const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, dataAmount, feeRate, this.network)
+  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
 module.exports = {
