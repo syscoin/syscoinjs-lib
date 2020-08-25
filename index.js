@@ -17,7 +17,6 @@ function SyscoinJSLib (HDSigner, blockbookURL, accountIndex, network) {
   } else {
     this.accountIndex = 0
   }
- 
 }
 
 SyscoinJSLib.prototype.setAccountIndex = function (accountIndex) {
@@ -26,7 +25,7 @@ SyscoinJSLib.prototype.setAccountIndex = function (accountIndex) {
 
 SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) {
   const sigs = new Map()
-  if(!assets) {
+  if (!assets) {
     return sigs
   }
   let txHex = null
@@ -48,7 +47,6 @@ SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) 
 
 SyscoinJSLib.prototype.createAndSignPSBTFromRes = function (res, sign, ownedIndexes) {
   const psbt = this.createPSBTFromRes(res)
-
   if (sign) {
     if (!this.HDSigner) {
       console.log('No HD Signer defined! Cannot sign transaction!')
@@ -76,15 +74,16 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
       console.log('No HD Signer defined! Cannot derive keys to sign transaction!')
       return null
     }
+    const fp = this.HDSigner.getMasterFingerprint()
     for (var i = 0; i < res.inputs.length; i++) {
-      const input = res.input[i]
+      const input = res.inputs[i]
       if (input.path) {
         const pubkey = this.HDSigner.derivePubKey(input.path)
         if (pubkey) {
           ownedIndexes.set(i, true)
           input.bip32Derivation = [
             {
-              masterFingerprint: this.HDSigner.masterFingerprint,
+              masterFingerprint: fp,
               path: input.path,
               pubkey: pubkey
             }]
@@ -122,29 +121,29 @@ SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
   return psbt
 }
 
-
 SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
   if (!utxos) {
     if (fromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, fromXpubOrAddress)
-    } else if(this.HDSigner) {
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
-  return this.sign(res, !!fromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !fromXpubOrAddress, utxos.assets)
+  return psbt
 }
 
 SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if(this.HDSigner){
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, sysChangeAddress, feeRate, this.network)
-  const psbt = await this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
 
@@ -152,13 +151,13 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if(this.HDSigner){
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
 
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
 
@@ -166,12 +165,12 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if(this.HDSigner){
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, sysChangeAddress, feeRate, this.network)
-  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
 
@@ -179,13 +178,13 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if(this.HDSigner){
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  
+
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
 
@@ -193,12 +192,12 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if(this.HDSigner){
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
 
@@ -206,12 +205,12 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if(this.HDSigner){
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
-  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
 
@@ -219,12 +218,12 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if(this.HDSigner){
+    } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, dataAmount, feeRate, this.network)
-  const psbt = this.sign(res, !!sysFromXpubOrAddress, utxos.assets)
+  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
 

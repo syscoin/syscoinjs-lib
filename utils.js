@@ -36,35 +36,40 @@ const bitcoinSLIP44 = 0
 
 function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.isTestnet = isTestnet || false
-  if (this.isTestnet) {
-    this.network = networks.mainnet || syscoinNetworks.mainnet
-  } else {
-    this.network = networks.testnet || syscoinNetworks.testnet
-  }
   SLIP44 = SLIP44 || syscoinSLIP44
   this.networks = networks || syscoinNetworks
+
+  if (!this.isTestnet) {
+    this.network = this.networks.mainnet || syscoinNetworks.mainnet
+  } else {
+    this.network = this.networks.testnet || syscoinNetworks.testnet
+  }
+
   this.password = password
-  this.pubTypes = pubTypes || (this.isTestnet? syscoinPubTypes.testnet: syscoinPubTypes.mainnet)
-  
+  this.pubTypes = pubTypes || syscoinPubTypes
+
   this.accounts = []
+  this.mnemonic = mnemonic // serialized
+  this.changeIndexes = [] // serialized
+  this.receivingIndexes = [] // serialized
+  this.accountIndex = 0 // serialized
+
+  /* eslint new-cap: ["error", { "newIsCap": false }] */
+  this.fromSeed = new BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
   // try to restore, if it does not succeed then initialize from scratch
   if (!this.password || !this.restore(this.password)) {
-    this.fromSeed = BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
     this.createAccount()
-    this.mnemonic = mnemonic // serialized
-    this.changeIndexes = [] // serialized
-    this.receivingIndexes = [] // serialized
-    this.accountIndex = 0 // serialized
   }
+}
+HDSigner.prototype.getMasterFingerprint = function () {
+  return bjs.bip32.fromSeed(this.fromSeed.seed, this.network).fingerprint
 }
 // restore on load from local storage and decrypt data to de-serialize objects
 HDSigner.prototype.restore = function (password) {
-  if (!localStorage) { return }
-  let key = networks.mainnet.bech32 + '_hdsigner'
-  if (this.isTestnet) {
-    key = networks.testnet.bech32 + '_hdsigner'
-  }
-  const ciphertext = localStorage.getItem(key)
+  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
+  if (!browserStorage) { return }
+  const key = this.network.bech32 + '_hdsigner'
+  const ciphertext = browserStorage.getItem(key)
   if (ciphertext === null) {
     return false
   }
@@ -83,25 +88,25 @@ HDSigner.prototype.restore = function (password) {
   }
   for (var i = 0; i <= this.accountIndex; i++) {
     const child = this.fromSeed.deriveAccount(i)
-    this.accounts.push(BIP84.fromZPrv(child, this.pubTypes, this.networks))
+    /* eslint new-cap: ["error", { "newIsCap": false }] */
+    this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
   }
   return true
 }
 // encrypt to password and backup to local storage for persistence
 HDSigner.prototype.backup = function () {
-  if (!localStorage || !this.password) { return }
-  let key = 'syscoin_hdsigner'
-  if (this.isTestnet) {
-    key += '_testnet'
-  }
+  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
+  if (!browserStorage || !this.password) { return }
+  const key = this.network.bech32 + '_hdsigner'
   const obj = { mnemonic: this.mnemonic, accountIndex: this.accountIndex, changeIndexes: this.changeIndexes, receivingIndexes: this.receivingIndexes }
   const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.password).toString()
-  localStorage.setItem(key, ciphertext)
+  browserStorage.setItem(key, ciphertext)
 }
 
 HDSigner.prototype.createAccount = function () {
   const child = this.fromSeed.deriveAccount(this.accountIndex)
-  this.accounts.push(BIP84.fromZPrv(child, this.pubTypes, this.networks))
+  /* eslint new-cap: ["error", { "newIsCap": false }] */
+  this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
   this.accountIndex++
   this.backup()
 }

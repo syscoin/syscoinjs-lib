@@ -1,25 +1,47 @@
 var BN = require('bn.js')
-var utils = require('../../utils')
+const syscointx = require('syscointx-js')
 const scalarPct = 1000
 const COIN = 100000000
 module.exports = [{
   description: 'new asset',
-  version: utils.SYSCOIN_TX_VERSION_ASSET_ACTIVATE,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ASSET_ACTIVATE,
+  txOpts: {
+    rbf: false
+  },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txId: 'add9bf0783d1e18bccf016e5c779be5cd390d8906f7b2ef4afa28c775c888b21', vout: 0, script: Buffer.from('001495e1cb724b74c32526209265c9f96a4e8ed256db', 'hex'), value: 100000000000 }
+      { txId: 'add9bf0783d1e18bccf016e5c779be5cd390d8906f7b2ef4afa28c775c888b21', vout: 0, script: Buffer.from('001495e1cb724b74c32526209265c9f96a4e8ed256db', 'hex'), path: "m/84'/57'/0'/0", value: 100000000000 }
     ]
   },
   assetOpts: { precision: 8, symbol: 'CAT', updatecapabilityflags: 255, balance: new BN(10000000000), maxsupply: new BN(100000000000), description: 'publicvalue' },
   sysChangeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
   expected: {
-    hex: ''
+    rbf: false,
+    numOutputs: 2,
+    script: Buffer.from('6a3301218b885c01010000080451304655851b7b2264657363223a226348566962476c6a646d46736457553d227d0064008668ff00', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1552452385, values: [{ n: 1, value: new BN(0) }], notarysig: Buffer.from('') }],
+      precision: 8,
+      symbol: Buffer.from(syscointx.utils.encodeToBase64('CAT')),
+      updateflags: 133,
+      pubdata: syscointx.utils.encodePubDataFromFields('publicvalue'),
+      prevpubdata: Buffer.from(''),
+      balance: new BN(10000000000),
+      totalsupply: new BN(0),
+      maxsupply: new BN(100000000000),
+      updatecapabilityflags: 255,
+      prevupdatecapabilityflags: 0
+    }
   }
 },
 {
   description: 'update asset',
-  version: utils.SYSCOIN_TX_VERSION_ASSET_UPDATE,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ASSET_UPDATE,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -30,8 +52,8 @@ module.exports = [{
       {
         assetGuid: 1552452385,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -46,12 +68,32 @@ module.exports = [{
     [1552452385, { changeAddress: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', outputs: [{ value: new BN(0), address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9' }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 2,
+    script: Buffer.from('6a4c6401218b885c01010000080087142b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc001f7b2264657363223a22626d563349484231596d787059335a686248566c227d1b7b2264657363223a226348566962476c6a646d46736457553d227d822400007fff', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1552452385, values: [{ n: 1, value: new BN(0) }], notarysig: Buffer.from('') }],
+      precision: 8,
+      symbol: Buffer.from(''),
+      updateflags: 135,
+      contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'),
+      prevcontract: Buffer.from(''),
+      pubdata: syscointx.utils.encodePubDataFromFields('new publicvalue'),
+      prevpubdata: syscointx.utils.encodePubDataFromFields('publicvalue'),
+      balance: new BN(42000000000),
+      totalsupply: new BN(0),
+      maxsupply: new BN(0),
+      updatecapabilityflags: 127,
+      prevupdatecapabilityflags: 255
+    }
   }
 },
 {
   description: 'send asset',
-  version: utils.SYSCOIN_TX_VERSION_ASSET_SEND,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ASSET_SEND,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -62,8 +104,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -76,12 +118,20 @@ module.exports = [{
     [1635229536, { changeAddress: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', outputs: [{ value: new BN(1000000000), address: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq' }, { value: new BN(0), address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9' }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 3,
+    script: Buffer.from('6a0b01609f776102000a020000', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(1000000000) }, { n: 2, value: new BN(0) }], notarysig: Buffer.from('') }]
+    }
   }
 },
 {
   description: 'send asset allocation',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -92,8 +142,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -106,12 +156,17 @@ module.exports = [{
     [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(600000000), address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9' }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 3,
+    script: Buffer.from('6a0b01609f776102003b022700', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(600000000) }, { n: 2, value: new BN(400000000) }], notarysig: Buffer.from('') }]
+    }
   }
 },
 {
   description: 'send multi asset allocations with notarization',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -127,8 +182,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -136,15 +191,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229537,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -152,15 +207,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229538,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -168,15 +223,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229539,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -184,15 +239,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229540,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -200,15 +255,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229541,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -226,12 +281,22 @@ module.exports = [{
     [1635229541, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(500000000), address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9' }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: false,
+    numOutputs: 12,
+    script: Buffer.from('6a4d830106609f77610200300130410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000619f7761010213410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000629f7761020380640b30410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000639f776102041d0509410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000649f77610206813e07800a410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000659f7761020831090900', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(50000000) }, { n: 1, value: new BN(50000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229537, values: [{ n: 2, value: new BN(200000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229538, values: [{ n: 3, value: new BN(250000000) }, { n: 11, value: new BN(50000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229539, values: [{ n: 4, value: new BN(300000000) }, { n: 5, value: new BN(100000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229540, values: [{ n: 6, value: new BN(350000000) }, { n: 7, value: new BN(150000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229541, values: [{ n: 8, value: new BN(500000000) }, { n: 9, value: new BN(100000000) }], notarysig: Buffer.from('') }]
+    }
   }
 },
 {
   description: 'send multi asset allocations (varied sys values) with notarization',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -246,8 +311,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -255,15 +320,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229537,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -271,15 +336,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229538,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -287,15 +352,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229539,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -303,15 +368,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229540,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -326,8 +391,8 @@ module.exports = [{
       {
         assetGuid: 1635229541,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -346,12 +411,25 @@ module.exports = [{
     [1635229541, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(500000000), address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9' }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 12,
+    script: Buffer.from('6a4d830106609f77610200300130410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000619f7761010213410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000629f7761020380640b30410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000639f776102041d0509410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000649f77610206813e07800a410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000659f7761020831090900', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(50000000) }, { n: 1, value: new BN(50000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229537, values: [{ n: 2, value: new BN(200000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229538, values: [{ n: 3, value: new BN(250000000) }, { n: 11, value: new BN(50000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229539, values: [{ n: 4, value: new BN(300000000) }, { n: 5, value: new BN(100000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229540, values: [{ n: 6, value: new BN(350000000) }, { n: 7, value: new BN(150000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229541, values: [{ n: 8, value: new BN(500000000) }, { n: 9, value: new BN(100000000) }], notarysig: Buffer.from('') }]
+    }
   }
 },
 {
   description: 'send multi asset allocations with notarization + gas in non-selected asset',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  txOpts: {
+    allowOtherNotarizedAssetInputs: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -367,8 +445,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -376,15 +454,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229537,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -392,15 +470,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229538,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -415,8 +493,8 @@ module.exports = [{
       {
         assetGuid: 1635229539,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -424,15 +502,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229540,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -440,15 +518,15 @@ module.exports = [{
         notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
         notaryDetails: {
           endPoint: 'https://test.com',
-          instantTransfers: 1,
+          instantTransfers: 0,
           HDRequired: 1
         }
       },
       {
         assetGuid: 1635229541,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -457,12 +535,18 @@ module.exports = [{
       {
         assetGuid: 1635229542,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
-        maxSupply: new BN(100000000000)
+        maxSupply: new BN(100000000000),
+        notaryKeyID: 'ea6d525c0c955d90d3dbd29a81ef8bfb79003727',
+        notaryDetails: {
+          endPoint: 'https://test.com',
+          instantTransfers: 0,
+          HDRequired: 1
+        }
       }
     ]
   },
@@ -477,12 +561,26 @@ module.exports = [{
     [1635229541, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(500000000), address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9' }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 13,
+    script: Buffer.from('6a4dcc0107609f77610200300130410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000619f7761010213410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000629f7761020380640b30410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000639f776102041d0509410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000649f77610206813e07800a410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000659f7761020831090900669f7761010c0a410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(50000000) }, { n: 1, value: new BN(50000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229537, values: [{ n: 2, value: new BN(200000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229538, values: [{ n: 3, value: new BN(250000000) }, { n: 11, value: new BN(50000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229539, values: [{ n: 4, value: new BN(300000000) }, { n: 5, value: new BN(100000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229540, values: [{ n: 6, value: new BN(350000000) }, { n: 7, value: new BN(150000000) }], notarysig: Buffer.alloc(65, 0) },
+        { assetGuid: 1635229541, values: [{ n: 8, value: new BN(500000000) }, { n: 9, value: new BN(100000000) }], notarysig: Buffer.from('') },
+        { assetGuid: 1635229542, values: [{ n: 12, value: new BN(1000000000) }], notarysig: Buffer.alloc(65, 0) }]
+    }
   }
 },
 {
   description: 'send asset allocation with auxfees',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  txOpts: {
+    rbf: false
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -493,8 +591,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -535,12 +633,20 @@ module.exports = [{
     [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(600000000), address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9' }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: false,
+    numOutputs: 4,
+    script: Buffer.from('6a0e01609f7761030039013b039a5b00', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(6000000) }, { n: 1, value: new BN(600000000) }, { n: 3, value: new BN(394000000) }], notarysig: Buffer.from('') }]
+    }
   }
 },
 {
   description: 'burn asset allocation to syscoin',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -551,8 +657,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -566,12 +672,20 @@ module.exports = [{
     [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(400000000) }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 3,
+    script: Buffer.from('6a0a01609f77610101270000', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 1, value: new BN(400000000) }], notarysig: Buffer.from('') }], ethaddress: Buffer.from('', 'hex')
+    }
   }
 },
 {
   description: 'burn asset allocation to ethereum',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -581,8 +695,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -596,12 +710,21 @@ module.exports = [{
     [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(100000000) }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 2,
+    script: Buffer.from('6a2001609f7761020009014f00149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(100000000) }, { n: 1, value: new BN(800000000) }], notarysig: Buffer.from('') }],
+      ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex')
+    }
   }
 },
 {
   description: 'burn asset allocation to ethereum multiple inputs',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -612,8 +735,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -627,12 +750,21 @@ module.exports = [{
     [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(100000000) }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 2,
+    script: Buffer.from('6a2001609f7761020009014f00149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(100000000) }, { n: 1, value: new BN(800000000) }], notarysig: Buffer.from('') }],
+      ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex')
+    }
   }
 },
 {
   description: 'burn asset allocation to ethereum multiple inputs, change has asset',
-  version: utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -643,8 +775,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -658,12 +790,21 @@ module.exports = [{
     [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(100000000) }] }]
   ]),
   expected: {
-    hex: ''
+    rbf: true,
+    numOutputs: 2,
+    script: Buffer.from('6a2101609f776102000901801500149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(100000000) }, { n: 1, value: new BN(1600000000) }], notarysig: Buffer.from('') }],
+      ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex')
+    }
   }
 },
 {
   description: 'standard sys send',
   version: 2,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -676,12 +817,17 @@ module.exports = [{
     { address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', value: new BN(150000000) }
   ],
   expected: {
-    hex: ''
+    rbf: true,
+    version: 2,
+    numOutputs: 2
   }
 },
 {
   description: 'standard sys send with asset inputs',
   version: 2,
+  txOpts: {
+    rbf: true
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -692,8 +838,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -706,12 +852,21 @@ module.exports = [{
     { address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', value: new BN(150000000) }
   ],
   expected: {
-    hex: ''
+    rbf: true,
+    version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+    numOutputs: 3, // 3 because new opreturn will be created
+    script: Buffer.from('6a0a01609f77610100801f00', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(1700000000) }], notarysig: Buffer.from('') }]
+    }
   }
 },
 {
   description: 'standard sys send with asset input and regular input',
   version: 2,
+  txOpts: {
+    rbf: false
+  },
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
@@ -722,8 +877,8 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: utils.encodeToBase64('CAT'),
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: new BN(10000000000),
         totalSupply: new BN(0),
@@ -736,7 +891,13 @@ module.exports = [{
     { address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', value: new BN(150000000) }
   ],
   expected: {
-    hex: ''
+    rbf: false,
+    version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+    numOutputs: 3, // 3 because new opreturn will be created
+    script: Buffer.from('6a0901609f776101005900', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(900000000) }], notarysig: Buffer.from('') }]
+    }
   }
 }
 ]
