@@ -101,7 +101,7 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
 }
 
 SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
-  const psbt = new bitcoin.Psbt()
+  const psbt = new bitcoin.Psbt({ network: this.network })
   psbt.setVersion(res.txVersion)
   res.inputs.forEach(input => {
     psbt.addInput({

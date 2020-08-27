@@ -36,7 +36,7 @@ const bitcoinSLIP44 = 0
 
 function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.isTestnet = isTestnet || false
-  SLIP44 = SLIP44 || syscoinSLIP44
+  SLIP44 = this.isTestnet ? 1 : SLIP44 || syscoinSLIP44 // 1 is testnet for all coins,
   this.networks = networks || syscoinNetworks
 
   if (!this.isTestnet) {
@@ -115,24 +115,48 @@ HDSigner.prototype.getAccountXpub = function (index) {
   return this.accounts[index].getAccountPublicKey()
 }
 
-HDSigner.prototype.createAddress = function (accountIndex, isChange) {
+HDSigner.prototype.createKeypair = function (accountIndex, isChange) {
   if (isChange) {
-    if (accountIndex >= this.changeIndex.length) {
-      this.changeIndex[accountIndex] = 1
+    if (accountIndex >= this.changeIndexes.length) {
+      this.changeIndexes[accountIndex] = 1
     } else {
-      this.changeIndex[accountIndex]++
+      this.changeIndexes[accountIndex]++
     }
     this.backup()
-    return this.accounts[accountIndex].getAddress(this.changeIndex[accountIndex] - 1, true)
+    return this.accounts[accountIndex].getKeypair(this.changeIndexes[accountIndex] - 1, true)
   } else {
-    if (accountIndex >= this.receivingIndex.length) {
-      this.receivingIndex[accountIndex] = 1
+    if (accountIndex >= this.receivingIndexes.length) {
+      this.receivingIndexes[accountIndex] = 1
     } else {
-      this.receivingIndex[accountIndex]++
+      this.receivingIndexes[accountIndex]++
     }
     this.backup()
-    return this.accounts[accountIndex].getAddress(this.receivingIndex[accountIndex] - 1)
+    return this.accounts[accountIndex].getKeypair(this.receivingIndexes[accountIndex] - 1)
   }
+}
+
+HDSigner.prototype.getAddressFromKeypair = function (keyPair) {
+  const payment = bjs.payments.p2wpkh({
+    pubkey: keyPair.publicKey,
+    network: this.network
+  })
+  return payment.address
+}
+
+HDSigner.prototype.getAddressFromPubKey = function (pubkey) {
+  const payment = bjs.payments.p2wpkh({
+    pubkey: pubkey,
+    network: this.network
+  })
+  return payment.address
+}
+
+HDSigner.prototype.deriveKeypair = function (keypath) {
+  const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.network).derivePath(keypath)
+  if (!keyPair) {
+    return null
+  }
+  return keyPair
 }
 
 HDSigner.prototype.derivePubKey = function (keypath) {
@@ -199,6 +223,19 @@ async function fetchBackendAsset (backendURL, assetGuid) {
   }
 }
 
+async function sendRawTransaction (backendURL, txHex) {
+  try {
+    const request = await axios.post(backendURL + '/api/v2/sendtx', txHex)
+    if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
 function decodeFromBase64 (input) {
   return Buffer.from(input, 'base64').toString()
 }
@@ -215,5 +252,6 @@ module.exports = {
   fetchBackendTxs: fetchBackendTxs,
   fetchBackendAsset: fetchBackendAsset,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
+  sendRawTransaction: sendRawTransaction,
   decodeFromBase64: decodeFromBase64
 }

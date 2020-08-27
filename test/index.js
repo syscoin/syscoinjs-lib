@@ -13,14 +13,26 @@ fixtures.forEach(async function (f) {
     if (!txOpts) {
       txOpts = { rbf: false }
     }
-    const HDSigner = new sjs.utils.HDSigner(f.mnemonic)
+    // 'null' for no password encryption for local storage and 'true' for testnet
+    const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+    // const pubkey = HDSigner.deriveKeypair("m/84'/1'/0'/1/2")
+    // console.log('address ' + pubkey.toWIF())
+    const pubkey = HDSigner.derivePubKey("m/84'/1'/0'/1/2")
+    console.log('address ' + HDSigner.getAddressFromPubKey(pubkey))
+    // example of once you have it signed you can push it to network via backend provider
+    // const resSend = sjs.utils.sendRawTransaction('sys1.bcfn.ca', psbt.extractTransaction().toHex())
+    // if(resSend.result) {
+    //  console.log('tx successfully sent! txid: ' + resSend.result)
+    // }
+    // else if(resSend.error) {
+    //  console.log('could not send tx! error: ' + resSend.error.message)
+    // }
     if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
       const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.dataAmount, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      // t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
@@ -33,9 +45,10 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_ACTIVATE) {
       const psbt = await syscoinjs.assetNew(f.assetOpts, txOpts, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      t.same(f.expected.hex, psbt.extractTransaction().toHex())
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
@@ -49,9 +62,9 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_UPDATE) {
       const psbt = await syscoinjs.assetUpdate(f.assetGuid, f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.sysFromXpubOrAddress, f.feeRate, utxos)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
@@ -65,9 +78,9 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_SEND) {
       const psbt = await syscoinjs.assetSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
@@ -80,9 +93,9 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_MINT) {
       const psbt = await syscoinjs.assetAllocationMint(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
@@ -96,9 +109,9 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM || f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN) {
       const psbt = await syscoinjs.assetAllocationBurn(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
@@ -112,9 +125,9 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND) {
       const psbt = await syscoinjs.assetAllocationSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
@@ -127,9 +140,9 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === 2) {
       const psbt = await syscoinjs.createTransaction(txOpts, f.changeAddress, f.outputs, f.feeRate, f.fromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs().length, f.expected.numOutputs)
-      t.same(psbt.version(), f.version)
-      psbt.txOutputs().forEach(output => {
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
