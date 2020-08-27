@@ -18,8 +18,8 @@ fixtures.forEach(async function (f) {
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
     // const pubkey = HDSigner.deriveKeypair("m/84'/1'/0'/1/2")
     // console.log('address ' + pubkey.toWIF())
-    const pubkey = HDSigner.derivePubKey("m/84'/1'/0'/1/2")
-    console.log('address ' + HDSigner.getAddressFromPubKey(pubkey))
+    // const pubkey = HDSigner.derivePubKey("m/84'/1'/0'/1/2")
+    // console.log('address ' + HDSigner.getAddressFromPubKey(pubkey))
     // example of once you have it signed you can push it to network via backend provider
     // const resSend = sjs.utils.sendRawTransaction('sys1.bcfn.ca', psbt.extractTransaction().toHex())
     // if(resSend.result) {
@@ -47,7 +47,7 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetNew(f.assetOpts, txOpts, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
-      t.same(f.expected.hex, psbt.extractTransaction().toHex())
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
@@ -61,9 +61,10 @@ fixtures.forEach(async function (f) {
         }
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_UPDATE) {
-      const psbt = await syscoinjs.assetUpdate(f.assetGuid, f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.sysFromXpubOrAddress, f.feeRate, utxos)
+      const psbt = await syscoinjs.assetUpdate(f.assetGuid, f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
