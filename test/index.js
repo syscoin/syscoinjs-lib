@@ -16,18 +16,20 @@ fixtures.forEach(async function (f) {
     // 'null' for no password encryption for local storage and 'true' for testnet
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
-    // const pubkey = HDSigner.deriveKeypair("m/84'/1'/0'/1/2")
-    // console.log('address ' + pubkey.toWIF())
-    // const pubkey = HDSigner.derivePubKey("m/84'/1'/0'/1/2")
-    // console.log('address ' + HDSigner.getAddressFromPubKey(pubkey))
+    const keypair = HDSigner.deriveKeypair("m/84'/1'/0'/1/3")
+    console.log('private key ' + keypair.toWIF())
+    const addresskey = HDSigner.derivePubKey("m/84'/1'/0'/1/3")
+    console.log('address ' + HDSigner.getAddressFromPubKey(addresskey))
     // example of once you have it signed you can push it to network via backend provider
-    // const resSend = sjs.utils.sendRawTransaction('sys1.bcfn.ca', psbt.extractTransaction().toHex())
-    // if(resSend.result) {
-    //  console.log('tx successfully sent! txid: ' + resSend.result)
-    // }
-    // else if(resSend.error) {
+    // const resSend = await sjs.utils.sendRawTransaction('sys1.bcfn.ca', psbt.extractTransaction().toHex())
+    // if(resSend.error) {
     //  console.log('could not send tx! error: ' + resSend.error.message)
+    // } else if(resSend.result) {
+    //  console.log('tx successfully sent! txid: ' + resSend.result)
+    // } else {
+    //  console.log('Unrecognized response from backend')
     // }
+    // 
     if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
       const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.dataAmount, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
@@ -81,6 +83,7 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
@@ -96,6 +99,7 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetAllocationMint(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
@@ -128,6 +132,7 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetAllocationSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn

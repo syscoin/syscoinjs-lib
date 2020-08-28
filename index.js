@@ -169,7 +169,7 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
     }
   }
-  const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, sysChangeAddress, feeRate, this.network)
+  const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
 }
