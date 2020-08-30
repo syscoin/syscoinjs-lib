@@ -50,6 +50,6 @@
     "crypto-js": "^4.0.0",
     "bitcoin-ops": "^1.4.1",
     "bitcoinjs-lib": "^5.1.10",
-    "syscointx-js": "^1.0.9"
+    "syscointx-js": "^1.0.12"
   }
 }

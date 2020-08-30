@@ -236,10 +236,6 @@ async function sendRawTransaction (backendURL, txHex) {
   }
 }
 
-function decodeFromBase64 (input) {
-  return Buffer.from(input, 'base64').toString()
-}
-
 module.exports = {
   bitcoinPubTypes: bitcoinPubTypes,
   bitcoinNetworks: bitcoinNetworks,
@@ -252,6 +248,5 @@ module.exports = {
   fetchBackendTxs: fetchBackendTxs,
   fetchBackendAsset: fetchBackendAsset,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
-  sendRawTransaction: sendRawTransaction,
-  decodeFromBase64: decodeFromBase64
+  sendRawTransaction: sendRawTransaction
 }

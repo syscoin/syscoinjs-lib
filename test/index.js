@@ -16,9 +16,9 @@ fixtures.forEach(async function (f) {
     // 'null' for no password encryption for local storage and 'true' for testnet
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
-    const keypair = HDSigner.deriveKeypair("m/84'/1'/0'/1/3")
+    const keypair = HDSigner.deriveKeypair("m/84'/1'/0'/0/4")
     console.log('private key ' + keypair.toWIF())
-    const addresskey = HDSigner.derivePubKey("m/84'/1'/0'/1/3")
+    const addresskey = HDSigner.derivePubKey("m/84'/1'/0'/0/4")
     console.log('address ' + HDSigner.getAddressFromPubKey(addresskey))
     // example of once you have it signed you can push it to network via backend provider
     // const resSend = await sjs.utils.sendRawTransaction('sys1.bcfn.ca', psbt.extractTransaction().toHex())
@@ -29,7 +29,7 @@ fixtures.forEach(async function (f) {
     // } else {
     //  console.log('Unrecognized response from backend')
     // }
-    // 
+    //
     if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
       const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.dataAmount, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
@@ -138,6 +138,7 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
+            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
             t.same(assetAllocations, f.expected.asset.allocation)

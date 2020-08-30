@@ -24,25 +24,27 @@ SyscoinJSLib.prototype.setAccountIndex = function (accountIndex) {
 }
 
 SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) {
-  const sigs = new Map()
+  let notarizationDone = false
   if (!assets) {
-    return sigs
+    return notarizationDone
   }
+
   let txHex = null
-  for (const [assetGuid, valueAssetObj] of assets.entries()) {
+  for (const valueAssetObj in assets.values()) {
     if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
       if (!txHex) {
         const psbt = this.createPSBTFromRes(res)
         txHex = psbt.extractTransaction().toHex()
       }
-      const decodedEndpoint = utils.decodeFromBase64(valueAssetObj.notarydetails.endpoint.toString())
+      const decodedEndpoint = utils.decodeFromBase64ToASCII(valueAssetObj.notarydetails.endpoint.toString())
       const responseNotary = await this.fetchNotarizationFromEndPoint(decodedEndpoint, txHex)
       if (responseNotary.sig) {
-        sigs.set(assetGuid, responseNotary.sig)
+        valueAssetObj.sig = responseNotary.sig
+        notarizationDone = true
       }
     }
   }
-  return sigs
+  return notarizationDone
 }
 
 SyscoinJSLib.prototype.createAndSignPSBTFromRes = function (res, sign, ownedIndexes) {
@@ -92,9 +94,9 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
     }
   }
   let psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
-  const notarizationSignatures = await this.getNotarizationSignatures(assets, res)
+  const notarizationDone = await this.getNotarizationSignatures(assets, res)
   // sign again if notarization was added
-  if (syscointx.addNotarizationSignatures(res.txVersion, notarizationSignatures, res.outputs) !== -1) {
+  if (notarizationDone && syscointx.addNotarizationSignatures(res.txVersion, assets, res.outputs) !== -1) {
     psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
   }
   return psbt
@@ -107,6 +109,7 @@ SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
     psbt.addInput({
       hash: input.txId,
       index: input.vout,
+      sequence: input.sequence,
       witnessUtxo: input.witnessUtxo,
       bip32Derivation: input.bip32Derivation
     })
