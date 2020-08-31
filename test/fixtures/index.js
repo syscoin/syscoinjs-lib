@@ -700,7 +700,15 @@ module.exports = [{
         updateCapabilityFlags: 255,
         balance: 10000000000,
         totalSupply: 0,
-        maxSupply: 100000000000
+        maxSupply: 100000000000,
+        notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
+        notaryDetails: {
+          endPoint: 'https://test.com',
+          instantTransfers: 0,
+          HDRequired: 1
+        },
+        // for unit test only, this normally wouldn't come in payload
+        notarySig: syscointx.utils.decodeFromBase64ToHex('IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98=')
       }
     ]
   },
@@ -710,51 +718,12 @@ module.exports = [{
     [2369540753, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(40000000) }] }]
   ]),
   expected: {
-    hex: '800000000001011787945f9d715eb56da23be847e1db7aada29c70ba4ef0eb59c9ed20d60526910b00000000fdffffff04005a6202000000001600149271f58284fc922b7e466cff87a53bb838d11febb2020000000000001600149271f58284fc922b7e466cff87a53bb838d11feb00000000000000000e6a0c0191523c8d020226010800000081f50500000000160014bd6cfd84d53025c8891862ec49b0036d06405d0f0247304402200a1776d1daf534a15399a893e10e593fc539101fac39e5a0b3d7ecce8cc4e84c0220618bc653df2dddb7030a6bc6fe02d1523ab795f7d34b838ae5d85f39233de00101210281c11974da83e7d9ff9f47a3c32e3baa7975b5127eb447b86a2f7fd4c9d12fec00000000',
+    hex: '800000000001011787945f9d715eb56da23be847e1db7aada29c70ba4ef0eb59c9ed20d60526910b00000000fdffffff04005a6202000000001600149271f58284fc922b7e466cff87a53bb838d11febb2020000000000001600149271f58284fc922b7e466cff87a53bb838d11feb0000000000000000506a4c4d0191523c8d020226010841201dd3317fff7055779720a4c979308fcda9548cba6eb7ffab7cc89e8d3d7607ae6a5ce27048bdfe47486919ab8635178f08818b32b4f7e356156a6a95d0cb3fdf006c7ef50500000000160014bd6cfd84d53025c8891862ec49b0036d06405d0f02483045022100f926271dc75a2bb5e7f141026ab0aa62e3cc2d3fe83707acbaffea232d58b5510220582637e73851dc7e3eaaadb557b8d6714adaa57bdec372f78578365ed6d17f7801210281c11974da83e7d9ff9f47a3c32e3baa7975b5127eb447b86a2f7fd4c9d12fec00000000',
     rbf: true,
     numOutputs: 4,
-    script: Buffer.from('6a0c0191523c8d02022601080000', 'hex'),
+    script: Buffer.from('6a4c4d0191523c8d020226010841201dd3317fff7055779720a4c979308fcda9548cba6eb7ffab7cc89e8d3d7607ae6a5ce27048bdfe47486919ab8635178f08818b32b4f7e356156a6a95d0cb3fdf00', 'hex'),
     asset: {
-      allocation: [{ assetGuid: 2369540753, values: [{ n: 2, value: new BN(40000000) }, { n: 1, value: new BN(10000000) }], notarysig: Buffer.from('') }], ethaddress: Buffer.from('', 'hex')
-    }
-  }
-},
-{
-  description: 'burn asset allocation to ethereum',
-  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
-  txOpts: {
-    rbf: true
-  },
-  feeRate: new BN(10),
-  utxoObj: {
-    utxos: [
-      { txId: '26f6b17b715bcd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 1, script: Buffer.from('001487e5ec8eb455b3bbf42c5d5f952f67c26793115d', 'hex'), value: 100000914, assetInfo: { assetGuid: 1635229536, value: 900000000 } }
-    ],
-    assets: [
-      {
-        assetGuid: 1635229536,
-        decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
-        symbol: syscointx.utils.encodeToBase64('CAT'),
-        updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
-      }
-    ]
-  },
-  assetOpts: { ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex') },
-  sysChangeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
-  assetMap: new Map([
-    [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(100000000) }] }]
-  ]),
-  expected: {
-    rbf: true,
-    numOutputs: 2,
-    script: Buffer.from('6a2001609f7761020009014f00149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
-    asset: {
-      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(100000000) }, { n: 1, value: new BN(800000000) }], notarysig: Buffer.from('') }],
-      ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex')
+      allocation: [{ assetGuid: 2369540753, values: [{ n: 2, value: new BN(40000000) }, { n: 1, value: new BN(10000000) }], notarysig: Buffer.from('IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98=', 'base64') }], ethaddress: Buffer.from('', 'hex')
     }
   }
 },
@@ -764,15 +733,16 @@ module.exports = [{
   txOpts: {
     rbf: true
   },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txId: '26f6b17b715bcd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 1, script: Buffer.from('001487e5ec8eb455b3bbf42c5d5f952f67c26793115d', 'hex'), value: 980, assetInfo: { assetGuid: 1635229536, value: 900000000 } },
-      { txId: '36f6b17b715ccd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 0, script: Buffer.from('001497e5ec8eb455b3bba42c5d5f952f67c26793115d', 'hex'), value: 100000914 }
+      { txId: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 9, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 690, assetInfo: { assetGuid: 2305793883, value: 100000000 } },
+      { txId: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 3, script: Buffer.from('0014bd6cfd84d53025c8891862ec49b0036d06405d0f', 'hex'), path: "m/84'/1'/0'/0/10", value: 99974764 }
     ],
     assets: [
       {
-        assetGuid: 1635229536,
+        assetGuid: 2305793883,
         decimals: 8,
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
@@ -784,16 +754,17 @@ module.exports = [{
     ]
   },
   assetOpts: { ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex') },
-  sysChangeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+  sysChangeAddress: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8',
   assetMap: new Map([
-    [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(100000000) }] }]
+    [2305793883, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000) }] }]
   ]),
   expected: {
+    hex: '860000000001021787945f9d715eb56da23be847e1db7aada29c70ba4ef0eb59c9ed20d60526910900000000fdffffff2270b1a47a133755ff6dbcb34a32cc31b42c999c70dec6b133ced8e6e36d589f0300000000fdffffff020000000000000000226a20015b9f6f89020008015800149667de58c15475626165eaa4c9970e409e1181d09a6ef505000000001600149271f58284fc922b7e466cff87a53bb838d11feb02483045022100b82b6ce9a16a2dc10e16ef0344140749d81408b3af7e29234472f7318c0a715d022072c9e835bd39f9320f49499cd7419bc573b7637b29b23c744849245ed5020925012102b7d4e03f4230eb2406328be6bf9dbd400083b929c07a4b0b3601589b3243067402483045022100dd4e1d88a73a07992c7314f69aa98050d0936e484d52e04daf0160a5babc324c022036f8c014f0023220809e1c24b069b3040a103ca3e1182abbd5c13cadecc36d49012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
     rbf: true,
     numOutputs: 2,
-    script: Buffer.from('6a2001609f7761020009014f00149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
+    script: Buffer.from('6a20015b9f6f89020008015800149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
     asset: {
-      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(100000000) }, { n: 1, value: new BN(800000000) }], notarysig: Buffer.from('') }],
+      allocation: [{ assetGuid: 2305793883, values: [{ n: 0, value: new BN(10000000) }, { n: 1, value: new BN(90000000) }], notarysig: Buffer.from('') }],
       ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex')
     }
   }
@@ -804,15 +775,16 @@ module.exports = [{
   txOpts: {
     rbf: true
   },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txId: '26f6b17b715bcd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 1, script: Buffer.from('001487e5ec8eb455b3bbf42c5d5f952f67c26793115d', 'hex'), value: 980, assetInfo: { assetGuid: 1635229536, value: 900000000 } },
-      { txId: '36f6b17b715ccd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 0, script: Buffer.from('001497e5ec8eb455b3bba42c5d5f952f67c26793115d', 'hex'), value: 100000914, assetInfo: { assetGuid: 1635229536, value: 800000000 } }
+      { txId: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 8, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 690, assetInfo: { assetGuid: 2305793883, value: 500000000 } },
+      { txId: '386efe525b6b3f29fb6cb982da3710d2ea324a31ce3448ea76122a6b1150c530', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 99970714, assetInfo: { assetGuid: 2305793883, value: 90000000 } }
     ],
     assets: [
       {
-        assetGuid: 1635229536,
+        assetGuid: 2305793883,
         decimals: 8,
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
@@ -824,16 +796,17 @@ module.exports = [{
     ]
   },
   assetOpts: { ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex') },
-  sysChangeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+  sysChangeAddress: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8',
   assetMap: new Map([
-    [1635229536, { changeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', outputs: [{ value: new BN(100000000) }] }]
+    [2305793883, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(100000000) }] }]
   ]),
   expected: {
+    hex: '860000000001021787945f9d715eb56da23be847e1db7aada29c70ba4ef0eb59c9ed20d60526910800000000fdffffff30c550116b2a1276ea4834ce314a32ead21037da82b96cfb293f6b5b52fe6e380100000000fdffffff020000000000000000236a21015b9f6f8902000901824000149667de58c15475626165eaa4c9970e409e1181d0205cf505000000001600149271f58284fc922b7e466cff87a53bb838d11feb0247304402204f8e5ec226d3d9829001e057c576c33adb185eb9ee67a89e611b0749f431d50a02200be7ab12ebb4cb577fb456c8aaa4a8c4f51bb3332aef1b2ccadd509f64b20bf5012102b7d4e03f4230eb2406328be6bf9dbd400083b929c07a4b0b3601589b324306740247304402207b7b573f98beea40ccc4cf47ef4afd42d67e508eec22b5dca98992531797638e022068141e2810de3e6015e0d8767418b71e603b9e9082d856aa3a7d039d376788ed012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad200000000',
     rbf: true,
     numOutputs: 2,
-    script: Buffer.from('6a2101609f776102000901801500149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
+    script: Buffer.from('6a21015b9f6f8902000901824000149667de58c15475626165eaa4c9970e409e1181d0', 'hex'),
     asset: {
-      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(100000000) }, { n: 1, value: new BN(1600000000) }], notarysig: Buffer.from('') }],
+      allocation: [{ assetGuid: 2305793883, values: [{ n: 0, value: new BN(100000000) }, { n: 1, value: new BN(490000000) }], notarysig: Buffer.from('') }],
       ethaddress: Buffer.from('9667de58c15475626165eaa4c9970e409e1181d0', 'hex')
     }
   }
@@ -844,18 +817,20 @@ module.exports = [{
   txOpts: {
     rbf: true
   },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txId: '26f6b17b715bcd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 1, script: Buffer.from('001487e5ec8eb455b3bbf42c5d5f952f67c26793115d', 'hex'), value: 100000000 },
-      { txId: '36f6b17b715ccd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 0, script: Buffer.from('001497e5ec8eb455b3bba42c5d5f952f67c26793115d', 'hex'), value: 100000914 }
+      { txId: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 0, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 40000000 },
+      { txId: 'f98d9922a1fd8c81728be2fb06b775e564cb0766ce251d43e97df762378bf736', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 30000000 }
     ]
   },
-  sysChangeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+  changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695',
   outputs: [
-    { address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', value: new BN(150000000) }
+    { address: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8', value: new BN(50000000) }
   ],
   expected: {
+    hex: '020000000001022270b1a47a133755ff6dbcb34a32cc31b42c999c70dec6b133ced8e6e36d589f0000000000fdffffff36f78b3762f77de9431d25ce6607cb64e575b706fbe28b72818cfda122998df90100000000fdffffff0280f0fa0200000000160014bd6cfd84d53025c8891862ec49b0036d06405d0f641e3101000000001600149271f58284fc922b7e466cff87a53bb838d11feb024730440220216ce6eccec67d44bbed1573eeaf14c6d68c3727896c7f05a404d4da1e02377a022016bfd139d0d9149b5a985598e870f0bea6e43c0cf6c8606204ed576c71f857de012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad202483045022100c78b5b756e8a1de913e4ceca2447bc6c734b913ad25456a3d72378d1fd900a810220028842bc7623abcb7ac1fc342e3884648ca33b7060332e87542aabe9cee95d7a012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad200000000',
     rbf: true,
     version: 2,
     numOutputs: 2
@@ -865,17 +840,19 @@ module.exports = [{
   description: 'standard sys send with asset inputs',
   version: 2,
   txOpts: {
+    allowOtherNotarizedAssetInputs: true,
     rbf: true
   },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txId: '26f6b17b715bcd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 1, script: Buffer.from('001487e5ec8eb455b3bbf42c5d5f952f67c26793115d', 'hex'), value: 100000000, assetInfo: { assetGuid: 1635229536, value: 900000000 } },
-      { txId: '36f6b17b715ccd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 0, script: Buffer.from('001497e5ec8eb455b3bba42c5d5f952f67c26793115d', 'hex'), value: 100000914, assetInfo: { assetGuid: 1635229536, value: 800000000 } }
+      { txId: '64dbfb02268b642f6a32a266bdd54add8989a1fa913b7414a642b5d85e964c68', vout: 0, script: Buffer.from('0014bd6cfd84d53025c8891862ec49b0036d06405d0f', 'hex'), path: "m/84'/1'/0'/0/10", value: 100000000, assetInfo: { assetGuid: 2305793883, value: 90000000 } },
+      { txId: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 6900, assetInfo: { assetGuid: 2369540753, value: 10000000 } }
     ],
     assets: [
       {
-        assetGuid: 1635229536,
+        assetGuid: 2305793883,
         decimals: 8,
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
@@ -883,20 +860,39 @@ module.exports = [{
         balance: 10000000000,
         totalSupply: 0,
         maxSupply: 100000000000
+      },
+      {
+        assetGuid: 2369540753,
+        decimals: 8,
+        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        symbol: syscointx.utils.encodeToBase64('CAT'),
+        updateCapabilityFlags: 255,
+        balance: 10000000000,
+        totalSupply: 0,
+        maxSupply: 100000000000,
+        notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
+        notaryDetails: {
+          endPoint: 'https://test.com',
+          instantTransfers: 0,
+          HDRequired: 1
+        },
+        // for unit test only, this normally wouldn't come in payload
+        notarySig: syscointx.utils.decodeFromBase64ToHex('H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo=')
       }
     ]
   },
-  sysChangeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+  changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695',
   outputs: [
-    { address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', value: new BN(150000000) }
+    { address: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8', value: new BN(99996800) }
   ],
   expected: {
+    hex: '87000000000102684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff2270b1a47a133755ff6dbcb34a32cc31b42c999c70dec6b133ced8e6e36d589f0100000000fdffffff0480d4f50500000000160014bd6cfd84d53025c8891862ec49b0036d06405d0ffe100000000000001600149271f58284fc922b7e466cff87a53bb838d11febb2020000000000001600149271f58284fc922b7e466cff87a53bb838d11feb0000000000000000556a4c52025b9f6f890101580091523c8d010208411f966b65ef1a09aae16339a092faa80a296bd71e2c6ea4e4a640f8e6e49a61b69f6fbde81a777f31aa0b6717c6173ec3752536e531fbeeb691c5f956386293513a0247304402206dcc7662c949609c7e19904b52ed6578538e4617c0ee326d4d56a4a7763c7f07022046d3b2b10adf5c1144c889cc041c98df809b6dc92171d25f84b52524f3f04a1f012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba0247304402206b8a1bcd76a175c091fa4247806069c3f8b9afd10f6efb6675b28a185bbdf77302207ab551409f5c862ba4dd51c5e39ced2db05492681ac4b60f3ebefd926a7796ff012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad200000000',
     rbf: true,
     version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
-    numOutputs: 3, // 3 because new opreturn will be created
-    script: Buffer.from('6a0a01609f77610100801f00', 'hex'),
+    numOutputs: 4, // 4 because new opreturn will be created + 1 for second asset change
+    script: Buffer.from('6a4c52025b9f6f890101580091523c8d010208411f966b65ef1a09aae16339a092faa80a296bd71e2c6ea4e4a640f8e6e49a61b69f6fbde81a777f31aa0b6717c6173ec3752536e531fbeeb691c5f956386293513a', 'hex'),
     asset: {
-      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(1700000000) }], notarysig: Buffer.from('') }]
+      allocation: [{ assetGuid: 2305793883, values: [{ n: 1, value: new BN(90000000) }], notarysig: Buffer.from('') }, { assetGuid: 2369540753, values: [{ n: 2, value: new BN(10000000) }], notarysig: Buffer.from('H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo=', 'base64') }]
     }
   }
 },
@@ -906,15 +902,16 @@ module.exports = [{
   txOpts: {
     rbf: false
   },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txId: '26f6b17b715bcd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 1, script: Buffer.from('001487e5ec8eb455b3bbf42c5d5f952f67c26793115d', 'hex'), value: 100000000, assetInfo: { assetGuid: 1635229536, value: 900000000 } },
-      { txId: '36f6b17b715ccd5fda921108b3bedd9a3d89ea58c666a40a3e5a6f833a454e36', vout: 0, script: Buffer.from('001497e5ec8eb455b3bba42c5d5f952f67c26793115d', 'hex'), value: 100000914 }
+      { txId: '386efe525b6b3f29fb6cb982da3710d2ea324a31ce3448ea76122a6b1150c530', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 99970714, assetInfo: { assetGuid: 2305793883, value: 90000000 } },
+      { txId: '395f36f4dd4d65d9bd95be4207dcae91a2b6d256a832458aa42b40922b3beb64', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 19996260 }
     ],
     assets: [
       {
-        assetGuid: 1635229536,
+        assetGuid: 2305793883,
         decimals: 8,
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
@@ -925,17 +922,18 @@ module.exports = [{
       }
     ]
   },
-  sysChangeAddress: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+  changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695',
   outputs: [
-    { address: 'bc1qc7slrfxkknqcq2jevvvkdgvrt8080852dfjewde450xdlk4ugp7szw5tk9', value: new BN(150000000) }
+    { address: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8', value: new BN(100000000) }
   ],
   expected: {
+    hex: '8700000000010264eb3b2b92402ba48a4532a856d2b6a291aedc0742be95bdd9654dddf4365f390100000000ffffffff30c550116b2a1276ea4834ce314a32ead21037da82b96cfb293f6b5b52fe6e380100000000ffffffff0300e1f50500000000160014bd6cfd84d53025c8891862ec49b0036d06405d0fba9a3001000000001600149271f58284fc922b7e466cff87a53bb838d11feb00000000000000000b6a09015b9f6f890101580002483045022100ca365b13f7fc49bf94cfff9046242ee5f495ac234030bb67f04461ba494ed5f0022052b1c4df02f2c2ebc2d2a69cbf840f2b3679bf00411d782f380d1cc1a374aa66012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad202483045022100f87f5b40ad1b84eb2a21e8758f154abfb07f29d895b63646d85acdc00dae492f02203fb5925f96cad5ead77d0cece7b1f9a616f2b3ca3d8c43584a53f9297fe0012f012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad200000000',
     rbf: false,
     version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
     numOutputs: 3, // 3 because new opreturn will be created
-    script: Buffer.from('6a0901609f776101005900', 'hex'),
+    script: Buffer.from('6a09015b9f6f8901015800', 'hex'),
     asset: {
-      allocation: [{ assetGuid: 1635229536, values: [{ n: 0, value: new BN(900000000) }], notarysig: Buffer.from('') }]
+      allocation: [{ assetGuid: 2305793883, values: [{ n: 1, value: new BN(90000000) }], notarysig: Buffer.from('') }]
     }
   }
 }

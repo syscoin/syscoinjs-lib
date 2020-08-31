@@ -16,10 +16,6 @@ fixtures.forEach(async function (f) {
     // 'null' for no password encryption for local storage and 'true' for testnet
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
-    // const keypair = HDSigner.deriveKeypair("m/84'/1'/0'/0/4")
-    // console.log('private key ' + keypair.toWIF())
-    // const addresskey = HDSigner.derivePubKey("m/84'/1'/0'/0/4")
-    // console.log('address ' + HDSigner.getAddressFromPubKey(addresskey))
     // example of once you have it signed you can push it to network via backend provider
     // const resSend = await sjs.utils.sendRawTransaction('sys1.bcfn.ca', psbt.extractTransaction().toHex())
     // if(resSend.error) {
@@ -148,7 +144,7 @@ fixtures.forEach(async function (f) {
     } else if (f.version === 2) {
       const psbt = await syscoinjs.createTransaction(txOpts, f.changeAddress, f.outputs, f.feeRate, f.fromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
-      t.same(psbt.version, f.version)
+      t.same(psbt.version, f.expected.version)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
