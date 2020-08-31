@@ -3,7 +3,7 @@ var sjs = require('..')
 var fixtures = require('./fixtures')
 var tape = require('tape')
 const syscointx = require('syscointx-js')
-const bitcoin = require('bitcoinjs-lib')
+const bitcoin = sjs.utils.bitcoinjs
 const bitcoinops = require('bitcoin-ops')
 
 fixtures.forEach(async function (f) {
@@ -116,6 +116,7 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetAllocationBurn(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
@@ -148,6 +149,7 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.createTransaction(txOpts, f.changeAddress, f.outputs, f.feeRate, f.fromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn

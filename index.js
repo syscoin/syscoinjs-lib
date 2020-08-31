@@ -1,5 +1,5 @@
 const utils = require('./utils')
-const bitcoin = require('bitcoinjs-lib')
+const bitcoin = utils.bitcoinjs
 const syscointx = require('syscointx-js')
 function SyscoinJSLib (HDSigner, blockbookURL, accountIndex, network) {
   if (blockbookURL) {
