@@ -4,7 +4,6 @@ const BIP84 = require('bip84')
 const CryptoJS = require('crypto-js')
 const bjs = require('bitcoinjs-lib')
 const varuint = require('varuint-bitcoin')
-const bitcoinPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, testnet: { vprv: '045f18bc', vpub: '045f1cf6' } }
 const bitcoinNetworks = { mainnet: bjs.networks.bitcoin, testnet: bjs.networks.testnet }
 /* global localStorage */
 const syscoinNetworks = {
@@ -31,7 +30,10 @@ const syscoinNetworks = {
     wif: 0xef
   }
 }
-const syscoinPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, testnet: { vprv: '045f18bc', vpub: '045f1cf6' } }
+const bitcoinZPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, testnet: { vprv: '045f18bc', vpub: '045f1cf6' } }
+const bitcoinXPubTypes = { mainnet: { zprv: bitcoinNetworks.mainnet.bip32.private, zpub: bitcoinNetworks.mainnet.bip32.public }, testnet: { vprv: bitcoinNetworks.testnet.bip32.private, vpub: bitcoinNetworks.testnet.bip32.public } }
+const syscoinZPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, testnet: { vprv: '045f18bc', vpub: '045f1cf6' } }
+const syscoinXPubTypes = { mainnet: { zprv: syscoinNetworks.mainnet.bip32.private, zpub: syscoinNetworks.mainnet.bip32.public }, testnet: { vprv: syscoinNetworks.testnet.bip32.private, vpub: syscoinNetworks.testnet.bip32.public } }
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 
@@ -47,7 +49,7 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   }
 
   this.password = password
-  this.pubTypes = pubTypes || syscoinPubTypes
+  this.pubTypes = pubTypes || syscoinZPubTypes
 
   this.accounts = []
   this.mnemonic = mnemonic // serialized
@@ -65,6 +67,16 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
 HDSigner.prototype.getMasterFingerprint = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.network).fingerprint
 }
+
+HDSigner.prototype.deriveAccount = function (index) {
+  let bipNum = '44'
+  if (this.pubTypes === syscoinZPubTypes ||
+    this.pubTypes === bitcoinZPubTypes) {
+    bipNum = '84'
+  }
+  return this.fromSeed.deriveAccount(index, bipNum)
+}
+
 // restore on load from local storage and decrypt data to de-serialize objects
 HDSigner.prototype.restore = function (password) {
   const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
@@ -88,7 +100,7 @@ HDSigner.prototype.restore = function (password) {
     return false
   }
   for (var i = 0; i <= this.accountIndex; i++) {
-    const child = this.fromSeed.deriveAccount(i)
+    const child = this.deriveAccount(i)
     /* eslint new-cap: ["error", { "newIsCap": false }] */
     this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
   }
@@ -105,7 +117,7 @@ HDSigner.prototype.backup = function () {
 }
 
 HDSigner.prototype.createAccount = function () {
-  const child = this.fromSeed.deriveAccount(this.accountIndex)
+  const child = this.deriveAccount(this.accountIndex)
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
   this.accountIndex++
@@ -391,9 +403,11 @@ class SPSBT extends bjs.Psbt {
 }
 bjs.Psbt = SPSBT
 module.exports = {
-  bitcoinPubTypes: bitcoinPubTypes,
+  bitcoinXPubTypes: bitcoinXPubTypes,
+  bitcoinZPubTypes: bitcoinZPubTypes,
   bitcoinNetworks: bitcoinNetworks,
-  syscoinPubTypes: syscoinPubTypes,
+  syscoinXPubTypes: syscoinXPubTypes,
+  syscoinZPubTypes: syscoinZPubTypes,
   syscoinNetworks: syscoinNetworks,
   syscoinSLIP44: syscoinSLIP44,
   bitcoinSLIP44: bitcoinSLIP44,
