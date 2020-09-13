@@ -120,7 +120,11 @@ HDSigner.prototype.backup = function () {
 
 async function fetchBackendUTXOS (backendURL, addressOrXpub, HDSigner, options) {
   try {
-    const request = await axios.get(backendURL + '/api/v2/utxo/' + addressOrXpub + options ? '?' + options : '')
+    var url = backendURL + '/api/v2/utxo/' + addressOrXpub
+    if (options) {
+      url += '?' + options
+    }
+    const request = await axios.get(url)
     if (request && request.data) {
       if (HDSigner) {
         HDSigner.setLatestIndexesFromUTXOs(request.data.utxos)
@@ -247,7 +251,17 @@ async function fetchNotarizationFromEndPoint (endPoint, txHex) {
 
 async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub) {
   try {
-    const request = await axios.get(backendURL + xpub ? '/api/v2/xpub/' : '/api/v2/address/' + addressOrXpub + options ? '?' + options : '')
+    var url = backendURL
+    if (xpub) {
+      url += '/api/v2/xpub/'
+    } else {
+      url += '/api/v2/address/'
+    }
+    url += addressOrXpub
+    if (options) {
+      url += '?' + options
+    }
+    const request = await axios.get(url)
     if (request && request.data) {
       return request.data
     }
