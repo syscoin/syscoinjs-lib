@@ -102,7 +102,7 @@ SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
       hash: input.txId,
       index: input.vout,
       sequence: input.sequence,
-      witnessUtxo: input.witnessUtxo,
+      witnessUtxo: { script: input.witnessUtxo.script, value: input.witnessUtxo.value.toNumber() },
       bip32Derivation: input.bip32Derivation
     })
   })

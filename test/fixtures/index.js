@@ -12,7 +12,7 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: 'b61045108705d2a65774238174bfa9110ccaad43a98a9b289a79da0696cac0b8', vout: 0, script: Buffer.from('0014de5ae4961d07ca3d0e2e10136f27ce9c2822f7fd', 'hex'), path: "m/84'/1'/0'/0/0", value: 100000000000 }
+      { txid: 'b61045108705d2a65774238174bfa9110ccaad43a98a9b289a79da0696cac0b8', vout: 0, script: '0014de5ae4961d07ca3d0e2e10136f27ce9c2822f7fd', path: "m/84'/1'/0'/0/0", value: '100000000000' }
     ]
   },
   assetOpts: { precision: 8, symbol: 'CAT', updatecapabilityflags: 255, balance: new BN(10000000000), maxsupply: new BN(100000000000), description: 'publicvalue' },
@@ -47,7 +47,7 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: 'a7f5c979d8fc80f05d8434e04cb9e46cdaa56551d23dd790ba5d7f2c15f529fd', vout: 1, script: Buffer.from('00140562b935bea44785c6528948c19e944116e4c487', 'hex'), path: "m/84'/1'/0'/1/0", value: 84999996550, assetInfo: { assetGuid: 2529870008, value: 0 } }
+      { txid: 'a7f5c979d8fc80f05d8434e04cb9e46cdaa56551d23dd790ba5d7f2c15f529fd', vout: 1, script: '00140562b935bea44785c6528948c19e944116e4c487', path: "m/84'/1'/0'/1/0", value: '84999996550', assetInfo: { assetGuid: 2529870008, value: '0' } }
     ],
     assets: [
       {
@@ -56,9 +56,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 10000000000,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '10000000000',
+        maxSupply: '100000000000'
       }
     ]
   },
@@ -100,7 +100,7 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '90652f37eeb24374d8cfef5b73ac4c10e31fb54ac864e0d9f8250af76985eb9d', vout: 1, script: Buffer.from('001459fa0d5c63fe35cc86157031a24d38b0cc61b94f', 'hex'), path: "m/84'/1'/0'/1/2", value: 84999992600, assetInfo: { assetGuid: 2529870008, value: 0 } }
+      { txid: '90652f37eeb24374d8cfef5b73ac4c10e31fb54ac864e0d9f8250af76985eb9d', vout: 1, script: '001459fa0d5c63fe35cc86157031a24d38b0cc61b94f', path: "m/84'/1'/0'/1/2", value: '84999992600', assetInfo: { assetGuid: 2529870008, value: '0' } }
     ],
     assets: [
       {
@@ -109,9 +109,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('new publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 127,
-        balance: 52000000000,
-        totalSupply: 52000000000,
-        maxSupply: 100000000000
+        balance: '52000000000',
+        totalSupply: '52000000000',
+        maxSupply: '100000000000'
       }
     ]
   },
@@ -139,8 +139,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '44f1038835a563bacdbaa9873b35f97d968ecf1e1bf53452b5fcabd1bfdfad35', vout: 0, script: Buffer.from('0014821728879272128eda52cccb59450576dc5a7cf1', 'hex'), path: "m/84'/1'/0'/1/3", value: 980, assetInfo: { assetGuid: 2529870008, value: 1000000000 } },
-      { txid: '3f0536c23125183e99bfd021fb6a7bb279ccc739356985058cfc15b0a0e52946', vout: 0, script: Buffer.from('00140f8137adebd136ebb5d3c9796e79916ddcff77cb', 'hex'), path: "m/84'/1'/0'/1/1", value: 84999988550 }
+      { txid: '44f1038835a563bacdbaa9873b35f97d968ecf1e1bf53452b5fcabd1bfdfad35', vout: 0, script: '0014821728879272128eda52cccb59450576dc5a7cf1', path: "m/84'/1'/0'/1/3", value: '980', assetInfo: { assetGuid: 2529870008, value: '1000000000' } },
+      { txid: '3f0536c23125183e99bfd021fb6a7bb279ccc739356985058cfc15b0a0e52946', vout: 0, script: '00140f8137adebd136ebb5d3c9796e79916ddcff77cb', path: "m/84'/1'/0'/1/1", value: '84999988550' }
     ],
     assets: [
       {
@@ -149,9 +149,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('new publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 127,
-        balance: 42000000000,
-        totalSupply: 52000000000,
-        maxSupply: 100000000000
+        balance: '42000000000',
+        totalSupply: '52000000000',
+        maxSupply: '100000000000'
       }
     ]
   },
@@ -179,13 +179,13 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: 'c5c2af64e6f8d0732b2250416eecc063f22161b9cd14eda802c97ed518d173e0', vout: 0, script: Buffer.from('0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', 'hex'), path: "m/84'/1'/0'/0/4", value: 980, assetInfo: { assetGuid: 2369540753, value: 100000000 } },
-      { txid: '4fdab120b984f7bcf0c9458f9783ec0b3169a292de7e40a2612db1f7d4fd6efb', vout: 0, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 980, assetInfo: { assetGuid: 650700076, value: 200000000 } },
-      { txid: '931dbdcd8098918e306c43c2f9ee9a6c2fac4c06190a669809c83f3a48f7b522', vout: 0, script: Buffer.from('0014248a521f8561af8f735d0f5e6d13f41177e423bd', 'hex'), path: "m/84'/1'/0'/0/6", value: 980, assetInfo: { assetGuid: 2699372871, value: 300000000 } },
-      { txid: '66d6841bef92b91344f793bbd43b2cd139e9da4b82b6f13e9e967cf793c384e1', vout: 0, script: Buffer.from('001476ddc768b9ae22e2645ed1a161cbe1cd9ec52efb', 'hex'), path: "m/84'/1'/0'/0/11", value: 294, assetInfo: { assetGuid: 402223530, value: 400000000 } }, // m/84'/1'/0'/0/7 had some kind of collision the pub/priv key didn't match between js and core
-      { txid: '212680579797d8bf19a2c4bbde5fb7f35296b82ed02c7d0a22281d1d2a47edf2', vout: 0, script: Buffer.from('00147326551112dd129f478b4a3fe4fab809c7fb2d0c', 'hex'), path: "m/84'/1'/0'/0/8", value: 980, assetInfo: { assetGuid: 1537060536, value: 500000000 } },
-      { txid: '57219dc0fd292caa06c54e1af6125323181a4c86921442e6d508275b30086682', vout: 0, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 980, assetInfo: { assetGuid: 2305793883, value: 600000000 } },
-      { txid: 'c8a2159c47a5af4251b0576ce22d859996f9e9fbfffc804a9bd745848fe3d642', vout: 0, script: Buffer.from('0014bd6cfd84d53025c8891862ec49b0036d06405d0f', 'hex'), path: "m/84'/1'/0'/0/10", value: 100000000 }
+      { txid: 'c5c2af64e6f8d0732b2250416eecc063f22161b9cd14eda802c97ed518d173e0', vout: 0, script: '0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', path: "m/84'/1'/0'/0/4", value: '980', assetInfo: { assetGuid: 2369540753, value: '100000000' } },
+      { txid: '4fdab120b984f7bcf0c9458f9783ec0b3169a292de7e40a2612db1f7d4fd6efb', vout: 0, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '980', assetInfo: { assetGuid: 650700076, value: '200000000' } },
+      { txid: '931dbdcd8098918e306c43c2f9ee9a6c2fac4c06190a669809c83f3a48f7b522', vout: 0, script: '0014248a521f8561af8f735d0f5e6d13f41177e423bd', path: "m/84'/1'/0'/0/6", value: '980', assetInfo: { assetGuid: 2699372871, value: '300000000' } },
+      { txid: '66d6841bef92b91344f793bbd43b2cd139e9da4b82b6f13e9e967cf793c384e1', vout: 0, script: '001476ddc768b9ae22e2645ed1a161cbe1cd9ec52efb', path: "m/84'/1'/0'/0/11", value: 294, assetInfo: { assetGuid: 402223530, value: '400000000' } }, // m/84'/1'/0'/0/7 had some kind of collision the pub/priv key didn't match between js and core
+      { txid: '212680579797d8bf19a2c4bbde5fb7f35296b82ed02c7d0a22281d1d2a47edf2', vout: 0, script: '00147326551112dd129f478b4a3fe4fab809c7fb2d0c', path: "m/84'/1'/0'/0/8", value: '980', assetInfo: { assetGuid: 1537060536, value: '500000000' } },
+      { txid: '57219dc0fd292caa06c54e1af6125323181a4c86921442e6d508275b30086682', vout: 0, script: '0014413e8fd29b2f671b6058c9f50bf51bf971274e53', path: "m/84'/1'/0'/0/9", value: '980', assetInfo: { assetGuid: 2305793883, value: '600000000' } },
+      { txid: 'c8a2159c47a5af4251b0576ce22d859996f9e9fbfffc804a9bd745848fe3d642', vout: 0, script: '0014bd6cfd84d53025c8891862ec49b0036d06405d0f', path: "m/84'/1'/0'/0/10", value: '100000000' }
     ],
     assets: [
       {
@@ -194,9 +194,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -212,9 +212,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -229,9 +229,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -246,9 +246,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -263,9 +263,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -280,9 +280,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
       }
     ]
   },
@@ -320,12 +320,12 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: 'c5c2af64e6f8d0732b2250416eecc063f22161b9cd14eda802c97ed518d173e0', vout: 0, script: Buffer.from('0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', 'hex'), path: "m/84'/1'/0'/0/4", value: 9800, assetInfo: { assetGuid: 2369540753, value: 100000000 } },
-      { txid: '4fdab120b984f7bcf0c9458f9783ec0b3169a292de7e40a2612db1f7d4fd6efb', vout: 0, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 9800, assetInfo: { assetGuid: 650700076, value: 200000000 } },
-      { txid: '931dbdcd8098918e306c43c2f9ee9a6c2fac4c06190a669809c83f3a48f7b522', vout: 0, script: Buffer.from('0014248a521f8561af8f735d0f5e6d13f41177e423bd', 'hex'), path: "m/84'/1'/0'/0/6", value: 980, assetInfo: { assetGuid: 2699372871, value: 300000000 } },
-      { txid: '66d6841bef92b91344f793bbd43b2cd139e9da4b82b6f13e9e967cf793c384e1', vout: 0, script: Buffer.from('001476ddc768b9ae22e2645ed1a161cbe1cd9ec52efb', 'hex'), path: "m/84'/1'/0'/0/11", value: 294, assetInfo: { assetGuid: 402223530, value: 400000000 } }, // m/84'/1'/0'/0/7 had some kind of collision the pub/priv key didn't match between js and core
-      { txid: '212680579797d8bf19a2c4bbde5fb7f35296b82ed02c7d0a22281d1d2a47edf2', vout: 0, script: Buffer.from('00147326551112dd129f478b4a3fe4fab809c7fb2d0c', 'hex'), path: "m/84'/1'/0'/0/8", value: 9800, assetInfo: { assetGuid: 1537060536, value: 500000000 } },
-      { txid: '57219dc0fd292caa06c54e1af6125323181a4c86921442e6d508275b30086682', vout: 0, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 980, assetInfo: { assetGuid: 2305793883, value: 600000000 } }
+      { txid: 'c5c2af64e6f8d0732b2250416eecc063f22161b9cd14eda802c97ed518d173e0', vout: 0, script: '0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', path: "m/84'/1'/0'/0/4", value: '9800', assetInfo: { assetGuid: 2369540753, value: '100000000' } },
+      { txid: '4fdab120b984f7bcf0c9458f9783ec0b3169a292de7e40a2612db1f7d4fd6efb', vout: 0, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '9800', assetInfo: { assetGuid: 650700076, value: '200000000' } },
+      { txid: '931dbdcd8098918e306c43c2f9ee9a6c2fac4c06190a669809c83f3a48f7b522', vout: 0, script: '0014248a521f8561af8f735d0f5e6d13f41177e423bd', path: "m/84'/1'/0'/0/6", value: '980', assetInfo: { assetGuid: 2699372871, value: '300000000' } },
+      { txid: '66d6841bef92b91344f793bbd43b2cd139e9da4b82b6f13e9e967cf793c384e1', vout: 0, script: '001476ddc768b9ae22e2645ed1a161cbe1cd9ec52efb', path: "m/84'/1'/0'/0/11", value: '294', assetInfo: { assetGuid: 402223530, value: '400000000' } }, // m/84'/1'/0'/0/7 had some kind of collision the pub/priv key didn't match between js and core
+      { txid: '212680579797d8bf19a2c4bbde5fb7f35296b82ed02c7d0a22281d1d2a47edf2', vout: 0, script: '00147326551112dd129f478b4a3fe4fab809c7fb2d0c', path: "m/84'/1'/0'/0/8", value: '9800', assetInfo: { assetGuid: 1537060536, value: '500000000' } },
+      { txid: '57219dc0fd292caa06c54e1af6125323181a4c86921442e6d508275b30086682', vout: 0, script: '0014413e8fd29b2f671b6058c9f50bf51bf971274e53', path: "m/84'/1'/0'/0/9", value: '980', assetInfo: { assetGuid: 2305793883, value: '600000000' } }
     ],
     assets: [
       {
@@ -334,9 +334,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -352,9 +352,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -369,9 +369,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -386,9 +386,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -403,9 +403,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -420,9 +420,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
       }
     ]
   },
@@ -461,13 +461,13 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: 'c5c2af64e6f8d0732b2250416eecc063f22161b9cd14eda802c97ed518d173e0', vout: 0, script: Buffer.from('0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', 'hex'), path: "m/84'/1'/0'/0/4", value: 980, assetInfo: { assetGuid: 2369540753, value: 100000000 } },
-      { txid: '4fdab120b984f7bcf0c9458f9783ec0b3169a292de7e40a2612db1f7d4fd6efb', vout: 0, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 980, assetInfo: { assetGuid: 650700076, value: 200000000 } },
-      { txid: '931dbdcd8098918e306c43c2f9ee9a6c2fac4c06190a669809c83f3a48f7b522', vout: 0, script: Buffer.from('0014248a521f8561af8f735d0f5e6d13f41177e423bd', 'hex'), path: "m/84'/1'/0'/0/6", value: 980, assetInfo: { assetGuid: 2699372871, value: 300000000 } },
-      { txid: '66d6841bef92b91344f793bbd43b2cd139e9da4b82b6f13e9e967cf793c384e1', vout: 0, script: Buffer.from('001476ddc768b9ae22e2645ed1a161cbe1cd9ec52efb', 'hex'), path: "m/84'/1'/0'/0/11", value: 294, assetInfo: { assetGuid: 402223530, value: 400000000 } }, // m/84'/1'/0'/0/7 had some kind of collision the pub/priv key didn't match between js and core
-      { txid: '212680579797d8bf19a2c4bbde5fb7f35296b82ed02c7d0a22281d1d2a47edf2', vout: 0, script: Buffer.from('00147326551112dd129f478b4a3fe4fab809c7fb2d0c', 'hex'), path: "m/84'/1'/0'/0/8", value: 980, assetInfo: { assetGuid: 1537060536, value: 500000000 } },
-      { txid: '57219dc0fd292caa06c54e1af6125323181a4c86921442e6d508275b30086682', vout: 0, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 980, assetInfo: { assetGuid: 2305793883, value: 600000000 } },
-      { txid: 'c6e7702f1ab817bacf81e5678ba89e0b43a8a7b6f56c4c055aa8aeda87197a68', vout: 0, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 980000, assetInfo: { assetGuid: 1635229542, value: 1000000000 } }
+      { txid: 'c5c2af64e6f8d0732b2250416eecc063f22161b9cd14eda802c97ed518d173e0', vout: 0, script: '0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', path: "m/84'/1'/0'/0/4", value: '980', assetInfo: { assetGuid: 2369540753, value: '100000000' } },
+      { txid: '4fdab120b984f7bcf0c9458f9783ec0b3169a292de7e40a2612db1f7d4fd6efb', vout: 0, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '980', assetInfo: { assetGuid: 650700076, value: '200000000' } },
+      { txid: '931dbdcd8098918e306c43c2f9ee9a6c2fac4c06190a669809c83f3a48f7b522', vout: 0, script: '0014248a521f8561af8f735d0f5e6d13f41177e423bd', path: "m/84'/1'/0'/0/6", value: '980', assetInfo: { assetGuid: 2699372871, value: '300000000' } },
+      { txid: '66d6841bef92b91344f793bbd43b2cd139e9da4b82b6f13e9e967cf793c384e1', vout: 0, script: '001476ddc768b9ae22e2645ed1a161cbe1cd9ec52efb', path: "m/84'/1'/0'/0/11", value: '294', assetInfo: { assetGuid: 402223530, value: '400000000' } }, // m/84'/1'/0'/0/7 had some kind of collision the pub/priv key didn't match between js and core
+      { txid: '212680579797d8bf19a2c4bbde5fb7f35296b82ed02c7d0a22281d1d2a47edf2', vout: 0, script: '00147326551112dd129f478b4a3fe4fab809c7fb2d0c', path: "m/84'/1'/0'/0/8", value: '980', assetInfo: { assetGuid: 1537060536, value: '500000000' } },
+      { txid: '57219dc0fd292caa06c54e1af6125323181a4c86921442e6d508275b30086682', vout: 0, script: '0014413e8fd29b2f671b6058c9f50bf51bf971274e53', path: "m/84'/1'/0'/0/9", value: '980', assetInfo: { assetGuid: 2305793883, value: '600000000' } },
+      { txid: 'c6e7702f1ab817bacf81e5678ba89e0b43a8a7b6f56c4c055aa8aeda87197a68', vout: 0, script: '0014413e8fd29b2f671b6058c9f50bf51bf971274e53', path: "m/84'/1'/0'/0/9", value: '980000', assetInfo: { assetGuid: 1635229542, value: '1000000000' } }
 
     ],
     assets: [
@@ -477,9 +477,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -495,9 +495,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -512,9 +512,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -529,9 +529,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -546,9 +546,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -563,9 +563,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
       },
       {
         assetGuid: 1635229542,
@@ -573,9 +573,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -620,8 +620,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: 'c6e7702f1ab817bacf81e5678ba89e0b43a8a7b6f56c4c055aa8aeda87197a62', vout: 0, script: Buffer.from('0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', 'hex'), path: "m/84'/1'/0'/0/4", value: 980, assetInfo: { assetGuid: 1635229536, value: 1000000000 } },
-      { txid: '2cf903537c6c161a1c65d940758b63efd4706fc8f78eb21d252612407e59e865', vout: 0, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 100000000 }
+      { txid: 'c6e7702f1ab817bacf81e5678ba89e0b43a8a7b6f56c4c055aa8aeda87197a62', vout: 0, script: '0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', path: "m/84'/1'/0'/0/4", value: '980', assetInfo: { assetGuid: 1635229536, value: '1000000000' } },
+      { txid: '2cf903537c6c161a1c65d940758b63efd4706fc8f78eb21d252612407e59e865', vout: 0, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '100000000' }
     ],
     assets: [
       {
@@ -630,9 +630,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         auxFeeKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         auxFeeDetails: {
           auxfees: [{
@@ -688,8 +688,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 0, script: Buffer.from('0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', 'hex'), path: "m/84'/1'/0'/0/4", value: 690, assetInfo: { assetGuid: 2369540753, value: 30000000 } },
-      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 11, script: Buffer.from('0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', 'hex'), path: "m/84'/1'/0'/0/4", value: 99979484, assetInfo: { assetGuid: 2369540753, value: 50000000 } }
+      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 0, script: '0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', path: "m/84'/1'/0'/0/4", value: '690', assetInfo: { assetGuid: 2369540753, value: '30000000' } },
+      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 11, script: '0014e8cc042a7c976ab0068cf0e4fcae4845d41774a7', path: "m/84'/1'/0'/0/4", value: '99979484', assetInfo: { assetGuid: 2369540753, value: '50000000' } }
     ],
     assets: [
       {
@@ -698,9 +698,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -737,8 +737,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 9, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 690, assetInfo: { assetGuid: 2305793883, value: 100000000 } },
-      { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 3, script: Buffer.from('0014bd6cfd84d53025c8891862ec49b0036d06405d0f', 'hex'), path: "m/84'/1'/0'/0/10", value: 99974764 }
+      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 9, script: '0014413e8fd29b2f671b6058c9f50bf51bf971274e53', path: "m/84'/1'/0'/0/9", value: '690', assetInfo: { assetGuid: 2305793883, value: '100000000' } },
+      { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 3, script: '0014bd6cfd84d53025c8891862ec49b0036d06405d0f', path: "m/84'/1'/0'/0/10", value: '99974764' }
     ],
     assets: [
       {
@@ -747,9 +747,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
       }
     ]
   },
@@ -779,8 +779,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 8, script: Buffer.from('0014413e8fd29b2f671b6058c9f50bf51bf971274e53', 'hex'), path: "m/84'/1'/0'/0/9", value: 690, assetInfo: { assetGuid: 2305793883, value: 500000000 } },
-      { txid: '386efe525b6b3f29fb6cb982da3710d2ea324a31ce3448ea76122a6b1150c530', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 99970714, assetInfo: { assetGuid: 2305793883, value: 90000000 } }
+      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 8, script: '0014413e8fd29b2f671b6058c9f50bf51bf971274e53', path: "m/84'/1'/0'/0/9", value: '690', assetInfo: { assetGuid: 2305793883, value: '500000000' } },
+      { txid: '386efe525b6b3f29fb6cb982da3710d2ea324a31ce3448ea76122a6b1150c530', vout: 1, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '99970714', assetInfo: { assetGuid: 2305793883, value: '90000000' } }
     ],
     assets: [
       {
@@ -789,9 +789,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
       }
     ]
   },
@@ -821,8 +821,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 0, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 40000000 },
-      { txid: 'f98d9922a1fd8c81728be2fb06b775e564cb0766ce251d43e97df762378bf736', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 30000000 }
+      { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 0, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '40000000' },
+      { txid: 'f98d9922a1fd8c81728be2fb06b775e564cb0766ce251d43e97df762378bf736', vout: 1, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '30000000' }
     ]
   },
   changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695',
@@ -847,8 +847,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '64dbfb02268b642f6a32a266bdd54add8989a1fa913b7414a642b5d85e964c68', vout: 0, script: Buffer.from('0014bd6cfd84d53025c8891862ec49b0036d06405d0f', 'hex'), path: "m/84'/1'/0'/0/10", value: 100000000, assetInfo: { assetGuid: 2305793883, value: 90000000 } },
-      { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 6900, assetInfo: { assetGuid: 2369540753, value: 10000000 } }
+      { txid: '64dbfb02268b642f6a32a266bdd54add8989a1fa913b7414a642b5d85e964c68', vout: 0, script: '0014bd6cfd84d53025c8891862ec49b0036d06405d0f', path: "m/84'/1'/0'/0/10", value: '100000000', assetInfo: { assetGuid: 2305793883, value: '90000000' } },
+      { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 1, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '6900', assetInfo: { assetGuid: 2369540753, value: '10000000' } }
     ],
     assets: [
       {
@@ -857,9 +857,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
       },
       {
         assetGuid: 2369540753,
@@ -867,9 +867,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
         notaryDetails: {
           endPoint: 'https://test.com',
@@ -906,8 +906,8 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '386efe525b6b3f29fb6cb982da3710d2ea324a31ce3448ea76122a6b1150c530', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 99970714, assetInfo: { assetGuid: 2305793883, value: 90000000 } },
-      { txid: '395f36f4dd4d65d9bd95be4207dcae91a2b6d256a832458aa42b40922b3beb64', vout: 1, script: Buffer.from('00149271f58284fc922b7e466cff87a53bb838d11feb', 'hex'), path: "m/84'/1'/0'/0/5", value: 19996260 }
+      { txid: '386efe525b6b3f29fb6cb982da3710d2ea324a31ce3448ea76122a6b1150c530', vout: 1, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '99970714', assetInfo: { assetGuid: 2305793883, value: '90000000' } },
+      { txid: '395f36f4dd4d65d9bd95be4207dcae91a2b6d256a832458aa42b40922b3beb64', vout: 1, script: '00149271f58284fc922b7e466cff87a53bb838d11feb', path: "m/84'/1'/0'/0/5", value: '19996260' }
     ],
     assets: [
       {
@@ -916,9 +916,9 @@ module.exports = [{
         pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: 10000000000,
-        totalSupply: 0,
-        maxSupply: 100000000000
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
       }
     ]
   },
