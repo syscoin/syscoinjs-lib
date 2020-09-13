@@ -68,6 +68,10 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
       console.log('No HD Signer defined! Cannot derive keys to sign transaction!')
       return null
     }
+    if (!res.inputs) {
+      console.log('No inputs found! Cannot sign transaction!')
+      return null  
+    }
     const fp = this.HDSigner.getMasterFingerprint()
     for (var i = 0; i < res.inputs.length; i++) {
       const input = res.inputs[i]
