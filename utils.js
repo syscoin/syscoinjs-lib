@@ -130,7 +130,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, HDSigner, options) 
     return null
   } catch (e) {
     console.error(e)
-    throw e
+    return e
   }
 }
 
@@ -254,7 +254,7 @@ async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub) {
     return null
   } catch (e) {
     console.error(e)
-    throw e
+    return e
   }
 }
 
@@ -267,7 +267,7 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     return null
   } catch (e) {
     console.error(e)
-    throw e
+    return e
   }
 }
 
@@ -280,7 +280,7 @@ async function sendRawTransaction (backendURL, txHex) {
     return null
   } catch (e) {
     console.error(e)
-    throw e
+    return e
   }
 }
 
@@ -452,5 +452,5 @@ module.exports = {
   fetchBackendAsset: fetchBackendAsset,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   sendRawTransaction: sendRawTransaction,
-  bitcoinjs: bjs
+  bitcoinjs: bjs,
 }
