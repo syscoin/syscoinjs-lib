@@ -27,7 +27,7 @@ module.exports = [{
       precision: 8,
       symbol: Buffer.from(syscointx.utils.encodeToBase64('CAT')),
       updateflags: 133,
-      pubdata: syscointx.utils.encodePubDataFromFields('publicvalue'),
+      pubdata: syscointx.utils.encodePubDataFromFields({ desc: 'publicvalue' }),
       prevpubdata: Buffer.from(''),
       balance: new BN(10000000000),
       totalsupply: new BN(0),
@@ -53,7 +53,7 @@ module.exports = [{
       {
         assetGuid: 2529870008,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -80,8 +80,8 @@ module.exports = [{
       updateflags: 135,
       contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'),
       prevcontract: Buffer.from(''),
-      pubdata: syscointx.utils.encodePubDataFromFields('new publicvalue'),
-      prevpubdata: syscointx.utils.encodePubDataFromFields('publicvalue'),
+      pubdata: syscointx.utils.encodePubDataFromFields({ desc: 'new publicvalue' }),
+      prevpubdata: syscointx.utils.encodePubDataFromFields({ desc: 'publicvalue' }),
       balance: new BN(42000000000),
       totalsupply: new BN(0),
       maxsupply: new BN(0),
@@ -106,7 +106,7 @@ module.exports = [{
       {
         assetGuid: 2529870008,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('new publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('new publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 127,
         balance: '52000000000',
@@ -146,7 +146,7 @@ module.exports = [{
       {
         assetGuid: 2529870008,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('new publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('new publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 127,
         balance: '42000000000',
@@ -191,7 +191,7 @@ module.exports = [{
       {
         assetGuid: 2369540753,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -209,7 +209,7 @@ module.exports = [{
       {
         assetGuid: 650700076,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -226,7 +226,7 @@ module.exports = [{
       {
         assetGuid: 2699372871,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -243,7 +243,7 @@ module.exports = [{
       {
         assetGuid: 402223530,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -260,7 +260,7 @@ module.exports = [{
       {
         assetGuid: 1537060536,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -277,7 +277,7 @@ module.exports = [{
       {
         assetGuid: 2305793883,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -331,7 +331,7 @@ module.exports = [{
       {
         assetGuid: 2369540753,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -349,7 +349,7 @@ module.exports = [{
       {
         assetGuid: 650700076,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -366,7 +366,7 @@ module.exports = [{
       {
         assetGuid: 2699372871,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -383,7 +383,7 @@ module.exports = [{
       {
         assetGuid: 402223530,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -400,7 +400,7 @@ module.exports = [{
       {
         assetGuid: 1537060536,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -417,7 +417,7 @@ module.exports = [{
       {
         assetGuid: 2305793883,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -474,7 +474,7 @@ module.exports = [{
       {
         assetGuid: 2369540753,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -492,7 +492,7 @@ module.exports = [{
       {
         assetGuid: 650700076,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -509,7 +509,7 @@ module.exports = [{
       {
         assetGuid: 2699372871,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -526,7 +526,7 @@ module.exports = [{
       {
         assetGuid: 402223530,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -543,7 +543,7 @@ module.exports = [{
       {
         assetGuid: 1537060536,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -560,7 +560,7 @@ module.exports = [{
       {
         assetGuid: 2305793883,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -570,7 +570,7 @@ module.exports = [{
       {
         assetGuid: 1635229542,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -627,7 +627,7 @@ module.exports = [{
       {
         assetGuid: 1635229536,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -695,7 +695,7 @@ module.exports = [{
       {
         assetGuid: 2369540753,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -744,7 +744,7 @@ module.exports = [{
       {
         assetGuid: 2305793883,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -786,7 +786,7 @@ module.exports = [{
       {
         assetGuid: 2305793883,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -854,7 +854,7 @@ module.exports = [{
       {
         assetGuid: 2305793883,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -864,7 +864,7 @@ module.exports = [{
       {
         assetGuid: 2369540753,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
@@ -913,7 +913,7 @@ module.exports = [{
       {
         assetGuid: 2305793883,
         decimals: 8,
-        pubData: syscointx.utils.encodePubDataFromFields('publicvalue').toString(),
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
         balance: '10000000000',
