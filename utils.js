@@ -52,10 +52,10 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.pubTypes = pubTypes || syscoinZPubTypes
 
   this.accounts = []
+  this.changeIndex = -1
+  this.receivingIndex = -1
   this.mnemonic = mnemonic // serialized
-  this.changeIndexes = [] // serialized
-  this.receivingIndexes = [] // serialized
-  this.accountIndex = 0 // serialized
+  this.accountIndex = -1 // serialized
 
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.fromSeed = new BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
@@ -77,6 +77,10 @@ HDSigner.prototype.deriveAccount = function (index) {
   return this.fromSeed.deriveAccount(index, bipNum)
 }
 
+HDSigner.prototype.setAccountIndex = function (accountIndex) {
+  this.accountIndex = accountIndex
+}
+
 // restore on load from local storage and decrypt data to de-serialize objects
 HDSigner.prototype.restore = function (password) {
   const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
@@ -92,14 +96,12 @@ HDSigner.prototype.restore = function (password) {
   }
   const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
   this.mnemonic = decryptedData.mnemonic
-  this.accountIndex = decryptedData.accountIndex
-  this.changeIndexes = decryptedData.changeIndexes
-  this.receivingIndexes = decryptedData.receivingIndexes
+  var numAccounts = decryptedData.numAccounts
   // sanity checks
-  if (this.accountIndex > 1000 || this.changeIndexes.length > 100000 || this.receivingIndexes.length > 100000) {
+  if (this.accountIndex > 1000) {
     return false
   }
-  for (var i = 0; i <= this.accountIndex; i++) {
+  for (var i = 0; i <= numAccounts; i++) {
     const child = this.deriveAccount(i)
     /* eslint new-cap: ["error", { "newIsCap": false }] */
     this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
@@ -111,41 +113,87 @@ HDSigner.prototype.backup = function () {
   const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
   if (!browserStorage || !this.password) { return }
   const key = this.network.bech32 + '_hdsigner'
-  const obj = { mnemonic: this.mnemonic, accountIndex: this.accountIndex, changeIndexes: this.changeIndexes, receivingIndexes: this.receivingIndexes }
+  const obj = { mnemonic: this.mnemonic, numAccounts: this.accounts.length }
   const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.password).toString()
   browserStorage.setItem(key, ciphertext)
 }
 
+async function fetchBackendUTXOS (backendURL, addressOrXpub, HDSigner, options) {
+  try {
+    const request = await axios.get(backendURL + '/api/v2/utxo/' + addressOrXpub + options ? '?' + options : '')
+    if (request && request.data) {
+      if (HDSigner) {
+        HDSigner.setLatestIndexesFromUTXOs(request.data.utxos)
+      }
+      return request.data
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+HDSigner.prototype.getNewChangeAddress = async function () {
+  if (this.changeIndex === -1) {
+    await fetchBackendUTXOS(this.blockbookURL, this.getAccountXpub(), this)
+  }
+  const keyPair = this.createKeypair(this.changeIndex + 1, true)
+  if (keyPair) {
+    this.changeIndex++
+    return this.getAddressFromKeypair(keyPair)
+  }
+
+  return null
+}
+
+HDSigner.prototype.getNewReceivingddress = async function () {
+  if (this.receivingIndex === -1) {
+    await fetchBackendUTXOS(this.blockbookURL, this.getAccountXpub(), this)
+  }
+  const keyPair = this.createKeypair(this.receivingIndex + 1, false)
+  if (keyPair) {
+    this.receivingIndex++
+    return this.getAddressFromKeypair(keyPair)
+  }
+
+  return null
+}
+
 HDSigner.prototype.createAccount = function () {
+  this.accountIndex++
   const child = this.deriveAccount(this.accountIndex)
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
-  this.accountIndex++
   this.backup()
+  return this.accountIndex
 }
 
-HDSigner.prototype.getAccountXpub = function (index) {
-  return this.accounts[index].getAccountPublicKey()
+HDSigner.prototype.getAccountXpub = function () {
+  return this.accounts[this.accountIndex].getAccountPublicKey()
 }
 
-HDSigner.prototype.createKeypair = function (accountIndex, isChange) {
-  if (isChange) {
-    if (accountIndex >= this.changeIndexes.length) {
-      this.changeIndexes[accountIndex] = 1
-    } else {
-      this.changeIndexes[accountIndex]++
+HDSigner.prototype.setLatestIndexesFromUTXOs = function (utxos) {
+  utxos.forEach(utxo => {
+    if (utxo.path) {
+      const splitPath = utxo.path.split('/')
+      if (splitPath.length >= 6) {
+        var change = parseInt(splitPath[4], 10)
+        var index = parseInt(splitPath[5], 10)
+        if (change === 1) {
+          if (index > this.changeIndex) {
+            this.changeIndex = index
+          }
+        } else if (index > this.receivingIndex) {
+          this.receivingIndex = index
+        }
+      }
     }
-    this.backup()
-    return this.accounts[accountIndex].getKeypair(this.changeIndexes[accountIndex] - 1, true)
-  } else {
-    if (accountIndex >= this.receivingIndexes.length) {
-      this.receivingIndexes[accountIndex] = 1
-    } else {
-      this.receivingIndexes[accountIndex]++
-    }
-    this.backup()
-    return this.accounts[accountIndex].getKeypair(this.receivingIndexes[accountIndex] - 1)
-  }
+  })
+}
+
+HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
+  return this.accounts[this.accountIndex].getKeypair(addressIndex, isChange)
 }
 
 HDSigner.prototype.getAddressFromKeypair = function (keyPair) {
@@ -182,19 +230,6 @@ HDSigner.prototype.derivePubKey = function (keypath) {
 
 HDSigner.prototype.getRootNode = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.network)
-}
-
-async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
-  try {
-    const request = await axios.get(backendURL + '/api/v2/utxo/' + addressOrXpub + options ? '?' + options : '')
-    if (request && request.data) {
-      return request.data
-    }
-    return null
-  } catch (e) {
-    console.error(e)
-    throw e
-  }
 }
 
 async function fetchNotarizationFromEndPoint (endPoint, txHex) {

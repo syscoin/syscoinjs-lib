@@ -1,26 +1,18 @@
 const utils = require('./utils')
 const bitcoin = utils.bitcoinjs
 const syscointx = require('syscointx-js')
-function SyscoinJSLib (HDSigner, blockbookURL, accountIndex, network) {
+function SyscoinJSLib (HDSigner, blockbookURL, network) {
   if (blockbookURL) {
     this.blockbookURL = blockbookURL
   }
   if (HDSigner) {
     this.HDSigner = HDSigner
+    this.HDSigner.blockbookURL = blockbookURL
     this.network = network || this.HDSigner.network
   } else {
     this.HDSigner = null
     this.network = network
   }
-  if (accountIndex) {
-    this.accountIndex = accountIndex
-  } else {
-    this.accountIndex = 0
-  }
-}
-
-SyscoinJSLib.prototype.setAccountIndex = function (accountIndex) {
-  this.accountIndex = accountIndex
 }
 
 SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) {
@@ -129,7 +121,12 @@ SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress
     if (fromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, fromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+    }
+  }
+  if (this.HDSigner) {
+    if (!changeAddress) {
+      changeAddress = await this.HDSigner.getNewChangeAddress()
     }
   }
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
@@ -142,7 +139,12 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+    }
+  }
+  if (this.HDSigner) {
+    if (!sysChangeAddress) {
+      sysChangeAddress = this.HDSigner.getNewChangeAddress()
     }
   }
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, sysChangeAddress, feeRate, this.network)
@@ -155,10 +157,19 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
     }
   }
-
+  if (this.HDSigner) {
+    if (!sysChangeAddress) {
+      sysChangeAddress = this.HDSigner.getNewChangeAddress()
+    }
+    for (const valueAssetObj in assetMap.values()) {
+      if (!valueAssetObj.changeAddress) {
+        valueAssetObj.changeAddress = this.HDSigner.getNewChangeAddress()
+      }
+    }
+  }
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -169,7 +180,17 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+    }
+  }
+  if (this.HDSigner) {
+    if (!sysChangeAddress) {
+      sysChangeAddress = this.HDSigner.getNewChangeAddress()
+    }
+    for (const valueAssetObj in assetMap.values()) {
+      if (!valueAssetObj.changeAddress) {
+        valueAssetObj.changeAddress = this.HDSigner.getNewChangeAddress()
+      }
     }
   }
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
@@ -182,10 +203,19 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
     }
   }
-
+  if (this.HDSigner) {
+    if (!sysChangeAddress) {
+      sysChangeAddress = this.HDSigner.getNewChangeAddress()
+    }
+    for (const valueAssetObj in assetMap.values()) {
+      if (!valueAssetObj.changeAddress) {
+        valueAssetObj.changeAddress = this.HDSigner.getNewChangeAddress()
+      }
+    }
+  }
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -196,7 +226,17 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+    }
+  }
+  if (this.HDSigner) {
+    if (!sysChangeAddress) {
+      sysChangeAddress = this.HDSigner.getNewChangeAddress()
+    }
+    for (const valueAssetObj in assetMap.values()) {
+      if (!valueAssetObj.changeAddress) {
+        valueAssetObj.changeAddress = this.HDSigner.getNewChangeAddress()
+      }
     }
   }
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
@@ -209,7 +249,17 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+    }
+  }
+  if (this.HDSigner) {
+    if (!sysChangeAddress) {
+      sysChangeAddress = this.HDSigner.getNewChangeAddress()
+    }
+    for (const valueAssetObj in assetMap.values()) {
+      if (!valueAssetObj.changeAddress) {
+        valueAssetObj.changeAddress = this.HDSigner.getNewChangeAddress()
+      }
     }
   }
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
@@ -222,7 +272,17 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(this.accountIndex))
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+    }
+  }
+  if (this.HDSigner) {
+    if (!sysChangeAddress) {
+      sysChangeAddress = this.HDSigner.getNewChangeAddress()
+    }
+    for (const valueAssetObj in assetMap.values()) {
+      if (!valueAssetObj.changeAddress) {
+        valueAssetObj.changeAddress = this.HDSigner.getNewChangeAddress()
+      }
     }
   }
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, dataAmount, feeRate, this.network)
