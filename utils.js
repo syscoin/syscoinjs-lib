@@ -466,5 +466,5 @@ module.exports = {
   fetchBackendAsset: fetchBackendAsset,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   sendRawTransaction: sendRawTransaction,
-  bitcoinjs: bjs,
+  bitcoinjs: bjs
 }
