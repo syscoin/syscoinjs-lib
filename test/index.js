@@ -17,7 +17,7 @@ fixtures.forEach(async function (f) {
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
     // example of once you have it signed you can push it to network via backend provider
-    // const resSend = await sjs.utils.sendRawTransaction('sys1.bcfn.ca', psbt.extractTransaction().toHex())
+    // const resSend = await sjs.utils.sendRawTransaction(syscoinjs.blockbookURL, psbt.extractTransaction().toHex())
     // if(resSend.error) {
     //  console.log('could not send tx! error: ' + resSend.error.message)
     // } else if(resSend.result) {
