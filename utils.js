@@ -119,7 +119,7 @@ HDSigner.prototype.backup = function () {
   browserStorage.setItem(key, ciphertext)
 }
 
-async function fetchBackendUTXOS (backendURL, addressOrXpub, HDSigner, options) {
+async function fetchBackendUTXOS (backendURL, addressOrXpub, HDSignerObj, options) {
   try {
     var url = backendURL + '/api/v2/utxo/' + addressOrXpub
     if (options) {
@@ -127,8 +127,8 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, HDSigner, options) 
     }
     const request = await axios.get(url)
     if (request && request.data) {
-      if (HDSigner) {
-        HDSigner.setLatestIndexesFromUTXOs(request.data.utxos)
+      if (HDSignerObj) {
+        HDSignerObj.setLatestIndexesFromUTXOs(request.data.utxos)
       }
       return request.data
     }
@@ -370,9 +370,9 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     return e
   }
 }
-function findLatestHDIndexesInPSBT (psbt, HDSigner, changeIndex, receivingIndex) {
-  const latestChangeKeyPair = HDSigner.createKeypair(changeIndex, true)
-  const latestReceivingKeyPair = HDSigner.createKeypair(receivingIndex, false)
+function findLatestHDIndexesInPSBT (psbt, HDSignerObj, changeIndex, receivingIndex) {
+  const latestChangeKeyPair = HDSignerObj.createKeypair(changeIndex, true)
+  const latestReceivingKeyPair = HDSignerObj.createKeypair(receivingIndex, false)
   const outputCount = psbt.getInputOutputCounts().outputCount
   let foundChangeKeyPair = false
   let foundReceivingKeyPair = false
@@ -399,7 +399,7 @@ function findLatestHDIndexesInPSBT (psbt, HDSigner, changeIndex, receivingIndex)
   // one of the indexes must have incremented, try to find to see if that index also exists until we end up not finding either change or recving indexes
   return findLatestHDIndexesInPSBT(changeIndex, receivingIndex)
 }
-async function sendRawTransaction (backendURL, txHex, HDSigner) {
+async function sendRawTransaction (backendURL, txHex, HDSignerObj) {
   try {
     const psbt = bjs.Psbt.fromHex(txHex)
     if (psbt instanceof bjs.Psbt === false) {
@@ -407,7 +407,7 @@ async function sendRawTransaction (backendURL, txHex, HDSigner) {
     }
     const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
-      findLatestHDIndexesInPSBT(psbt, HDSigner, this.changeIndex, this.receivingIndex)
+      findLatestHDIndexesInPSBT(psbt, HDSignerObj, this.changeIndex, this.receivingIndex)
       return request.data
     }
     return null
