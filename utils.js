@@ -369,7 +369,7 @@ async function fetchBackendAsset (backendURL, assetGuid) {
 
 async function sendRawTransaction (backendURL, txHex) {
   try {
-    const request = await axios.post(backendURL + '/api/v2/sendtx', txHex)
+    const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
       return request.data
     }
