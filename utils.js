@@ -69,10 +69,6 @@ async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
     const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
       if (myHDSignerObj) {
-        const psbt = bjs.Psbt.fromHex(txHex, { network: myHDSignerObj.network })
-        if (psbt instanceof bjs.Psbt === false) {
-          throw new Error('PSBT could not be decoded from hex')
-        }
         await fetchBackendTxs(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
       }
       return request.data
