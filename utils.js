@@ -220,26 +220,30 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
   return sanitizedUtxos
 }
 
-HDSigner.prototype.getNewChangeAddress = async function () {
+HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.changeIndex === -1) {
     await fetchBackendUTXOS(this.blockbookURL, this.getAccountXpub(), this)
   }
   const keyPair = this.createKeypair(this.changeIndex + 1, true)
   if (keyPair) {
-    this.changeIndex++
+    if (!skipIncrement) {
+      this.changeIndex++
+    }
     return this.getAddressFromKeypair(keyPair)
   }
 
   return null
 }
 
-HDSigner.prototype.getNewReceivingddress = async function () {
+HDSigner.prototype.getNewReceivingddress = async function (skipIncrement) {
   if (this.receivingIndex === -1) {
     await fetchBackendUTXOS(this.blockbookURL, this.getAccountXpub(), this)
   }
   const keyPair = this.createKeypair(this.receivingIndex + 1, false)
   if (keyPair) {
-    this.receivingIndex++
+    if (!skipIncrement) {
+      this.receivingIndex++
+    }
     return this.getAddressFromKeypair(keyPair)
   }
 
@@ -366,11 +370,44 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     return e
   }
 }
-
-async function sendRawTransaction (backendURL, txHex) {
+function findLatestHDIndexesInPSBT (psbt, HDSigner, changeIndex, receivingIndex) {
+  const latestChangeKeyPair = HDSigner.createKeypair(changeIndex, true)
+  const latestReceivingKeyPair = HDSigner.createKeypair(receivingIndex, false)
+  const outputCount = psbt.getInputOutputCounts().outputCount
+  let foundChangeKeyPair = false
+  let foundReceivingKeyPair = false
+  for (var i = 0; i < outputCount; i++) {
+    if (psbt.outputHasPubkey(i, latestChangeKeyPair.pubkey)) {
+      foundChangeKeyPair = true
+      changeIndex++
+      if (foundReceivingKeyPair) {
+        break
+      }
+    }
+    if (psbt.outputHasPubkey(i, latestReceivingKeyPair.pubkey)) {
+      foundReceivingKeyPair = true
+      receivingIndex++
+      if (foundChangeKeyPair) {
+        break
+      }
+    }
+  }
+  // done, we have the latest indexes
+  if (!foundChangeKeyPair && !foundReceivingKeyPair) {
+    return
+  }
+  // one of the indexes must have incremented, try to find to see if that index also exists until we end up not finding either change or recving indexes
+  return findLatestHDIndexesInPSBT(changeIndex, receivingIndex)
+}
+async function sendRawTransaction (backendURL, txHex, HDSigner) {
   try {
+    const psbt = bjs.Psbt.fromHex(txHex)
+    if (psbt instanceof bjs.Psbt === false) {
+      throw new Error('PSBT could not be decoded from hex')
+    }
     const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
+      findLatestHDIndexesInPSBT(psbt, HDSigner, this.changeIndex, this.receivingIndex)
       return request.data
     }
     return null
@@ -530,6 +567,10 @@ class SPSBT extends bjs.Psbt {
     const tx = c.__TX.clone()
     inputFinalizeGetAmts(this.data.inputs, tx, c, true)
     return tx
+  }
+
+  outputHasHDIndex (index, change) {
+
   }
 }
 bjs.Psbt = SPSBT
