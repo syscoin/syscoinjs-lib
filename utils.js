@@ -80,6 +80,8 @@ HDSigner.prototype.deriveAccount = function (index) {
 
 HDSigner.prototype.setAccountIndex = function (accountIndex) {
   this.accountIndex = accountIndex
+  this.changeIndex = -1
+  this.receivingIndex = -1
 }
 
 // restore on load from local storage and decrypt data to de-serialize objects
@@ -119,7 +121,7 @@ HDSigner.prototype.backup = function () {
   browserStorage.setItem(key, ciphertext)
 }
 
-async function fetchBackendUTXOS (backendURL, addressOrXpub, myHDSignerObj, options) {
+async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   try {
     var url = backendURL + '/api/v2/utxo/' + addressOrXpub
     if (options) {
@@ -127,9 +129,6 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, myHDSignerObj, opti
     }
     const request = await axios.get(url)
     if (request && request.data) {
-      if (myHDSignerObj) {
-        myHDSignerObj.setLatestIndexesFromUTXOs(request.data.utxos)
-      }
       return request.data
     }
     return null
@@ -222,7 +221,7 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
 
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.changeIndex === -1) {
-    await fetchBackendUTXOS(this.blockbookURL, this.getAccountXpub(), this)
+    await fetchBackendTxs(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
   const keyPair = this.createKeypair(this.changeIndex + 1, true)
   if (keyPair) {
@@ -237,7 +236,7 @@ HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
 
 HDSigner.prototype.getNewReceivingddress = async function (skipIncrement) {
   if (this.receivingIndex === -1) {
-    await fetchBackendUTXOS(this.blockbookURL, this.getAccountXpub(), this)
+    await fetchBackendTxs(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
   const keyPair = this.createKeypair(this.receivingIndex + 1, false)
   if (keyPair) {
@@ -252,6 +251,8 @@ HDSigner.prototype.getNewReceivingddress = async function (skipIncrement) {
 
 HDSigner.prototype.createAccount = function () {
   this.accountIndex++
+  this.changeIndex = -1
+  this.receivingIndex = -1
   const child = this.deriveAccount(this.accountIndex)
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
@@ -263,23 +264,25 @@ HDSigner.prototype.getAccountXpub = function () {
   return this.accounts[this.accountIndex].getAccountPublicKey()
 }
 
-HDSigner.prototype.setLatestIndexesFromUTXOs = function (utxos) {
-  utxos.forEach(utxo => {
-    if (utxo.path) {
-      const splitPath = utxo.path.split('/')
-      if (splitPath.length >= 6) {
-        var change = parseInt(splitPath[4], 10)
-        var index = parseInt(splitPath[5], 10)
-        if (change === 1) {
-          if (index > this.changeIndex) {
-            this.changeIndex = index
+HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
+  if (tokens) {
+    tokens.forEach(token => {
+      if (token.path) {
+        const splitPath = token.path.split('/')
+        if (splitPath.length >= 6) {
+          var change = parseInt(splitPath[4], 10)
+          var index = parseInt(splitPath[5], 10)
+          if (change === 1) {
+            if (index > this.changeIndex) {
+              this.changeIndex = index
+            }
+          } else if (index > this.receivingIndex) {
+            this.receivingIndex = index
           }
-        } else if (index > this.receivingIndex) {
-          this.receivingIndex = index
         }
       }
-    }
-  })
+    })
+  }
 }
 
 HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
@@ -335,7 +338,7 @@ async function fetchNotarizationFromEndPoint (endPoint, txHex) {
   }
 }
 
-async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub) {
+async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
   try {
     var url = backendURL
     if (xpub) {
@@ -348,7 +351,11 @@ async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub) {
       url += '?' + options
     }
     const request = await axios.get(url)
-    if (request && request.data) {
+    if (request && request.data && request.data.tokens) {
+      // need to filter only used tokens which will give us enough info to get change/recv indexes properly
+      if (myHDSignerObj && options && options.search('tokens=used') !== -1) {
+        myHDSignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
+      }
       return request.data
     }
     return null
@@ -370,35 +377,7 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     return e
   }
 }
-function findLatestHDIndexesInPSBT (psbt, myHDSignerObj, changeIndex, receivingIndex) {
-  const latestChangeKeyPair = myHDSignerObj.createKeypair(changeIndex, true)
-  const latestReceivingKeyPair = myHDSignerObj.createKeypair(receivingIndex, false)
-  const outputCount = psbt.getInputOutputCounts().outputCount
-  let foundChangeKeyPair = false
-  let foundReceivingKeyPair = false
-  for (var i = 0; i < outputCount; i++) {
-    if (psbt.outputHasPubkey(i, latestChangeKeyPair.pubkey)) {
-      foundChangeKeyPair = true
-      changeIndex++
-      if (foundReceivingKeyPair) {
-        break
-      }
-    }
-    if (psbt.outputHasPubkey(i, latestReceivingKeyPair.pubkey)) {
-      foundReceivingKeyPair = true
-      receivingIndex++
-      if (foundChangeKeyPair) {
-        break
-      }
-    }
-  }
-  // done, we have the latest indexes
-  if (!foundChangeKeyPair && !foundReceivingKeyPair) {
-    return
-  }
-  // one of the indexes must have incremented, try to find to see if that index also exists until we end up not finding either change or recving indexes
-  return findLatestHDIndexesInPSBT(changeIndex, receivingIndex)
-}
+
 async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
   try {
     const psbt = bjs.Psbt.fromHex(txHex)
@@ -407,7 +386,9 @@ async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
     }
     const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
-      findLatestHDIndexesInPSBT(psbt, myHDSignerObj, this.changeIndex, this.receivingIndex)
+      if (myHDSignerObj) {
+        await fetchBackendTxs(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
+      }
       return request.data
     }
     return null

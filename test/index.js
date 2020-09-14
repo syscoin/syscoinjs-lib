@@ -30,6 +30,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.dataAmount, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
@@ -45,6 +48,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetNew(f.assetOpts, txOpts, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -62,6 +68,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetUpdate(f.assetGuid, f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -79,6 +88,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -95,6 +107,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetAllocationMint(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -112,6 +127,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetAllocationBurn(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -129,6 +147,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.assetAllocationSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -145,6 +166,9 @@ fixtures.forEach(async function (f) {
       const psbt = await syscoinjs.createTransaction(txOpts, f.changeAddress, f.outputs, f.feeRate, f.fromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.expected.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
