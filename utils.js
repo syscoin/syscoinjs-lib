@@ -38,87 +38,50 @@ const syscoinXPubTypes = { mainnet: { zprv: syscoinNetworks.mainnet.bip32.privat
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 
-function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
-  this.isTestnet = isTestnet || false
-  SLIP44 = this.isTestnet ? 1 : SLIP44 || syscoinSLIP44 // 1 is testnet for all coins,
-  this.networks = networks || syscoinNetworks
-
-  if (!this.isTestnet) {
-    this.network = this.networks.mainnet || syscoinNetworks.mainnet
-  } else {
-    this.network = this.networks.testnet || syscoinNetworks.testnet
-  }
-
-  this.password = password
-  this.pubTypes = pubTypes || syscoinZPubTypes
-
-  this.accounts = []
-  this.changeIndex = -1
-  this.receivingIndex = -1
-  this.mnemonic = mnemonic // serialized
-  this.accountIndex = -1 // serialized
-
-  /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.fromSeed = new BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
-  // try to restore, if it does not succeed then initialize from scratch
-  if (!this.password || !this.restore(this.password)) {
-    this.createAccount()
+async function fetchNotarizationFromEndPoint (endPoint, txHex) {
+  try {
+    const request = await axios.post(endPoint, { tx: txHex })
+    if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    throw e
   }
 }
-HDSigner.prototype.getMasterFingerprint = function () {
-  return bjs.bip32.fromSeed(this.fromSeed.seed, this.network).fingerprint
+
+async function fetchBackendAsset (backendURL, assetGuid) {
+  try {
+    const request = await axios.get(backendURL + '/api/v2/asset/' + assetGuid + '?details=basic')
+    if (request && request.data && request.data.asset) {
+      return request.data.asset
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    return e
+  }
 }
 
-HDSigner.prototype.deriveAccount = function (index) {
-  let bipNum = '44'
-  if (this.pubTypes === syscoinZPubTypes ||
-    this.pubTypes === bitcoinZPubTypes) {
-    bipNum = '84'
+async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
+  try {
+    const psbt = bjs.Psbt.fromHex(txHex)
+    if (psbt instanceof bjs.Psbt === false) {
+      throw new Error('PSBT could not be decoded from hex')
+    }
+    const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
+    if (request && request.data) {
+      if (myHDSignerObj) {
+        await fetchBackendTxs(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
+      }
+      return request.data
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    return e
   }
-  return this.fromSeed.deriveAccount(index, bipNum)
-}
-
-HDSigner.prototype.setAccountIndex = function (accountIndex) {
-  this.accountIndex = accountIndex
-  this.changeIndex = -1
-  this.receivingIndex = -1
-}
-
-// restore on load from local storage and decrypt data to de-serialize objects
-HDSigner.prototype.restore = function (password) {
-  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
-  if (!browserStorage) { return }
-  const key = this.network.bech32 + '_hdsigner'
-  const ciphertext = browserStorage.getItem(key)
-  if (ciphertext === null) {
-    return false
-  }
-  const bytes = CryptoJS.AES.decrypt(ciphertext, password)
-  if (!bytes || bytes.length === 0) {
-    return false
-  }
-  const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
-  this.mnemonic = decryptedData.mnemonic
-  var numAccounts = decryptedData.numAccounts
-  // sanity checks
-  if (this.accountIndex > 1000) {
-    return false
-  }
-  for (var i = 0; i <= numAccounts; i++) {
-    const child = this.deriveAccount(i)
-    /* eslint new-cap: ["error", { "newIsCap": false }] */
-    this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
-  }
-  return true
-}
-// encrypt to password and backup to local storage for persistence
-HDSigner.prototype.backup = function () {
-  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
-  if (!browserStorage || !this.password) { return }
-  const key = this.network.bech32 + '_hdsigner'
-  const obj = { mnemonic: this.mnemonic, numAccounts: this.accounts.length }
-  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.password).toString()
-  browserStorage.setItem(key, ciphertext)
 }
 
 async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
@@ -129,6 +92,33 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     }
     const request = await axios.get(url)
     if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    return e
+  }
+}
+
+async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
+  try {
+    var url = backendURL
+    if (xpub) {
+      url += '/api/v2/xpub/'
+    } else {
+      url += '/api/v2/address/'
+    }
+    url += addressOrXpub
+    if (options) {
+      url += '?' + options
+    }
+    const request = await axios.get(url)
+    if (request && request.data && request.data.tokens) {
+      // need to filter only used tokens which will give us enough info to get change/recv indexes properly
+      if (myHDSignerObj && options && options.search('tokens=used') !== -1) {
+        myHDSignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
+      }
       return request.data
     }
     return null
@@ -217,6 +207,89 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
   })
 
   return sanitizedUtxos
+}
+
+function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
+  this.isTestnet = isTestnet || false
+  SLIP44 = this.isTestnet ? 1 : SLIP44 || syscoinSLIP44 // 1 is testnet for all coins,
+  this.networks = networks || syscoinNetworks
+
+  if (!this.isTestnet) {
+    this.network = this.networks.mainnet || syscoinNetworks.mainnet
+  } else {
+    this.network = this.networks.testnet || syscoinNetworks.testnet
+  }
+
+  this.password = password
+  this.pubTypes = pubTypes || syscoinZPubTypes
+
+  this.accounts = []
+  this.changeIndex = -1
+  this.receivingIndex = -1
+  this.mnemonic = mnemonic // serialized
+  this.accountIndex = -1 // serialized
+
+  /* eslint new-cap: ["error", { "newIsCap": false }] */
+  this.fromSeed = new BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
+  // try to restore, if it does not succeed then initialize from scratch
+  if (!this.password || !this.restore(this.password)) {
+    this.createAccount()
+  }
+}
+HDSigner.prototype.getMasterFingerprint = function () {
+  return bjs.bip32.fromSeed(this.fromSeed.seed, this.network).fingerprint
+}
+
+HDSigner.prototype.deriveAccount = function (index) {
+  let bipNum = '44'
+  if (this.pubTypes === syscoinZPubTypes ||
+    this.pubTypes === bitcoinZPubTypes) {
+    bipNum = '84'
+  }
+  return this.fromSeed.deriveAccount(index, bipNum)
+}
+
+HDSigner.prototype.setAccountIndex = function (accountIndex) {
+  this.accountIndex = accountIndex
+  this.changeIndex = -1
+  this.receivingIndex = -1
+}
+
+// restore on load from local storage and decrypt data to de-serialize objects
+HDSigner.prototype.restore = function (password) {
+  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
+  if (!browserStorage) { return }
+  const key = this.network.bech32 + '_hdsigner'
+  const ciphertext = browserStorage.getItem(key)
+  if (ciphertext === null) {
+    return false
+  }
+  const bytes = CryptoJS.AES.decrypt(ciphertext, password)
+  if (!bytes || bytes.length === 0) {
+    return false
+  }
+  const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
+  this.mnemonic = decryptedData.mnemonic
+  var numAccounts = decryptedData.numAccounts
+  // sanity checks
+  if (this.accountIndex > 1000) {
+    return false
+  }
+  for (var i = 0; i <= numAccounts; i++) {
+    const child = this.deriveAccount(i)
+    /* eslint new-cap: ["error", { "newIsCap": false }] */
+    this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
+  }
+  return true
+}
+// encrypt to password and backup to local storage for persistence
+HDSigner.prototype.backup = function () {
+  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
+  if (!browserStorage || !this.password) { return }
+  const key = this.network.bech32 + '_hdsigner'
+  const obj = { mnemonic: this.mnemonic, numAccounts: this.accounts.length }
+  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.password).toString()
+  browserStorage.setItem(key, ciphertext)
 }
 
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
@@ -323,79 +396,6 @@ HDSigner.prototype.derivePubKey = function (keypath) {
 
 HDSigner.prototype.getRootNode = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.network)
-}
-
-async function fetchNotarizationFromEndPoint (endPoint, txHex) {
-  try {
-    const request = await axios.post(endPoint, { tx: txHex })
-    if (request && request.data) {
-      return request.data
-    }
-    return null
-  } catch (e) {
-    console.error(e)
-    throw e
-  }
-}
-
-async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
-  try {
-    var url = backendURL
-    if (xpub) {
-      url += '/api/v2/xpub/'
-    } else {
-      url += '/api/v2/address/'
-    }
-    url += addressOrXpub
-    if (options) {
-      url += '?' + options
-    }
-    const request = await axios.get(url)
-    if (request && request.data && request.data.tokens) {
-      // need to filter only used tokens which will give us enough info to get change/recv indexes properly
-      if (myHDSignerObj && options && options.search('tokens=used') !== -1) {
-        myHDSignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
-      }
-      return request.data
-    }
-    return null
-  } catch (e) {
-    console.error(e)
-    return e
-  }
-}
-
-async function fetchBackendAsset (backendURL, assetGuid) {
-  try {
-    const request = await axios.get(backendURL + '/api/v2/asset/' + assetGuid + '?details=basic')
-    if (request && request.data && request.data.asset) {
-      return request.data.asset
-    }
-    return null
-  } catch (e) {
-    console.error(e)
-    return e
-  }
-}
-
-async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
-  try {
-    const psbt = bjs.Psbt.fromHex(txHex)
-    if (psbt instanceof bjs.Psbt === false) {
-      throw new Error('PSBT could not be decoded from hex')
-    }
-    const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
-    if (request && request.data) {
-      if (myHDSignerObj) {
-        await fetchBackendTxs(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
-      }
-      return request.data
-    }
-    return null
-  } catch (e) {
-    console.error(e)
-    return e
-  }
 }
 
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
