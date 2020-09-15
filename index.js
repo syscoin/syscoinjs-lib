@@ -63,6 +63,7 @@ SyscoinJSLib.prototype.createAndSignPSBTFromRes = function (res, sign, ownedInde
 
 SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
   const ownedIndexes = new Map()
+  const prevTx = new Map()
   // if from address is passed in, we don't sign and pass back unsigned transaction
   if (sign) {
     if (!this.HDSigner) {
@@ -88,6 +89,22 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
             }]
         }
       }
+      // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
+      // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API
+      if (!input.address.startsWith(this.network.bech32)) {
+        if (prevTx.has(input.txId)) {
+          input.nonWitnessUtxo = prevTx.get(input.txId)
+        } else {
+          const hexTx = await utils.fetchBackendRawTx(input.txId)
+          if (hexTx) {
+            const bufferTx = Buffer.from(hexTx.hex, 'hex')
+            prevTx.set(input.txId, bufferTx)
+            input.nonWitnessUtxo = bufferTx
+          } else {
+            console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
+          }
+        }
+      }
     }
   }
   let psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
@@ -103,13 +120,18 @@ SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
   const psbt = new bitcoin.Psbt({ network: this.network })
   psbt.setVersion(res.txVersion)
   res.inputs.forEach(input => {
-    psbt.addInput({
+    const inputObj = {
       hash: input.txId,
       index: input.vout,
       sequence: input.sequence,
-      witnessUtxo: { script: input.witnessUtxo.script, value: input.witnessUtxo.value.toNumber() },
       bip32Derivation: input.bip32Derivation
-    })
+    }
+    if (input.nonWitnessUtxo) {
+      inputObj.nonWitnessUtxo = input.nonWitnessUtxo
+    } else {
+      inputObj.witnessUtxo = { script: bitcoin.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
+    }
+    psbt.addInput(inputObj)
   })
   res.outputs.forEach(output => {
     psbt.addOutput({

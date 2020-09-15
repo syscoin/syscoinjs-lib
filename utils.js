@@ -64,22 +64,6 @@ async function fetchBackendAsset (backendURL, assetGuid) {
   }
 }
 
-async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
-  try {
-    const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
-    if (request && request.data) {
-      if (myHDSignerObj) {
-        await fetchBackendTxs(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
-      }
-      return request.data
-    }
-    return null
-  } catch (e) {
-    console.error(e)
-    return e
-  }
-}
-
 async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   try {
     var url = backendURL + '/api/v2/utxo/' + addressOrXpub
@@ -110,11 +94,40 @@ async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub, myHDSi
       url += '?' + options
     }
     const request = await axios.get(url)
-    if (request && request.data && request.data.tokens) {
-      // need to filter only used tokens which will give us enough info to get change/recv indexes properly
-      if (myHDSignerObj && options && options.search('tokens=used') !== -1) {
+    if (request && request.data) {
+      // if fetching xpub data
+      if (xpub && request.data.tokens && myHDSignerObj) {
         myHDSignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
       }
+      return request.data
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    return e
+  }
+}
+
+async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
+  try {
+    const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
+    if (request && request.data) {
+      if (myHDSignerObj) {
+        await fetchBackendTxs(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
+      }
+      return request.data
+    }
+    return null
+  } catch (e) {
+    console.error(e)
+    return e
+  }
+}
+
+async function fetchBackendRawTx (backendURL, txid) {
+  try {
+    const request = await axios.get(backendURL + '/api/v2/tx/' + txid)
+    if (request && request.data && request.data) {
       return request.data
     }
     return null
@@ -180,7 +193,11 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
     })
   }
   utxoObj.utxos.forEach(utxo => {
-    const newUtxo = { txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime, witnessUtxo: { script: Buffer.from(utxo.script, 'hex'), value: new BN(utxo.value) } }
+    if (!utxo.address) {
+      console.log('SKIPPING utxo: no address field defined')
+      return
+    }
+    const newUtxo = { address: utxo.address, txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime }
     if (utxo.assetInfo) {
       newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
       const assetObj = sanitizedUtxos.assets.get(utxo.assetInfo.assetGuid)
@@ -565,6 +582,7 @@ module.exports = {
   sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,
   fetchBackendTxs: fetchBackendTxs,
   fetchBackendAsset: fetchBackendAsset,
+  fetchBackendRawTx: fetchBackendRawTx,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   sendRawTransaction: sendRawTransaction,
   bitcoinjs: bjs
