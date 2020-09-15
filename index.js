@@ -95,7 +95,7 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
         if (prevTx.has(input.txId)) {
           input.nonWitnessUtxo = prevTx.get(input.txId)
         } else {
-          const hexTx = await utils.fetchBackendRawTx(input.txId)
+          const hexTx = await utils.fetchBackendRawTx(this.blockbookURL, input.txId)
           if (hexTx) {
             const bufferTx = Buffer.from(hexTx.hex, 'hex')
             prevTx.set(input.txId, bufferTx)
