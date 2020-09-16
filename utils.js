@@ -320,7 +320,7 @@ HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   return null
 }
 
-HDSigner.prototype.getNewReceivingddress = async function (skipIncrement) {
+HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.receivingIndex === -1) {
     await fetchBackendTxs(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
