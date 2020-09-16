@@ -184,12 +184,12 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
         assetObj.auxfeedetails = asset.auxFeeDetails
       }
       if (asset.updateCapabilityFlags) {
-        assetObj.updatecapabilityflags = new BN(asset.updateCapabilityFlags)
+        assetObj.updatecapabilityflags = asset.updateCapabilityFlags
       }
       assetObj.balance = new BN(asset.balance)
       assetObj.totalsupply = new BN(asset.totalSupply)
       assetObj.maxsupply = new BN(asset.maxSupply)
-      assetObj.precision = new BN(asset.decimals)
+      assetObj.precision = asset.decimals
       sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
     })
   }
