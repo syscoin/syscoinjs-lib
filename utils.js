@@ -562,10 +562,6 @@ class SPSBT extends bjs.Psbt {
     inputFinalizeGetAmts(this.data.inputs, tx, c, true)
     return tx
   }
-
-  outputHasHDIndex (index, change) {
-
-  }
 }
 bjs.Psbt = SPSBT
 module.exports = {
