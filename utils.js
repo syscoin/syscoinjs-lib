@@ -147,6 +147,7 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
     utxoObj.assets.forEach(asset => {
       const assetObj = {}
       if (asset.contract) {
+        asset.contract = asset.contract.replace(/^0x/, '')
         assetObj.contract = Buffer.from(asset.contract, 'hex')
       }
       if (asset.pubData) {
