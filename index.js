@@ -162,7 +162,7 @@ SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress
   return psbt
 }
 
-SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -174,10 +174,13 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
+    if (!sysReceivingAddress) {
+      sysReceivingAddress = await this.HDSigner.getNewReceivingAddress()
+    }
   }
   // create dummy map where GUID will be replaced by deterministic one based on first input txid, we need this so fees will be accurately determined on first place of coinselect
   const assetMap = new Map([
-    [0, { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysChangeAddress }] }]
+    [0, { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysReceivingAddress }] }]
   ])
   utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
@@ -185,7 +188,7 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
   return psbt
 }
 
-SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -197,7 +200,12 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-    for (const valueAssetObj in assetMap.values()) {
+  }
+  const assetMap = new Map([
+    [assetGuid, { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysChangeAddress }] }]
+  ])
+  if (this.HDSigner) {
+    for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
@@ -221,7 +229,15 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-    for (const valueAssetObj in assetMap.values()) {
+  }
+  const BN_ZERO = new BN(0)
+  for (const valueAssetObj of assetMap.values()) {
+    valueAssetObj.outputs.push({ address: sysChangeAddress, value: BN_ZERO })
+    valueAssetObj.changeAddress = sysChangeAddress
+    break
+  }
+  if (this.HDSigner) {
+    for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
@@ -245,7 +261,7 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-    for (const valueAssetObj in assetMap.values()) {
+    for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
@@ -269,7 +285,7 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-    for (const valueAssetObj in assetMap.values()) {
+    for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
@@ -293,7 +309,7 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-    for (const valueAssetObj in assetMap.values()) {
+    for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
@@ -317,7 +333,7 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-    for (const valueAssetObj in assetMap.values()) {
+    for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
