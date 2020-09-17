@@ -77,20 +77,19 @@ If you're familiar with how to use browserify, ignore this and carry on, otherwi
 **WARNING**: iOS devices have [problems](https://github.com/feross/buffer/issues/136), use atleast [buffer@5.0.5](https://github.com/feross/buffer/pull/155) or greater,  and enforce the test suites (for `Buffer`, and any other dependency) pass before use.
 
 ## Examples
-If you are looking to generate addresses, use WIFs or anything specific around crafting or doing blockchainy things not related to transaction creation, you may use [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) and use the Syscoin network parameters (see obtaining Syscoin Network example below).
+If you are looking to generate addresses, use WIFs or anything specific around crafting or doing blockchainy things not related to transaction creation, you may use [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) and use the Syscoin network parameters (see [utils.js](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L10) for the exported syscoinNetworks parameters).
 
 The below examples are implemented as integration tests, they should be very easy to understand.
 Otherwise, pull requests are appreciated.
 Some examples interact (via HTTPS) with a 3rd Party Blockchain Provider (3PBP).
 
-- [Obtaining Syscoin network parameters and creating HD signer](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/hdsigner.spec.ts)
 - [Create standard Syscoin transaction](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/systx.spec.ts)
-- [Create new SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetnew.spec.ts)
-- [Updating SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetupdate.spec.ts)
-- [Distributing SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetsend.spec.ts)
-- [Sending SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetallocationsend.spec.ts)
-- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burntoeth.spec.ts)
-- [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burnsysxtosys.spec.ts)
+- [Create new SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [Updating SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L34)
+- [Distributing SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L58)
+- [Sending SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L85)
+- [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L113)
+- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L143)
 - [Burning SYS for SYSX SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burnsystosysx.spec.ts)
 - [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetallocationmint.spec.ts)
 
