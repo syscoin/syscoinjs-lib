@@ -79,9 +79,8 @@ If you're familiar with how to use browserify, ignore this and carry on, otherwi
 ## Examples
 If you are looking to generate addresses, use WIFs or anything specific around crafting or doing blockchainy things not related to transaction creation, you may use [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) and use the Syscoin network parameters (see [utils.js](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L10) for the exported syscoinNetworks parameters).
 
-The below examples are implemented as integration tests, they should be very easy to understand.
+The below examples are implemented as example tests, they should be very easy to understand.
 Otherwise, pull requests are appreciated.
-Some examples interact (via HTTPS) with a 3rd Party Blockchain Provider (3PBP).
 
 - [Create standard Syscoin transaction](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/systx.spec.ts)
 - [Create new SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
@@ -89,9 +88,9 @@ Some examples interact (via HTTPS) with a 3rd Party Blockchain Provider (3PBP).
 - [Distributing SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L58)
 - [Sending SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L85)
 - [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L113)
-- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L143)
 - [Burning SYS for SYSX SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burnsystosysx.spec.ts)
-- [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/assetallocationmint.spec.ts)
+- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L143)
+- [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L172)
 
 If you have a use case that you feel could be listed here, please [ask for it](https://github.com/syscoin/syscoinjs-lib/issues/new)!
 
