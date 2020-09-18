@@ -90,8 +90,8 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
         }
       }
       // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
-      // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API
-      if (!input.address.startsWith(this.network.bech32)) {
+      // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
+      if (input.type === 'LEGACY') {
         if (prevTx.has(input.txId)) {
           input.nonWitnessUtxo = prevTx.get(input.txId)
         } else {

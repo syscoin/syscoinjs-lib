@@ -199,7 +199,10 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
         console.log('SKIPPING utxo: no address field defined')
         return
       }
-      const newUtxo = { address: utxo.address, txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime }
+      const newUtxo = { type: 'LEGACY', address: utxo.address, txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime }
+      if (newUtxo.address.startsWith(network.bech32)) {
+        newUtxo.type = 'BECH32'
+      }
       if (utxo.assetInfo) {
         newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
         const assetObj = sanitizedUtxos.assets.get(utxo.assetInfo.assetGuid)

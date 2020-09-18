@@ -33,6 +33,7 @@ fixtures.forEach(async function (f) {
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
       t.same(HDSigner.changeIndex, f.expected.changeIndex)
       t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
