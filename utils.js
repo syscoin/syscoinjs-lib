@@ -193,7 +193,7 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
       sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
     })
   }
-  if(utxoObj.utxos) {
+  if (utxoObj.utxos) {
     utxoObj.utxos.forEach(utxo => {
       if (!utxo.address) {
         console.log('SKIPPING utxo: no address field defined')
