@@ -193,32 +193,34 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
       sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
     })
   }
-  utxoObj.utxos.forEach(utxo => {
-    if (!utxo.address) {
-      console.log('SKIPPING utxo: no address field defined')
-      return
-    }
-    const newUtxo = { address: utxo.address, txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime }
-    if (utxo.assetInfo) {
-      newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
-      const assetObj = sanitizedUtxos.assets.get(utxo.assetInfo.assetGuid)
-      // sanity check to ensure sanitizedUtxos.assets has all of the assets being added to UTXO that are assets
-      if (!assetObj) {
+  if(utxoObj.utxos) {
+    utxoObj.utxos.forEach(utxo => {
+      if (!utxo.address) {
+        console.log('SKIPPING utxo: no address field defined')
         return
       }
-      // allowOtherNotarizedAssetInputs option if set will skip this check, by default this check is done and inputs will be skipped if they are notary asset inputs and user is not sending those assets (used as gas to fulfill requested output amount of SYS)
-      if (!txOpts.allowOtherNotarizedAssetInputs) {
-        // if notarization is required but it isn't a requested asset to send we skip this UTXO as would be dependent on a foreign asset notary
-        if (assetObj.notarykeyid && assetObj.notarykeyid.length > 0) {
-          if (!assetMap || !assetMap.has(utxo.assetInfo.assetGuid)) {
-            console.log('SKIPPING notary utxo')
-            return
+      const newUtxo = { address: utxo.address, txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime }
+      if (utxo.assetInfo) {
+        newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
+        const assetObj = sanitizedUtxos.assets.get(utxo.assetInfo.assetGuid)
+        // sanity check to ensure sanitizedUtxos.assets has all of the assets being added to UTXO that are assets
+        if (!assetObj) {
+          return
+        }
+        // allowOtherNotarizedAssetInputs option if set will skip this check, by default this check is done and inputs will be skipped if they are notary asset inputs and user is not sending those assets (used as gas to fulfill requested output amount of SYS)
+        if (!txOpts.allowOtherNotarizedAssetInputs) {
+          // if notarization is required but it isn't a requested asset to send we skip this UTXO as would be dependent on a foreign asset notary
+          if (assetObj.notarykeyid && assetObj.notarykeyid.length > 0) {
+            if (!assetMap || !assetMap.has(utxo.assetInfo.assetGuid)) {
+              console.log('SKIPPING notary utxo')
+              return
+            }
           }
         }
       }
-    }
-    sanitizedUtxos.utxos.push(newUtxo)
-  })
+      sanitizedUtxos.utxos.push(newUtxo)
+    })
+  }
 
   return sanitizedUtxos
 }
