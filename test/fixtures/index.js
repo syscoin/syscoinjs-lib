@@ -1155,7 +1155,7 @@ module.exports = [{
   feeRate: new BN(10),
   utxoObj: {
     utxos: [
-      { txid: '64dbfb02268b642f6a32a266bdd54add8989a1fa913b7414a642b5d85e964c68', vout: 0, address: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8', path: "m/84'/1'/0'/0/10", value: '1000000000', assetInfo: { assetGuid: 2305793883, value: '90000000' } },
+      { txid: '64dbfb02268b642f6a32a266bdd54add8989a1fa913b7414a642b5d85e964c68', vout: 0, address: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8', path: "m/84'/1'/0'/0/10", value: '1000000', assetInfo: { assetGuid: 2305793883, value: '90000000' } },
       { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 1, address: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', path: "m/84'/1'/0'/0/5", value: '6900', assetInfo: { assetGuid: 2369540753, value: '10000000' } }
     ],
     assets: [
@@ -1181,7 +1181,7 @@ module.exports = [{
       }
     ]
   },
-  dataAmount: new BN(1000000000),
+  dataAmount: new BN(10000000000),
   sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
   assetMap: new Map([
     [2615707979, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
@@ -1201,13 +1201,81 @@ module.exports = [{
     { path: "m/84'/1'/0'/0/11" }
   ],
   expected: {
-    hex: '81000000000102684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff2270b1a47a133755ff6dbcb34a32cc31b42c999c70dec6b133ced8e6e36d589f0100000000fdffffff04b2020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b00ca9a3b000000001b6a19034b89e89b010064005b9f6f890102580091523c8d010308003a070000000000001600140f8137adebd136ebb5d3c9796e79916ddcff77cbb2020000000000001600140f8137adebd136ebb5d3c9796e79916ddcff77cb02483045022100f9a835334dc5f35057c983e54b7151e06193d535b4fbad7afee2fbf8075d91de02206d0f0063d9c2c282db0858452fcc85e63d656cd64d4477ce3447b746448fdcc9012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba02483045022100855bbac950425856ef6f1f6f541c1a35c8c62915dca6caa8bc8f2685cccf2841022001d8f6b0b5ef3ebd51c5665cbfa2d41fe90f7fc9cc0b529ca4c84dd14eba3c8c012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad200000000',
+    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff03b2020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b00e40b5402000000136a11024b89e89b010064005b9f6f8901025800b2020000000000001600140f8137adebd136ebb5d3c9796e79916ddcff77cb02473044022010caf81f96d3a51757062e49ad565e96f8a046b7c82d37bec1650c0dd5667f4102201f041e9cab14be118bc45f1623e4f7d8be0f22a088eb7f82e677c58f26e3ee40012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
     rbf: true,
     version: syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION,
-    numOutputs: 4,
-    script: Buffer.from('6a19034b89e89b010064005b9f6f890102580091523c8d01030800', 'hex'),
+    numOutputs: 3,
+    script: Buffer.from('6a11024b89e89b010064005b9f6f8901025800', 'hex'),
     asset: {
-      allocation: [{ assetGuid: 2615707979, values: [{ n: 0, value: new BN(10000000000) }], notarysig: Buffer.from('') }, { assetGuid: 2305793883, values: [{ n: 2, value: new BN(90000000) }], notarysig: Buffer.from('') }, { assetGuid: 2369540753, values: [{ n: 3, value: new BN(10000000) }], notarysig: Buffer.from('') }]
+      allocation: [{ assetGuid: 2615707979, values: [{ n: 0, value: new BN(10000000000) }], notarysig: Buffer.from('') }, { assetGuid: 2305793883, values: [{ n: 2, value: new BN(90000000) }], notarysig: Buffer.from('') }]
+    },
+    receivingIndex: 11,
+    changeIndex: 3
+  }
+},
+{
+  description: 'sys to sysx with sysx input',
+  version: syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION,
+  txOpts: {
+    rbf: true
+  },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
+  feeRate: new BN(10),
+  utxoObj: {
+    utxos: [
+      { txid: '64dbfb02268b642f6a32a266bdd54add8989a1fa913b7414a642b5d85e964c68', vout: 0, address: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8', path: "m/84'/1'/0'/0/10", value: '10000000000', assetInfo: { assetGuid: 2615707979, value: '90000000' } },
+      { txid: '9f586de3e6d8ce33b1c6de709c992cb431cc324ab3bc6dff5537137aa4b17022', vout: 1, address: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', path: "m/84'/1'/0'/0/5", value: '6900', assetInfo: { assetGuid: 2369540753, value: '10000000' } }
+    ],
+    assets: [
+      {
+        assetGuid: 2615707979,
+        decimals: 8,
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
+        symbol: syscointx.utils.encodeToBase64('CAT'),
+        updateCapabilityFlags: 255,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
+      },
+      {
+        assetGuid: 2369540753,
+        decimals: 8,
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
+        symbol: syscointx.utils.encodeToBase64('CAT'),
+        updateCapabilityFlags: 255,
+        balance: '10000000000',
+        totalSupply: '0',
+        maxSupply: '100000000000'
+      }
+    ]
+  },
+  dataAmount: new BN(10000000000),
+  sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
+  assetMap: new Map([
+    [2615707979, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
+  ]),
+  xpubTokens: [
+    { path: "m/84'/1'/0'/0/0" },
+    { path: "m/84'/1'/0'/1/0" },
+    { path: "m/84'/1'/0'/1/2" },
+    { path: "m/84'/1'/0'/1/3" },
+    { path: "m/84'/1'/0'/1/1" },
+    { path: "m/84'/1'/0'/0/4" },
+    { path: "m/84'/1'/0'/0/5" },
+    { path: "m/84'/1'/0'/0/6" },
+    { path: "m/84'/1'/0'/0/8" },
+    { path: "m/84'/1'/0'/0/9" },
+    { path: "m/84'/1'/0'/0/10" },
+    { path: "m/84'/1'/0'/0/11" }
+  ],
+  expected: {
+    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff03b2020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b00e40b54020000000d6a0b014b89e89b020064025800b2020000000000001600149271f58284fc922b7e466cff87a53bb838d11feb0247304402206c657a8a1416020c61e772fe4457f346c81b08f8054b5a701f71388cda0a49710220471576792bee02df659fa65779f5c778c8c97619cca529221027acefe025aba6012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
+    rbf: true,
+    version: syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION,
+    numOutputs: 3,
+    script: Buffer.from('6a0b014b89e89b020064025800', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 2615707979, values: [{ n: 0, value: new BN(10000000000) }, { n: 2, value: new BN(90000000) }], notarysig: Buffer.from('') }]
     },
     receivingIndex: 11,
     changeIndex: 3
