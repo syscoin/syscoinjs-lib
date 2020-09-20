@@ -15,25 +15,23 @@ module.exports = [{
       { txid: 'b61045108705d2a65774238174bfa9110ccaad43a98a9b289a79da0696cac0b8', vout: 0, address: 'tsys1qmedwf9saql9r6r3wzqfk7f7wns5z9ala3m7qmy', path: "m/84'/1'/0'/0/0", value: '100000000000' }
     ]
   },
-  assetOpts: { precision: 8, symbol: 'CAT', updatecapabilityflags: 255, balance: new BN(10000000000), maxsupply: new BN(100000000000), description: 'publicvalue' },
+  assetOpts: { precision: 8, symbol: 'CAT', updatecapabilityflags: 255, maxsupply: new BN(100000000000), description: 'publicvalue' },
   sysChangeAddress: 'tsys1qq43tjdd753rct3jj39yvr855gytwf3y8p5kuf9',
   sysReceivingAddress: 'tsys1qq43tjdd753rct3jj39yvr855gytwf3y8p5kuf9',
   xpubTokens: [{ path: "m/84'/1'/0'/0/0" }],
   expected: {
-    hex: '82000000000101b8c0ca9606da799a289b8aa943adca0c11a9bf7481237457a6d20587104510b60000000000ffffffff0200d6117e03000000356a3301b8c0ca9601010000080451304655851b7b2264657363223a226348566962476c6a646d46736457553d227d0064008668ff004c0765ca130000001600140562b935bea44785c6528948c19e944116e4c487024730440220371a544309da53b0155af6808a6665ea78a3961b090d05d8ce3d7fd7cd8f21b502200bed4afd0ad59eb9d7625d27250920cb506f5a42ab0a5eb4352a7546b78b1c970121032563fbbbbe4d1e551f12d01e213d14830db0ae15a781b9c9ebf7f2fe5786eb2100000000',
+    hex: '82000000000101b8c0ca9606da799a289b8aa943adca0c11a9bf7481237457a6d20587104510b60000000000ffffffff0200d6117e03000000336a3101b8c0ca960101000008c1045130465586681b7b2264657363223a226348566962476c6a646d46736457553d227d00ff00600765ca130000001600140562b935bea44785c6528948c19e944116e4c48702483045022100ebdf8d2c14600e6c0817bdf9d742bb7803e7f0470632bc0c86bdc944d46f9da6022061422500e0b3630e58b4e0342389665da265d7f7a2d2812398cbcf6afa67b9510121032563fbbbbe4d1e551f12d01e213d14830db0ae15a781b9c9ebf7f2fe5786eb2100000000',
     rbf: false,
     numOutputs: 2,
-    script: Buffer.from('6a3301b8c0ca9601010000080451304655851b7b2264657363223a226348566962476c6a646d46736457553d227d0064008668ff00', 'hex'),
+    script: Buffer.from('6a3101b8c0ca960101000008c1045130465586681b7b2264657363223a226348566962476c6a646d46736457553d227d00ff00', 'hex'),
     asset: {
       allocation: [{ assetGuid: 2529870008, values: [{ n: 1, value: new BN(0) }], notarysig: Buffer.from('') }],
       precision: 8,
+      updateflags: 193,
       symbol: Buffer.from(syscointx.utils.encodeToBase64('CAT')),
-      updateflags: 133,
+      maxsupply: new BN(100000000000),
       pubdata: syscointx.utils.encodePubDataFromFields({ desc: 'publicvalue' }),
       prevpubdata: Buffer.from(''),
-      balance: new BN(10000000000),
-      totalsupply: new BN(0),
-      maxsupply: new BN(100000000000),
       updatecapabilityflags: 255,
       prevupdatecapabilityflags: 0
     },
@@ -60,36 +58,31 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '10000000000',
         maxSupply: '100000000000'
       }
     ]
   },
   assetGuid: 2529870008,
-  assetOpts: { updatecapabilityflags: 127, balance: new BN(42000000000), contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'), description: 'new publicvalue' },
+  assetOpts: { updatecapabilityflags: 127, contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'), description: 'new publicvalue' },
   sysChangeAddress: 'tsys1qt8aq6hrrlc6ueps4wqc6ynfckrxxrw20ydamc9',
   xpubTokens: [
     { path: "m/84'/1'/0'/0/0" },
     { path: "m/84'/1'/0'/1/0" }
   ],
   expected: {
-    hex: '83000000000101fd29f5152c7f5dba90d73dd25165a5da6ce4b94ce034845df080fcd879c9f5a70100000000fdffffff020000000000000000676a4c6401b8c0ca9601010000080087142b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc001f7b2264657363223a22626d563349484231596d787059335a686248566c227d1b7b2264657363223a226348566962476c6a646d46736457553d227d822400007fffdef764ca1300000016001459fa0d5c63fe35cc86157031a24d38b0cc61b94f0247304402206c07731cc90486e5e498f3050421aef6a9b19158eac5bc7c2645a5b957ed00510220719b20a300f07ab1d80e9bfcecdbcacae7125eeae20e6a99cc625ae56dfbb2ac012103e4d8568a37e0afb8f220178b640454e91c9e9e7e2425be9e43142a7c3140e2e900000000',
+    hex: '83000000000101fd29f5152c7f5dba90d73dd25165a5da6ce4b94ce034845df080fcd879c9f5a70100000000fdffffff020000000000000000626a4c5f01b8c0ca96010100000843142b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc001f7b2264657363223a22626d563349484231596d787059335a686248566c227d1b7b2264657363223a226348566962476c6a646d46736457553d227d7fff10f864ca1300000016001459fa0d5c63fe35cc86157031a24d38b0cc61b94f02483045022100fff0c58997a97011a9ab3917e7e557ca695db02b60bf0ddff8710ddbce7226de02205af9102155018e2e941a1351b066b8529585f19a0e4ca19f41179741e1fd825d012103e4d8568a37e0afb8f220178b640454e91c9e9e7e2425be9e43142a7c3140e2e900000000',
     rbf: true,
     numOutputs: 2,
-    script: Buffer.from('6a4c6401b8c0ca9601010000080087142b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc001f7b2264657363223a22626d563349484231596d787059335a686248566c227d1b7b2264657363223a226348566962476c6a646d46736457553d227d822400007fff', 'hex'),
+    script: Buffer.from('6a4c5f01b8c0ca96010100000843142b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc001f7b2264657363223a22626d563349484231596d787059335a686248566c227d1b7b2264657363223a226348566962476c6a646d46736457553d227d7fff', 'hex'),
     asset: {
       allocation: [{ assetGuid: 2529870008, values: [{ n: 1, value: new BN(0) }], notarysig: Buffer.from('') }],
       precision: 8,
-      symbol: Buffer.from(''),
-      updateflags: 135,
+      updateflags: 67,
       contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'),
       prevcontract: Buffer.from(''),
       pubdata: syscointx.utils.encodePubDataFromFields({ desc: 'new publicvalue' }),
       prevpubdata: syscointx.utils.encodePubDataFromFields({ desc: 'publicvalue' }),
-      balance: new BN(42000000000),
-      totalsupply: new BN(0),
-      maxsupply: new BN(0),
       updatecapabilityflags: 127,
       prevupdatecapabilityflags: 255
     },
@@ -116,8 +109,7 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('new publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 127,
-        balance: '52000000000',
-        totalSupply: '52000000000',
+        totalSupply: '10000000000',
         maxSupply: '100000000000'
       }
     ]
@@ -163,8 +155,7 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('new publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 127,
-        balance: '42000000000',
-        totalSupply: '52000000000',
+        totalSupply: '10000000000',
         maxSupply: '100000000000'
       }
     ]
@@ -217,7 +208,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
@@ -235,7 +225,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -252,7 +241,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -269,7 +257,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -286,7 +273,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -303,7 +289,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }
@@ -373,7 +358,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
@@ -391,7 +375,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -408,7 +391,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -425,7 +407,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -442,7 +423,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -459,7 +439,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }
@@ -531,7 +510,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
@@ -549,7 +527,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -566,7 +543,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -583,7 +559,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -600,7 +575,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -617,7 +591,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       },
@@ -627,7 +600,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
@@ -700,12 +672,11 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
-        auxFeeKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
         auxFeeDetails: {
-          auxfees: [{
+          auxFeeKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5',
+          auxFees: [{
             bound: 0,
             percent: 1 * scalarPct
           },
@@ -753,7 +724,7 @@ module.exports = [{
     { path: "m/84'/1'/0'/0/11" }
   ],
   expected: {
-    hex: '87000000000102627a1987daaea85a054c6cf5b6a7a8430b9ea88b67e581cfba17b81a2f70e7c60000000000ffffffff65e8597e401226251db28ef7c86f70d4ef638b7540d9651c1a166c7c5303f92c0000000000ffffffff04b2020000000000001600145f57a028945f5b5ba2aef4fd2b512063e785dcf5b202000000000000160014413e8fd29b2f671b6058c9f50bf51bf971274e530000000000000000106a0e01609f7761030039013b039a5b0010d1f505000000001600149271f58284fc922b7e466cff87a53bb838d11feb02483045022100f3d265fb3edb2ec15498c77d7aa554846d69b76e7f22fe467acece5bc3a6784702207757d9955492a52ab720b5b875d8604c96ee1e554d0d1808b043387de07d3a5c01210281c11974da83e7d9ff9f47a3c32e3baa7975b5127eb447b86a2f7fd4c9d12fec0248304502210084cbbdb06614dbc5b422000013f7ba94d194f138f6d4152ae2dc1c96c099300a02204608f772f5a0a4f8279702c9bbec3b351558c209e549156683d6f1b162270d71012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad200000000',
+    hex: '87000000000102627a1987daaea85a054c6cf5b6a7a8430b9ea88b67e581cfba17b81a2f70e7c60000000000ffffffff65e8597e401226251db28ef7c86f70d4ef638b7540d9651c1a166c7c5303f92c0000000000ffffffff04b2020000000000001600149271f58284fc922b7e466cff87a53bb838d11febb202000000000000160014413e8fd29b2f671b6058c9f50bf51bf971274e530000000000000000106a0e01609f7761030039013b039a5b0010d1f505000000001600149271f58284fc922b7e466cff87a53bb838d11feb02483045022100ef796a26f47180a15f30baf3df8365ff03a78d1cf85e816a27b84e91961ddaab02207e1c1985b92e63a52b521aae2a543512f4ff5f32298e415fcecad71e7a27ace801210281c11974da83e7d9ff9f47a3c32e3baa7975b5127eb447b86a2f7fd4c9d12fec02483045022100d8cf2188b4700e5f91c14f77a3b414cbd4c7f78c491af7da3c9c132fcc3c20d9022045cf897a6e74abee64d4bbb16d692df0761488e5eb34f0c9301c9a67a2c13772012103c86473f098d9bb69d31a7851372f9ded7b11691a77c253279e987373164b2ad200000000',
     rbf: false,
     numOutputs: 4,
     script: Buffer.from('6a0e01609f7761030039013b039a5b00', 'hex'),
@@ -784,7 +755,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
@@ -849,7 +819,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }
@@ -907,7 +876,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }
@@ -1007,7 +975,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       },
@@ -1017,7 +984,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000',
         notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
@@ -1082,7 +1048,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       },
@@ -1092,7 +1057,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }
@@ -1165,7 +1129,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       },
@@ -1175,7 +1138,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }
@@ -1233,7 +1195,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       },
@@ -1243,7 +1204,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }
@@ -1301,7 +1261,6 @@ module.exports = [{
         pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
         symbol: syscointx.utils.encodeToBase64('CAT'),
         updateCapabilityFlags: 255,
-        balance: '10000000000',
         totalSupply: '0',
         maxSupply: '100000000000'
       }

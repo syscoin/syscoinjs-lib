@@ -175,19 +175,20 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
         assetObj.notarydetails.instanttransfers = asset.notaryDetails.instantTransfers
         assetObj.notarydetails.hdrequired = asset.notaryDetails.HDRequired
       }
-      if (asset.auxFeeKeyID) {
-        assetObj.auxfeekeyid = Buffer.from(asset.auxFeeKeyID, 'hex')
-        network = network || syscoinNetworks.mainnet
-        assetObj.auxfeeaddress = bjs.payments.p2wpkh({ hash: assetObj.auxfeekeyid, network: network }).address
-      }
       if (asset.auxFeeDetails) {
-        assetObj.auxfeedetails = asset.auxFeeDetails
+        assetObj.auxfeedetails = {}
+        if (asset.auxFeeDetails.auxFeeKeyID) {
+          assetObj.auxfeedetails.auxfeekeyid = Buffer.from(asset.auxFeeDetails.auxFeeKeyID, 'hex')
+          assetObj.auxfeedetails.auxfeeaddress = bjs.payments.p2wpkh({ hash: assetObj.auxfeedetails.auxfeekeyid, network: syscoinNetworks.testnet }).address
+        } else {
+          assetObj.auxfeedetails.auxfeekeyid = Buffer.from('')
+        }
+        assetObj.auxfeedetails.auxfees = asset.auxFeeDetails.auxFees
       }
       if (asset.updateCapabilityFlags) {
         assetObj.updatecapabilityflags = asset.updateCapabilityFlags
       }
-      assetObj.balance = new BN(asset.balance)
-      assetObj.totalsupply = new BN(asset.totalSupply)
+
       assetObj.maxsupply = new BN(asset.maxSupply)
       assetObj.precision = asset.decimals
       sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
