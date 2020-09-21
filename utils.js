@@ -313,7 +313,7 @@ HDSigner.prototype.backup = function () {
 }
 
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
-  if (this.changeIndex === -1) {
+  if (this.changeIndex === -1 && this.blockbookURL) {
     await fetchBackendTxs(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
   const keyPair = this.createKeypair(this.changeIndex + 1, true)
@@ -328,7 +328,7 @@ HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
 }
 
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
-  if (this.receivingIndex === -1) {
+  if (this.receivingIndex === -1 && this.blockbookURL) {
     await fetchBackendTxs(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
   const keyPair = this.createKeypair(this.receivingIndex + 1, false)

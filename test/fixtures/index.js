@@ -184,6 +184,54 @@ module.exports = [{
   }
 },
 {
+  description: 'send asset allocation with zero val input',
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+  txOpts: {
+    rbf: true
+  },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
+  feeRate: new BN(10),
+  utxoObj: {
+    utxos: [
+      { txid: '61b28c96c9e02a63206799c7928f0a10da7f32196a0105f5a414a223db674c23', vout: 0, address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae', path: "m/84'/1'/0'/1/13", value: '690', assetInfo: { assetGuid: 1521018962, value: '1000' } },
+      { txid: '61b28c96c9e02a63206799c7928f0a10da7f32196a0105f5a414a223db674c23', vout: 2, address: 'tsys1qt8aq6hrrlc6ueps4wqc6ynfckrxxrw20ydamc9', path: "m/84'/1'/0'/1/2", value: '11984999987590', assetInfo: { assetGuid: 1521018962, value: '0' } }
+    ],
+    assets: [
+      {
+        assetGuid: 1521018962,
+        decimals: 8,
+        pubData: { desc: syscointx.utils.encodeToBase64('new publicvalue') },
+        symbol: syscointx.utils.encodeToBase64('CAT'),
+        updateCapabilityFlags: 127,
+        totalSupply: '10000000000',
+        maxSupply: '100000000000'
+      }
+    ]
+  },
+  sysChangeAddress: 'tsys1ql97jxj6fr3jd85e50423ava3495nhzwe4axyad',
+  assetMap: new Map([
+    [1521018962, { changeAddress: 'tsys1ql97jxj6fr3jd85e50423ava3495nhzwe4axyad', outputs: [{ value: new BN(10), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
+  ]),
+  xpubTokens: [
+    { path: "m/84'/1'/0'/0/0" },
+    { path: "m/84'/1'/0'/1/0" },
+    { path: "m/84'/1'/0'/1/2" },
+    { path: "m/84'/1'/0'/1/13" },
+    { path: "m/84'/1'/0'/1/1" }
+  ],
+  expected: {
+    hex: '87000000000102234c67db23a214a4f505016a19327fda100a8f92c7996720632ae0c9968cb2610000000000fdffffff234c67db23a214a4f505016a19327fda100a8f92c7996720632ae0c9968cb2610200000000fdffffff04b2020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b0000000000000000106a0e0152e8a85a03000202857c03000048a2aa79e60a0000160014f97d234b491c64d3d3347d551eb3b1a9693b89d9b202000000000000160014f97d234b491c64d3d3347d551eb3b1a9693b89d902483045022100a3ee0f40d010cb99fac56f09e34e88990904c938ec0a55dc9f0384efab04875c022049428765a837045224a7c1cb49a5f53963b1bc6533b3892b4f1c7222744df0e801210341e88f7fd83e582b8c673149b25d3879926e0490df8cd9c530560feb536a7fa20247304402201f76a57c3df9e366ea58c0b035c6f6f08beca0f117917917c30652052dd0846d02204a7c57cade19f428096a5475b1429341d3003371513266eef1efe1872a1e08be012102f249cb8576b8d9c6f0d45bb3ab3b73654911b724f229ec0a5a2f45785e1e47c900000000',
+    rbf: true,
+    numOutputs: 4,
+    script: Buffer.from('6a0e0152e8a85a03000202857c030000', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 1521018962, values: [{ n: 0, value: new BN(10) }, { n: 2, value: new BN(990) }, { n: 3, value: new BN(0) }], notarysig: Buffer.from('') }]
+    },
+    receivingIndex: 0,
+    changeIndex: 13
+  }
+},
+{
   description: 'send multi asset allocations with notarization',
   version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
   txOpts: {
