@@ -82,15 +82,15 @@ If you are looking to generate addresses, use WIFs or anything specific around c
 The below examples are implemented as example tests, they should be very easy to understand.
 Otherwise, pull requests are appreciated.
 
-- [Create standard Syscoin transaction](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/systx.spec.ts)
-- [Create new SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [Updating SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L34)
-- [Distributing SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L58)
-- [Sending SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L85)
-- [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L113)
-- [Burning SYS for SYSX SPT](https://github.com/syscoin/syscoinjs-lib/blob/master/test/integration/burnsystosysx.spec.ts)
-- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L143)
-- [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L172)
+- [Create standard Syscoin transaction](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [Create new SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L34)
+- [Updating SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L58)
+- [Distributing SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L82)
+- [Sending SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L109)
+- [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L137)
+- [Burning SYS for SYSX SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L167)
+- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L198)
+- [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L227)
 
 If you have a use case that you feel could be listed here, please [ask for it](https://github.com/syscoin/syscoinjs-lib/issues/new)!
 
