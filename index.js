@@ -311,8 +311,8 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
   }
   if (!assetMap) {
     const ethProof = await utils.buildEthProof(assetOpts)
-    let changeAddress = undefined
-    if(this.HDSigner){
+    let changeAddress
+    if (this.HDSigner) {
       changeAddress = await this.HDSigner.getNewChangeAddress()
     }
     assetMap = new Map([
