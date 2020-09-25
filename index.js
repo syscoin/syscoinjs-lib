@@ -42,11 +42,7 @@ SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) 
 
 SyscoinJSLib.prototype.createAndSignPSBTFromRes = function (res, sign, ownedIndexes) {
   const psbt = this.createPSBTFromRes(res)
-  if (sign) {
-    if (!this.HDSigner) {
-      console.log('No HD Signer defined! Cannot sign transaction!')
-      return null
-    }
+  if (sign && this.HDSigner) {
     const rootNode = this.HDSigner.getRootNode()
     // sign inputs this xpub key owns
     for (var i = 0; i < res.inputs.length; i++) {
@@ -65,11 +61,7 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
   const ownedIndexes = new Map()
   const prevTx = new Map()
   // if from address is passed in, we don't sign and pass back unsigned transaction
-  if (sign) {
-    if (!this.HDSigner) {
-      console.log('No HD Signer defined! Cannot derive keys to sign transaction!')
-      return null
-    }
+  if (sign && this.HDSigner) {
     if (!res || !res.inputs) {
       console.log('No inputs found! Cannot sign transaction!')
       return null
@@ -318,10 +310,13 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     }
   }
   if (!assetMap) {
-    const testnet = (this.HDSigner && this.HDSigner.isTestnet) || false
-    const ethProof = await utils.buildEthProof(assetOpts, testnet)
+    const ethProof = await utils.buildEthProof(assetOpts)
+    let changeAddress = undefined
+    if(this.HDSigner){
+      changeAddress = await this.HDSigner.getNewChangeAddress()
+    }
     assetMap = new Map([
-      [ethProof.assetguid, { changeAddress: await this.HDSigner.getNewChangeAddress(), outputs: [{ value: new BN(ethProof.amount), address: ethProof.destinationaddress }] }]
+      [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: new BN(ethProof.amount), address: ethProof.destinationaddress }] }]
     ])
     assetOpts = {
       bridgetransferid: ethProof.bridgetransferid,

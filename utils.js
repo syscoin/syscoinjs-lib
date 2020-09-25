@@ -142,10 +142,8 @@ async function fetchBackendRawTx (backendURL, txid) {
   }
 }
 
-async function buildEthProof (assetOpts, testnet) {
-  const rpcProvider = 'https://' + (testnet ? 'rinkeby' : 'mainnet') + '.infura.io'
-  const url = rpcProvider + '/v3/' + assetOpts.infuraid
-  const ethProof = new GetProof(url)
+async function buildEthProof (assetOpts) {
+  const ethProof = new GetProof(assetOpts.infuraurl)
   try {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txvalue = rlp.encode(rlp.decode(result.txProof[2][1])).toString('hex')
@@ -172,6 +170,7 @@ async function buildEthProof (assetOpts, testnet) {
     const receiptvalue = rlp.encode(rlp.decode(result.receiptProof[2][1])).toString('hex')
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
     const tokenFreezeFunction = ('9c6dea23fe3b510bb5d170df49dc74e387692eaa3258c691918cd3aa94f5fb74').toLowerCase() // token freeze function signature
+    const testnet = assetOpts.infuraurl.indexOf('mainnet') !== -1
     const ERC20Manager = (testnet ? '0x0765efb302d504751c652c5b1d65e8e9edf2e70f' : '0xFF957eA28b537b34E0c6E6B50c6c938668DD28a0').toLowerCase()
     let bridgetransferid = 0
     const txReceipt = Receipt.fromHex(result.receiptProof[2][1]).toObject()
