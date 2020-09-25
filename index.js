@@ -309,12 +309,31 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-    for (const valueAssetObj of assetMap.values()) {
-      if (!valueAssetObj.changeAddress) {
-        valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+    if (assetMap) {
+      for (const valueAssetObj of assetMap.values()) {
+        if (!valueAssetObj.changeAddress) {
+          valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+        }
       }
     }
   }
+  if (!assetMap) {
+    const testnet = (this.HDSigner && this.HDSigner.isTestnet) || false
+    const ethProof = await utils.buildEthProof(assetOpts, testnet)
+    assetMap = new Map([
+      [ethProof.assetguid, { changeAddress: await this.HDSigner.getNewChangeAddress(), outputs: [{ value: ethProof.amount, address: ethProof.destinationaddress }] }]
+    ])
+    assetOpts = {
+      bridgetransferid: ethProof.bridgetransferid,
+      blocknumber: ethProof.blocknumber,
+      txvalue: ethProof.txvalue,
+      txparentnodes: ethProof.txparentnodes,
+      txpath: ethProof.txpath,
+      receiptvalue: ethProof.receiptvalue,
+      receiptparentnodes: ethProof.receiptparentnodes
+    }
+  }
+
   utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)

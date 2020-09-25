@@ -5,6 +5,11 @@ const BIP84 = require('bip84')
 const CryptoJS = require('crypto-js')
 const bjs = require('bitcoinjs-lib')
 const varuint = require('varuint-bitcoin')
+const { GetProof } = require('eth-proof')
+const { Log, Receipt, Transaction } = require('eth-object')
+const rlp = require('rlp')
+const Web3 = require('web3')
+const web3 = new Web3()
 const bitcoinNetworks = { mainnet: bjs.networks.bitcoin, testnet: bjs.networks.testnet }
 /* global localStorage */
 const syscoinNetworks = {
@@ -133,6 +138,85 @@ async function fetchBackendRawTx (backendURL, txid) {
     return null
   } catch (e) {
     console.error(e)
+    return e
+  }
+}
+
+async function buildEthProof (assetOpts, testnet) {
+  const rpcProvider = 'https://' + (testnet ? 'rinkeby' : 'mainnet') + '.infura.io'
+  const url = rpcProvider + '/v3/' + assetOpts.infuraid
+  const ethProof = new GetProof(url)
+  try {
+    let result = await ethProof.transactionProof(assetOpts.ethtxid)
+    const txvalue = rlp.encode(rlp.decode(result.txProof[2][1])).toString('hex')
+    const txObj = Transaction.fromHex(result.txProof[2][1]).toObject()
+    txObj.data = txObj.data.substring(10)
+    const paramTxResults = web3.eth.abi.decodeParameters([{
+      type: 'uint',
+      name: 'value'
+    }, {
+      type: 'uint32',
+      name: 'assetGUID'
+    }, {
+      type: 'string',
+      name: 'syscoinAddress'
+    }], txObj.data)
+    const assetguid = paramTxResults.assetGUID
+    const destinationaddress = paramTxResults.syscoinAddress
+
+    const txparentnodes = rlp.encode(result.txProof).toString('hex')
+    const txpath = rlp.encode(result.txIndex).toString('hex')
+    const blocknumber = parseInt(result.header[8].toString('hex'), 16)
+
+    result = await ethProof.receiptProof(assetOpts.ethtxid)
+    const receiptvalue = rlp.encode(rlp.decode(result.receiptProof[2][1])).toString('hex')
+    const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
+    const tokenFreezeFunction = ('9c6dea23fe3b510bb5d170df49dc74e387692eaa3258c691918cd3aa94f5fb74').toLowerCase() // token freeze function signature
+    const ERC20Manager = (testnet ? '0x0765efb302d504751c652c5b1d65e8e9edf2e70f' : '0xFF957eA28b537b34E0c6E6B50c6c938668DD28a0').toLowerCase()
+    let bridgetransferid = 0
+    const txReceipt = Receipt.fromHex(result.receiptProof[2][1]).toObject()
+    let amount = 0
+    for (var i = 0; i < txReceipt.setOfLogs.length; i++) {
+      const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject()
+      if (log.topics && log.topics.length !== 1) {
+        continue
+      }
+
+      // event TokenFreeze(address freezer, uint value, uint transferIdAndPrecisions);
+      if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction && log.address.toLowerCase() === ERC20Manager) {
+        const paramResults = web3.eth.abi.decodeParameters([{
+          type: 'address',
+          name: 'freezer'
+        }, {
+          type: 'uint',
+          name: 'value'
+        }, {
+          type: 'uint',
+          name: 'transferIdAndPrecisions'
+        }], log.data)
+        const transferIdAndPrecisions = new web3.utils.BN(paramResults.transferIdAndPrecisions)
+        bridgetransferid = transferIdAndPrecisions.maskn(32).toNumber()
+        const value = new web3.utils.BN(paramResults.value)
+
+        // get precision
+        const erc20precision = transferIdAndPrecisions.shrn(32).maskn(8)
+        const sptprecision = transferIdAndPrecisions.shrn(40)
+        // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
+        // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
+        if (sptprecision > erc20precision) {
+          amount = value.mul(new web3.utils.BN(10).pow(sptprecision.sub(erc20precision))).toNumber()
+          // ensure we truncate decimals to fit within int64 if erc20's precision is more than our asset precision
+        } else if (sptprecision < erc20precision) {
+          amount = value.div(new web3.utils.BN(10).pow(erc20precision.sub(sptprecision))).toNumber()
+        } else {
+          amount = value.toNumber()
+        }
+        break
+      }
+    }
+    return { assetguid, destinationaddress, amount, txvalue, txparentnodes, txpath, blocknumber, receiptvalue, receiptparentnodes, bridgetransferid }
+  } catch (e) {
+    console.log('error getting Eth Proof: ', e)
     return e
   }
 }
@@ -588,5 +672,6 @@ module.exports = {
   fetchBackendRawTx: fetchBackendRawTx,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   sendRawTransaction: sendRawTransaction,
+  buildEthProof: buildEthProof,
   bitcoinjs: bjs
 }
