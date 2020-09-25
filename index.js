@@ -321,7 +321,7 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     const testnet = (this.HDSigner && this.HDSigner.isTestnet) || false
     const ethProof = await utils.buildEthProof(assetOpts, testnet)
     assetMap = new Map([
-      [ethProof.assetguid, { changeAddress: await this.HDSigner.getNewChangeAddress(), outputs: [{ value: ethProof.amount, address: ethProof.destinationaddress }] }]
+      [ethProof.assetguid, { changeAddress: await this.HDSigner.getNewChangeAddress(), outputs: [{ value: new BN(ethProof.amount), address: ethProof.destinationaddress }] }]
     ])
     assetOpts = {
       bridgetransferid: ethProof.bridgetransferid,
