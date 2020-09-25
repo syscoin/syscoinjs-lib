@@ -326,11 +326,11 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     assetOpts = {
       bridgetransferid: ethProof.bridgetransferid,
       blocknumber: ethProof.blocknumber,
-      txvalue: ethProof.txvalue,
-      txparentnodes: ethProof.txparentnodes,
-      txpath: ethProof.txpath,
-      receiptvalue: ethProof.receiptvalue,
-      receiptparentnodes: ethProof.receiptparentnodes
+      txvalue: Buffer.from(ethProof.txvalue, 'hex'),
+      txparentnodes: Buffer.from(ethProof.txparentnodes, 'hex'),
+      txpath: Buffer.from(ethProof.txpath, 'hex'),
+      receiptvalue: Buffer.from(ethProof.receiptvalue, 'hex'),
+      receiptparentnodes: Buffer.from(ethProof.receiptparentnodes, 'hex')
     }
   }
 

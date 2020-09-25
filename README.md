@@ -92,7 +92,7 @@ Otherwise, pull requests are appreciated.
 - [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L198)
 - [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L227)
 - [Minting SPT from SysEthereum bridge (custom proof)](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L227)
-- [Minting SPT from SysEthereum bridge (automated with txid)](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L227)
+- [Minting SPT from SysEthereum bridge (automated with txid)](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L268)
 
 If you have a use case that you feel could be listed here, please [ask for it](https://github.com/syscoin/syscoinjs-lib/issues/new)!
 
