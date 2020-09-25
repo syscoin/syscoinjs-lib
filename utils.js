@@ -161,16 +161,17 @@ async function buildEthProof (assetOpts) {
     }], txObj.data)
     const assetguid = paramTxResults.assetGUID
     const destinationaddress = paramTxResults.syscoinAddress
-
+    const txroot = rlp.encode(result.header[4]).toString('hex')
     const txparentnodes = rlp.encode(result.txProof).toString('hex')
     const txpath = rlp.encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
 
     result = await ethProof.receiptProof(assetOpts.ethtxid)
     const receiptvalue = rlp.encode(rlp.decode(result.receiptProof[2][1])).toString('hex')
+    const receiptroot = rlp.encode(result.header[5]).toString('hex')
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
     const tokenFreezeFunction = ('9c6dea23fe3b510bb5d170df49dc74e387692eaa3258c691918cd3aa94f5fb74').toLowerCase() // token freeze function signature
-    const testnet = assetOpts.infuraurl.indexOf('mainnet') !== -1
+    const testnet = assetOpts.infuraurl.indexOf('mainnet') === -1
     const ERC20Manager = (testnet ? '0x0765efb302d504751c652c5b1d65e8e9edf2e70f' : '0xFF957eA28b537b34E0c6E6B50c6c938668DD28a0').toLowerCase()
     let bridgetransferid = 0
     const txReceipt = Receipt.fromHex(result.receiptProof[2][1]).toObject()
@@ -213,7 +214,7 @@ async function buildEthProof (assetOpts) {
         break
       }
     }
-    return { assetguid, destinationaddress, amount, txvalue, txparentnodes, txpath, blocknumber, receiptvalue, receiptparentnodes, bridgetransferid }
+    return { assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes, bridgetransferid }
   } catch (e) {
     console.log('error getting Eth Proof: ', e)
     return e
