@@ -86,7 +86,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   }
 }
 
-async function fetchBackendTxs (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
+async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
   try {
     var url = backendURL
     if (xpub) {
@@ -118,7 +118,7 @@ async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
     const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
       if (myHDSignerObj) {
-        await fetchBackendTxs(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
+        await fetchBackendAccount(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
       }
       return request.data
     }
@@ -398,7 +398,7 @@ HDSigner.prototype.backup = function () {
 
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.changeIndex === -1 && this.blockbookURL) {
-    await fetchBackendTxs(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
   const keyPair = this.createKeypair(this.changeIndex + 1, true)
   if (keyPair) {
@@ -413,7 +413,7 @@ HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
 
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.receivingIndex === -1 && this.blockbookURL) {
-    await fetchBackendTxs(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
   const keyPair = this.createKeypair(this.receivingIndex + 1, false)
   if (keyPair) {
@@ -667,7 +667,7 @@ module.exports = {
   HDSigner: HDSigner,
   fetchBackendUTXOS: fetchBackendUTXOS,
   sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,
-  fetchBackendTxs: fetchBackendTxs,
+  fetchBackendAccount: fetchBackendAccount,
   fetchBackendAsset: fetchBackendAsset,
   fetchBackendRawTx: fetchBackendRawTx,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
