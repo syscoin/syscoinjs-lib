@@ -894,6 +894,70 @@ module.exports = [{
   }
 },
 {
+  description: 'burn asset allocation to syscoin with 0 val input',
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN,
+  txOpts: {
+    rbf: true
+  },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
+  feeRate: new BN(10),
+  utxoObj: {
+    utxos: [
+      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 0, address: 'tsys1qarxqg2nuja4tqp5v7rj0etjggh2pwa98ur30gw', path: "m/84'/1'/0'/0/4", value: '690', assetInfo: { assetGuid: 2369540753, value: '1000000000' } },
+      { txid: '912605d620edc959ebf04eba709ca2ad7adbe147e83ba26db55e719d5f948717', vout: 11, address: 'tsys1qarxqg2nuja4tqp5v7rj0etjggh2pwa98ur30gw', path: "m/84'/1'/0'/0/4", value: '113889979672', assetInfo: { assetGuid: 2369540753, value: '0' } }
+    ],
+    assets: [
+      {
+        assetGuid: 2369540753,
+        decimals: 8,
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
+        symbol: syscointx.utils.encodeToBase64('CAT'),
+        updateCapabilityFlags: 127,
+        totalSupply: '0',
+        maxSupply: '100000000000',
+        notaryKeyID: '5f57a028945f5b5ba2aef4fd2b512063e785dcf5', // keyid for tsys1qtat6q2y5tad4hg4w7n7jk5fqv0ncth84puexca (m/84’/1’/0’/0/3)
+        notaryDetails: {
+          endPoint: 'https://test.com',
+          instantTransfers: 0,
+          HDRequired: 1
+        },
+        // for unit test only, this normally wouldn't come in payload
+        notarySig: syscointx.utils.decodeFromBase64ToHex('IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98=')
+      }
+    ]
+  },
+  assetOpts: { ethaddress: Buffer.from('', 'hex') },
+  sysChangeAddress: 'tsys1qh4k0mpx4xqju3zgcvtkynvqrd5ryqhg0yr9uk8',
+  assetMap: new Map([
+    [2369540753, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(1) }] }]
+  ]),
+  xpubTokens: [
+    { path: "m/84'/1'/0'/0/0" },
+    { path: "m/84'/1'/0'/1/0" },
+    { path: "m/84'/1'/0'/1/2" },
+    { path: "m/84'/1'/0'/1/3" },
+    { path: "m/84'/1'/0'/1/1" },
+    { path: "m/84'/1'/0'/0/4" },
+    { path: "m/84'/1'/0'/0/5" },
+    { path: "m/84'/1'/0'/0/6" },
+    { path: "m/84'/1'/0'/0/8" },
+    { path: "m/84'/1'/0'/0/9" },
+    { path: "m/84'/1'/0'/0/10" },
+    { path: "m/84'/1'/0'/0/11" }
+  ],
+  expected: {
+    hex: '800000000001021787945f9d715eb56da23be847e1db7aada29c70ba4ef0eb59c9ed20d60526910000000000fdffffff1787945f9d715eb56da23be847e1db7aada29c70ba4ef0eb59c9ed20d60526910b00000000fdffffff0401000000000000001600149271f58284fc922b7e466cff87a53bb838d11feb0000000000000000566a4c530191523c8d03010102a0c2c3b277030041201dd3317fff7055779720a4c979308fcda9548cba6eb7ffab7cc89e8d3d7607ae6a5ce27048bdfe47486919ab8635178f08818b32b4f7e356156a6a95d0cb3fdf00e41f5f841a0000001600149271f58284fc922b7e466cff87a53bb838d11febb2020000000000001600149271f58284fc922b7e466cff87a53bb838d11feb02473044022019cc9814a701116b1ddcdf4a45fe1cc8f85b7edd8a0eb1af64fe96af71b21522022003e0638f28f69adf6508972543d2582c53436ac9709db6fea4234d0d2db9b5b601210281c11974da83e7d9ff9f47a3c32e3baa7975b5127eb447b86a2f7fd4c9d12fec02483045022100e282c7d566f3aa18fc3a1178dd09f6f7c95fa625d290281c0473fd01564d3b42022076bfef3e951a9f3e57b305b2f5d4b8a5f92e0c6df0210a801e54c413b83442d301210281c11974da83e7d9ff9f47a3c32e3baa7975b5127eb447b86a2f7fd4c9d12fec00000000',
+    rbf: true,
+    numOutputs: 4,
+    script: Buffer.from('6a4c530191523c8d03010102a0c2c3b277030041201dd3317fff7055779720a4c979308fcda9548cba6eb7ffab7cc89e8d3d7607ae6a5ce27048bdfe47486919ab8635178f08818b32b4f7e356156a6a95d0cb3fdf00', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 2369540753, values: [{ n: 1, value: new BN(1) }, { n: 2, value: new BN(999999999) }, { n: 3, value: new BN(0) }], notarysig: Buffer.from('IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98=', 'base64') }], ethaddress: Buffer.from('', 'hex')
+    },
+    receivingIndex: 11,
+    changeIndex: 3
+  }
+},
+{
   description: 'burn asset allocation to ethereum multiple inputs',
   version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM,
   txOpts: {
