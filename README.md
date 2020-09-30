@@ -93,36 +93,37 @@ These are the functions available on SyscoinJS library with links to the code wh
 - [assetAllocationMint()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L512)
 - [syscoinBurnToAssetAllocation()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L5832)
 
-These are the HDSigner exported functions, HDSigner is used to manage and sign transactions internally using your XPUB (HD wallets). BIP44/BIP84 are supported. P2WPKH, P2WSH, P2PKH, P2SH:
-
-- [HDSigner()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [getMasterFingerprint()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L34)
-- [deriveAccount()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L58)
-- [setAccountIndex()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L82)
-- [restore()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L108)
-- [backup()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L135)
-- [getNewChangeAddress()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L164)
-- [getNewReceivingAddress()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L193)
-- [createAccount()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L221)
-- [getAccountXpub()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-- [setLatestIndexesFromXPubTokens()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-- [createKeypair()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-- [getAddressFromKeypair()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-- [getAddressFromPubKey()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-- [deriveKeypair()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-- [derivePubKey()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-- [getRootNode()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
-
 These are some supporting functions used to support the library like working with backend providers (Blockbook) and sanitizing data from the providers:
 
-- [fetchNotarizationFromEndPoint()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [fetchBackendAsset()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [fetchBackendUTXOS()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [fetchBackendAccount()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [sendRawTransaction()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [fetchBackendRawTx()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [buildEthProof()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
-- [sanitizeBlockbookUTXOs()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [fetchNotarizationFromEndPoint()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L51)
+- [fetchBackendAsset()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L70)
+- [fetchBackendUTXOS()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L90)
+- [fetchBackendAccount()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L116)
+- [sendRawTransaction()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L150)
+- [fetchBackendRawTx()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L172)
+- [buildEthProof()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L190)
+- [sanitizeBlockbookUTXOs()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L277)
+
+These are the HDSigner exported functions, HDSigner is used to manage and sign transactions internally using your XPUB (HD wallets). BIP44/BIP84 are supported. P2WPKH, P2WSH, P2PKH, P2SH:
+
+- [HDSigner()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L378)
+- [getMasterFingerprint()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L410)
+- [deriveAccount()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L419)
+- [setAccountIndex()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L432)
+- [restore()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L443)
+- [backup()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L473)
+- [getNewChangeAddress()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L487)
+- [getNewReceivingAddress()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L507)
+- [createAccount()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L526)
+- [getAccountXpub()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L541)
+- [setLatestIndexesFromXPubTokens()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L549)
+- [createKeypair()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L576)
+- [getAddressFromKeypair()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L585)
+- [getAddressFromPubKey()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L598)
+- [deriveKeypair()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L611)
+- [derivePubKey()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L624)
+- [getRootNode()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L636)
+
 
 ## Examples
 If you are looking to generate addresses, use WIFs or anything specific around crafting or doing blockchainy things not related to transaction creation, you may use [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) and use the Syscoin network parameters (see [utils.js](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L10) for the exported syscoinNetworks parameters).
