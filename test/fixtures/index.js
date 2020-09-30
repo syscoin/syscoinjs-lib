@@ -1287,7 +1287,6 @@ module.exports = [{
     assets: [
     ]
   },
-  dataAmount: new BN(10000000000),
   sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
   assetMap: new Map([
     [2615707979, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
@@ -1353,7 +1352,6 @@ module.exports = [{
       }
     ]
   },
-  dataAmount: new BN(10000000000),
   sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
   assetMap: new Map([
     [2615707979, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
@@ -1419,7 +1417,6 @@ module.exports = [{
       }
     ]
   },
-  dataAmount: new BN(10000000000),
   sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
   assetMap: new Map([
     [2615707979, { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]

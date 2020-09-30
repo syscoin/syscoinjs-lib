@@ -333,7 +333,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress 
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send
       Field address. Required. Destination address for value.
@@ -388,7 +388,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress 
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send
       Field address. Required. Destination address for value.
@@ -437,7 +437,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress 
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to burn
   Example:
@@ -495,7 +495,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Optional. Auto-filled by eth-proof if it is used (pass ethtxid and infuraurl in assetOpts). Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress 
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to mint
   Example:
@@ -565,7 +565,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress 
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to mint
   Example:

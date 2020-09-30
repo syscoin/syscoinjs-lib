@@ -27,7 +27,7 @@ fixtures.forEach(async function (f) {
     // }
     //
     if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
-      const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.dataAmount, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
