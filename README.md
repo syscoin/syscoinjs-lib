@@ -156,15 +156,19 @@ npm run-script coverage
 ```
 
 ## Complementing Libraries
+
+This library consumes [syscointx-js](https://github.com/syscoin/syscointx-js) for raw transaction serializing and deserializing, that library consumes [coinselectsyscoin](https://github.com/syscoin/coinselectsyscoin) for the UTXO selection and transaction funding algorithms. Other supporting libraries are:
+
+- [bn.js](https://github.com/indutny/bn.js/) - BigNum in pure javascript.
 - [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) - A javascript Bitcoin library for node.js and browsers. Configurable with Syscoin network settings to work with Syscoin addresses and message signing.
+- [bitcoin-ops](https://github.com/bitcoinjs/bitcoin-ops) - A javascript Bitcoin OP code library for referencing script OP codes for Bitcoin's script
+- [varuint-bitcoin](https://github.com/bitcoinjs/varuint-bitcoin) - encode/decode number as bitcoin variable length integer
 - [BIP84](https://github.com/Anderson-Juhasc/bip84) - P2WPKH/P2WSH HD wallet derivation library for BECH32 addresses
-- [syscointx-js](https://github.com/syscoin/syscointx-js) - A raw transaction creation library using coinselectsyscoin for input selection.
-- [coinselectsyscoin](https://github.com/syscoin/coinselectsyscoin) - A fee-optimizing, transaction input selection module for syscoinjs-tx.
 - [crypto-js](https://github.com/brix/crypto-js) - JavaScript library of crypto standards. Used for AES Encrypt/Decrypt of sensitive HD wallet info to local storage.
 - [axios](https://github.com/axios/axios) - Promise based HTTP client for the browser and node.js. Used for backend communication with a Blockbook API as well as notary endpoints where applicable.
-
-
-
-
+- [eth-object](https://github.com/zmitton/eth-object) - Ethereum Trie / LevelDB data from hex, buffers and rpc.
+- [eth-proof](https://github.com/zmitton/eth-proof) - Generalized merkle-patricia-proof module that supports ethereum state proofs. Used for Eth SPV proofs.
+- [rlp](https://github.com/ethereumjs/rlp) - Recursive Length Prefix Encoding for node.js.
+- [web3](https://github.com/ethereum/web3.js/) - Ethereum JavaScript API which connects to the Generic JSON-RPC spec.
 
 ## LICENSE [MIT](LICENSE)
