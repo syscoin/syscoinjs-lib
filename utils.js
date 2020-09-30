@@ -42,7 +42,12 @@ const syscoinZPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, test
 const syscoinXPubTypes = { mainnet: { zprv: syscoinNetworks.mainnet.bip32.private, zpub: syscoinNetworks.mainnet.bip32.public }, testnet: { vprv: syscoinNetworks.testnet.bip32.private, vpub: syscoinNetworks.testnet.bip32.public } }
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
-
+/* fetchNotarizationFromEndPoint
+Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
+Param endPoint: Required. Fully qualified URL which will take transaction information and respond with a signature or error on denial
+Param txHex: Required. Raw transaction hex
+Returns: Returns JSON object in response, signature on success and error on denial of notarization
+*/
 async function fetchNotarizationFromEndPoint (endPoint, txHex) {
   try {
     const request = await axios.post(endPoint, { tx: txHex })
@@ -56,6 +61,12 @@ async function fetchNotarizationFromEndPoint (endPoint, txHex) {
   }
 }
 
+/* fetchBackendAsset
+Purpose: Fetch asset information from backend Blockbook provider
+Param backendURL: Required. Fully qualified URL for blockbook
+Param assetGuid: Required. Asset to fetch
+Returns: Returns JSON object in response, asset information object in JSON
+*/
 async function fetchBackendAsset (backendURL, assetGuid) {
   try {
     const request = await axios.get(backendURL + '/api/v2/asset/' + assetGuid + '?details=basic')
@@ -69,6 +80,13 @@ async function fetchBackendAsset (backendURL, assetGuid) {
   }
 }
 
+/* fetchBackendUTXOS
+Purpose: Fetch UTXO's for an address or XPUB from backend Blockbook provider
+Param backendURL: Required. Fully qualified URL for blockbook
+Param addressOrXpub: Required. An address or XPUB to fetch UTXO's for
+Param options: Optional. Optional queries based on https://github.com/syscoin/blockbook/blob/master/docs/api.md#get-utxo
+Returns: Returns JSON object in response, UTXO object array in JSON
+*/
 async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   try {
     var url = backendURL + '/api/v2/utxo/' + addressOrXpub
@@ -86,6 +104,15 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   }
 }
 
+/* fetchBackendAccount
+Purpose: Fetch address or XPUB information including transactions and balance information (based on options) from backend Blockbook provider
+Param backendURL: Required. Fully qualified URL for blockbook
+Param addressOrXpub: Required. An address or XPUB to fetch UTXO's for
+Param options: Optional. Optional queries based on https://github.com/syscoin/blockbook/blob/master/docs/api.md#get-xpub
+Param xpub: Optional. If addressOrXpub is an XPUB set to true.
+Param myHDSignerObj: Optional. HDSigner object if you wish to update change/receiving indexes from backend provider (and XPUB token information is provided in response)
+Returns: Returns JSON object in response, account object in JSON
+*/
 async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
   try {
     var url = backendURL
@@ -113,6 +140,13 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
   }
 }
 
+/* sendRawTransaction
+Purpose: Send raw transaction to backend Blockbook provider to send to the network
+Param backendURL: Required. Fully qualified URL for blockbook
+Param txHex: Required. Raw transaction hex
+Param myHDSignerObj: Optional. HDSigner object if you wish to update change/receiving indexes from backend provider through fetchBackendAccount()
+Returns: Returns txid in response or error
+*/
 async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
   try {
     const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
@@ -129,6 +163,12 @@ async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
   }
 }
 
+/* fetchBackendRawTx
+Purpose: Get transaction from txid from backend Blockbook provider
+Param backendURL: Required. Fully qualified URL for blockbook
+Param txid: Required. Transaction ID to get information for
+Returns: Returns JSON object in response, transaction object in JSON
+*/
 async function fetchBackendRawTx (backendURL, txid) {
   try {
     const request = await axios.get(backendURL + '/api/v2/tx/' + txid)
@@ -142,6 +182,11 @@ async function fetchBackendRawTx (backendURL, txid) {
   }
 }
 
+/* buildEthProof
+Purpose: Build Ethereum SPV proof using eth-proof library
+Param assetOpts: Required. Object containing infuraurl and ethtxid fields populated
+Returns: Returns JSON object in response, SPV proof object in JSON
+*/
 async function buildEthProof (assetOpts) {
   const ethProof = new GetProof(assetOpts.infuraurl)
   try {
@@ -221,6 +266,14 @@ async function buildEthProof (assetOpts) {
   }
 }
 
+/* sanitizeBlockbookUTXOs
+Purpose: Sanitize backend provider UTXO objects to be useful for this library
+Param utxoObj: Required. Backend provider UTXO JSON object to be sanitized
+Param network: Optional. Defaults to Syscoin Mainnet. Network to be used to create address for notary and auxfee payout address if those features exist for the asset
+Param txOpts: Optional. If its passed in we use allowOtherNotarizedAssetInputs field of options to skip over (if allowOtherNotarizedAssetInputs is false or null) UTXO's if they use notarization for an asset that is not a part of assetMap
+Param assetMap: Optional. Destination outputs for transaction requiring UTXO sanitizing, used in allowOtherNotarizedAssetInputs check described above
+Returns: Returns sanitized UTXO object for use internally in this library
+*/
 function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
   if (!txOpts) {
     txOpts = { rbf: false }
@@ -313,6 +366,15 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
   return sanitizedUtxos
 }
 
+/* HDSigner
+Purpose: Manage HD wallet and accounts, connects to SyscoinJS object
+Param mnemonic: Required. Bip32 seed phrase
+Param password: Optional. Encryption password for local storage on web clients
+Param isTestnet: Optional. Is using testnet network?
+Param networks: Optional. Defaults to Syscoin network. bitcoinjs-lib network settings for coin being used.
+Param SLIP44: Optional. SLIP44 value for the coin, see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+Param pubTypes: Optional. Defaults to Syscoin ZPub/VPub types. Specific ZPub for bip84 and VPub for testnet 
+*/
 function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.isTestnet = isTestnet || false
   SLIP44 = this.isTestnet ? 1 : SLIP44 || syscoinSLIP44 // 1 is testnet for all coins,
@@ -340,10 +402,20 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
     this.createAccount()
   }
 }
+
+/* getMasterFingerprint
+Purpose: Get master seed fingerprint used for signing with bitcoinjs-lib PSBT's
+Returns: bip32 root master fingerprint
+*/
 HDSigner.prototype.getMasterFingerprint = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.network).fingerprint
 }
 
+/* deriveAccount
+Purpose: Derive HD account based on index number passed in
+Param index: Required. Account number to derive
+Returns: bip32 node for derived account
+*/
 HDSigner.prototype.deriveAccount = function (index) {
   let bipNum = '44'
   if (this.pubTypes === syscoinZPubTypes ||
@@ -353,13 +425,21 @@ HDSigner.prototype.deriveAccount = function (index) {
   return this.fromSeed.deriveAccount(index, bipNum)
 }
 
+/* setAccountIndex
+Purpose: Set HD account based on accountIndex number passed in so HD indexes (change/receiving) will be updated accordingly to this account
+Param accountIndex: Required. Account number to use
+*/
 HDSigner.prototype.setAccountIndex = function (accountIndex) {
   this.accountIndex = accountIndex
   this.changeIndex = -1
   this.receivingIndex = -1
 }
 
-// restore on load from local storage and decrypt data to de-serialize objects
+/* restore
+Purpose: Restore on load from local storage and decrypt data to de-serialize objects
+Param password: Required. Decryption password to unlock seed phrase
+Returns: boolean on success for fail of restore
+*/
 HDSigner.prototype.restore = function (password) {
   const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
   if (!browserStorage) { return }
@@ -386,7 +466,10 @@ HDSigner.prototype.restore = function (password) {
   }
   return true
 }
-// encrypt to password and backup to local storage for persistence
+
+/* backup
+Purpose: Encrypt to password and backup to local storage for persistence
+*/
 HDSigner.prototype.backup = function () {
   const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
   if (!browserStorage || !this.password) { return }
@@ -396,6 +479,11 @@ HDSigner.prototype.backup = function () {
   browserStorage.setItem(key, ciphertext)
 }
 
+/* getNewChangeAddress
+Purpose: Get new address for sending change to
+Param skipIncrement: Optional. If we should not count the internal change index counter (if you want to get the same change address in the future)
+Returns: string address used for change outputs
+*/
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.changeIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
@@ -411,6 +499,11 @@ HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   return null
 }
 
+/* getNewReceivingAddress
+Purpose: Get new address for sending coins to
+Param skipIncrement: Optional. If we should not count the internal receiving index counter (if you want to get the same address in the future)
+Returns: string address used for receiving outputs
+*/
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.receivingIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
@@ -426,6 +519,10 @@ HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   return null
 }
 
+/* createAccount
+Purpose: Create and derive a new account
+Returns: Account index of new account
+*/
 HDSigner.prototype.createAccount = function () {
   this.accountIndex++
   this.changeIndex = -1
@@ -437,10 +534,18 @@ HDSigner.prototype.createAccount = function () {
   return this.accountIndex
 }
 
+/* getAccountXpub
+Purpose: Get XPUB for account, useful for public provider lookups based on XPUB accounts
+Returns: string representing hex XPUB
+*/
 HDSigner.prototype.getAccountXpub = function () {
   return this.accounts[this.accountIndex].getAccountPublicKey()
 }
 
+/* setLatestIndexesFromXPubTokens
+Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from a backend provider response
+Param tokens: Required. XPUB tokens from provider response to XPUB account details.
+*/
 HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   if (tokens) {
     tokens.forEach(token => {
@@ -462,10 +567,21 @@ HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   }
 }
 
+/* createKeypair
+Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from a backend provider response
+Param addressIndex: Required. HD path address index
+Param isChange: Required. HD path change marker
+Returns: bitcoinjs-lib keypair derived from address index and change market
+*/
 HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
   return this.accounts[this.accountIndex].getKeypair(addressIndex, isChange)
 }
 
+/* getAddressFromKeypair
+Purpose: Takes keypair and gives back a p2wpkh address
+Param keyPair: Required. bitcoinjs-lib keypair
+Returns: string p2wpkh address
+*/
 HDSigner.prototype.getAddressFromKeypair = function (keyPair) {
   const payment = bjs.payments.p2wpkh({
     pubkey: keyPair.publicKey,
@@ -474,6 +590,11 @@ HDSigner.prototype.getAddressFromKeypair = function (keyPair) {
   return payment.address
 }
 
+/* getAddressFromPubKey
+Purpose: Takes pubkey and gives back a p2wpkh address
+Param pubkey: Required. bitcoinjs-lib public key
+Returns: string p2wpkh address
+*/
 HDSigner.prototype.getAddressFromPubKey = function (pubkey) {
   const payment = bjs.payments.p2wpkh({
     pubkey: pubkey,
@@ -482,6 +603,11 @@ HDSigner.prototype.getAddressFromPubKey = function (pubkey) {
   return payment.address
 }
 
+/* deriveKeypair
+Purpose: Takes an HD path and derives keypair from it
+Param keypath: Required. HD BIP32 path of key desired based on internal seed and network
+Returns: bitcoinjs-lib keypair
+*/
 HDSigner.prototype.deriveKeypair = function (keypath) {
   const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.network).derivePath(keypath)
   if (!keyPair) {
@@ -490,6 +616,11 @@ HDSigner.prototype.deriveKeypair = function (keypath) {
   return keyPair
 }
 
+/* derivePubKey
+Purpose: Takes an HD path and derives keypair from it, returns pubkey
+Param keypath: Required. HD BIP32 path of key desired based on internal seed and network
+Returns: bitcoinjs-lib pubkey
+*/
 HDSigner.prototype.derivePubKey = function (keypath) {
   const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.network).derivePath(keypath)
   if (!keyPair) {
@@ -498,12 +629,15 @@ HDSigner.prototype.derivePubKey = function (keypath) {
   return keyPair.publicKey
 }
 
+/* getRootNode
+Purpose: Returns HDSigner's BIP32 root node
+Returns: BIP32 root node representing the seed
+*/
 HDSigner.prototype.getRootNode = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.network)
 }
 
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
-
 function scriptWitnessToWitnessStack (buffer) {
   let offset = 0
   function readSlice (n) {
