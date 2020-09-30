@@ -76,6 +76,54 @@ If you're familiar with how to use browserify, ignore this and carry on, otherwi
 
 **WARNING**: iOS devices have [problems](https://github.com/feross/buffer/issues/136), use atleast [buffer@5.0.5](https://github.com/feross/buffer/pull/155) or greater,  and enforce the test suites (for `Buffer`, and any other dependency) pass before use.
 
+## SyscoinJS exported functions
+These are the functions available on SyscoinJS library with links to the code which has commenting on the function itself:
+
+- [SyscoinJSLib()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L11)
+- [getNotarizationSignatures()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L31)
+- [createAndSignPSBTFromRes()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L62)
+- [sign()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L86)
+- [createPSBTFromRes()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L142)
+- [createTransaction()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L181)
+- [assetNew()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L238)
+- [assetUpdate()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L299)
+- [assetSend()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L351)
+- [assetAllocationSend()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L406)
+- [assetAllocationBurn()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L454)
+- [assetAllocationMint()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L512)
+- [syscoinBurnToAssetAllocation()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L5832)
+
+These are the HDSigner exported functions, HDSigner is used to manage and sign transactions internally using your XPUB (HD wallets). BIP44/BIP84 are supported. P2WPKH, P2WSH, P2PKH, P2SH:
+
+- [HDSigner()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [getMasterFingerprint()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L34)
+- [deriveAccount()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L58)
+- [setAccountIndex()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L82)
+- [restore()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L108)
+- [backup()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L135)
+- [getNewChangeAddress()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L164)
+- [getNewReceivingAddress()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L193)
+- [createAccount()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L221)
+- [getAccountXpub()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+- [setLatestIndexesFromXPubTokens()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+- [createKeypair()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+- [getAddressFromKeypair()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+- [getAddressFromPubKey()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+- [deriveKeypair()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+- [derivePubKey()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+- [getRootNode()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
+
+These are some supporting functions used to support the library like working with backend providers (Blockbook) and sanitizing data from the providers:
+
+- [fetchNotarizationFromEndPoint()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [fetchBackendAsset()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [fetchBackendUTXOS()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [fetchBackendAccount()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [sendRawTransaction()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [fetchBackendRawTx()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [buildEthProof()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+- [sanitizeBlockbookUTXOs()](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L10)
+
 ## Examples
 If you are looking to generate addresses, use WIFs or anything specific around crafting or doing blockchainy things not related to transaction creation, you may use [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) and use the Syscoin network parameters (see [utils.js](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L10) for the exported syscoinNetworks parameters).
 
@@ -86,13 +134,12 @@ Otherwise, pull requests are appreciated.
 - [Create new SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L34)
 - [Updating SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L58)
 - [Distributing SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L82)
-- [Sending SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L109)
-- [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L137)
-- [Burning SYS for SYSX SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L167)
-- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L198)
-- [Minting SPT from SysEthereum bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L227)
-- [Minting SPT from SysEthereum bridge (custom proof)](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L227)
-- [Minting SPT from SysEthereum bridge (automated with txid)](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L270)
+- [Sending SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L108)
+- [Burning SYSX SPT for Syscoin](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L135)
+- [Burning SYS for SYSX SPT](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L164)
+- [Burning SPT for SysEtheruem bridge](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L193)
+- [Minting SPT from SysEthereum bridge (custom proof)](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L221)
+- [Minting SPT from SysEthereum bridge (automated with txid)](https://github.com/syscoin/syscoinjs-lib-examples/blob/master/index.js#L262)
 
 If you have a use case that you feel could be listed here, please [ask for it](https://github.com/syscoin/syscoinjs-lib/issues/new)!
 
