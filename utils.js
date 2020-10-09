@@ -279,6 +279,9 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
     txOpts = { rbf: false }
   }
   const sanitizedUtxos = { utxos: [] }
+  if (Array.isArray(utxoObj)) {
+    utxoObj.utxos = utxoObj
+  }
   if (utxoObj.assets) {
     sanitizedUtxos.assets = new Map()
     utxoObj.assets.forEach(asset => {
@@ -373,7 +376,7 @@ Param password: Optional. Encryption password for local storage on web clients
 Param isTestnet: Optional. Is using testnet network?
 Param networks: Optional. Defaults to Syscoin network. bitcoinjs-lib network settings for coin being used.
 Param SLIP44: Optional. SLIP44 value for the coin, see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-Param pubTypes: Optional. Defaults to Syscoin ZPub/VPub types. Specific ZPub for bip84 and VPub for testnet 
+Param pubTypes: Optional. Defaults to Syscoin ZPub/VPub types. Specific ZPub for bip84 and VPub for testnet
 */
 function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.isTestnet = isTestnet || false
@@ -807,5 +810,6 @@ module.exports = {
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   sendRawTransaction: sendRawTransaction,
   buildEthProof: buildEthProof,
-  bitcoinjs: bjs
+  bitcoinjs: bjs,
+  BN: BN
 }
