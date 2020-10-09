@@ -1,6 +1,6 @@
 {
   "name": "syscoinjs-lib",
-  "version": "1.0.57",
+  "version": "1.0.58",
   "description": "A transaction creation library interfacing with coin selection for Syscoin.",
   "keywords": [
     "coinselect",
