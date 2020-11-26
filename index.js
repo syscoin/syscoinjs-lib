@@ -183,7 +183,7 @@ SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress
     if (fromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, fromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -240,7 +240,7 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -301,7 +301,7 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -353,7 +353,7 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -408,7 +408,7 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -456,7 +456,7 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -514,7 +514,7 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -585,7 +585,7 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), this.HDSigner)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
