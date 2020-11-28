@@ -56,7 +56,6 @@ async function fetchNotarizationFromEndPoint (endPoint, txHex) {
     }
     return null
   } catch (e) {
-    console.error(e)
     throw e
   }
 }
@@ -75,7 +74,6 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     }
     return null
   } catch (e) {
-    console.error(e)
     return e
   }
 }
@@ -99,7 +97,6 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     }
     return null
   } catch (e) {
-    console.error(e)
     return e
   }
 }
@@ -135,7 +132,6 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     }
     return null
   } catch (e) {
-    console.error(e)
     return e
   }
 }
@@ -158,7 +154,6 @@ async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
     }
     return null
   } catch (e) {
-    console.error(e)
     return e
   }
 }
@@ -177,7 +172,6 @@ async function fetchBackendRawTx (backendURL, txid) {
     }
     return null
   } catch (e) {
-    console.error(e)
     return e
   }
 }
@@ -261,7 +255,6 @@ async function buildEthProof (assetOpts) {
     }
     return { assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes, bridgetransferid }
   } catch (e) {
-    console.log('error getting Eth Proof: ', e)
     return e
   }
 }
