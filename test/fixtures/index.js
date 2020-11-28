@@ -1,4 +1,4 @@
-var BN = require('bn.js')
+const BN = require('bn.js')
 const syscointx = require('syscointx-js')
 const scalarPct = 1000
 const COIN = 100000000

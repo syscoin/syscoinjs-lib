@@ -1,15 +1,15 @@
 
-var sjs = require('..')
-var fixtures = require('./fixtures')
-var tape = require('tape')
+const sjs = require('..')
+const fixtures = require('./fixtures')
+const tape = require('tape')
 const syscointx = require('syscointx-js')
 const bitcoin = sjs.utils.bitcoinjs
 const bitcoinops = require('bitcoin-ops')
 
 fixtures.forEach(async function (f) {
   tape(f.description, async function (t) {
-    var utxos = f.utxoObj
-    var txOpts = f.txOpts
+    const utxos = f.utxoObj
+    let txOpts = f.txOpts
     if (!txOpts) {
       txOpts = { rbf: false }
     }

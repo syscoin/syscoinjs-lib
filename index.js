@@ -43,7 +43,7 @@ SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) 
       }
       const decodedEndpoint = utils.decodeFromBase64ToASCII(valueAssetObj.notarydetails.endpoint.toString())
       const responseNotary = await this.fetchNotarizationFromEndPoint(decodedEndpoint, txHex)
-      if (responseNotary.sig) {
+      if (responseNotary && responseNotary.sig) {
         valueAssetObj.sig = responseNotary.sig
         notarizationDone = true
       }
@@ -64,7 +64,7 @@ SyscoinJSLib.prototype.createAndSignPSBTFromRes = function (res, sign, ownedInde
   if (sign && this.HDSigner) {
     const rootNode = this.HDSigner.getRootNode()
     // sign inputs this xpub key owns
-    for (var i = 0; i < res.inputs.length; i++) {
+    for (let i = 0; i < res.inputs.length; i++) {
       if (ownedIndexes.has(i)) {
         psbt.signInputHD(i, rootNode)
       }
@@ -93,7 +93,7 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
       return null
     }
     const fp = this.HDSigner.getMasterFingerprint()
-    for (var i = 0; i < res.inputs.length; i++) {
+    for (let i = 0; i < res.inputs.length; i++) {
       const input = res.inputs[i]
       if (input.path) {
         const pubkey = this.HDSigner.derivePubKey(input.path)
@@ -362,11 +362,10 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
     }
   }
   const BN_ZERO = new BN(0)
-  for (const valueAssetObj of assetMap.values()) {
-    valueAssetObj.outputs.push({ address: sysChangeAddress, value: BN_ZERO })
-    valueAssetObj.changeAddress = sysChangeAddress
-    break
-  }
+  const valueAssetObj = assetMap.values().next().value
+  valueAssetObj.outputs.push({ address: sysChangeAddress, value: BN_ZERO })
+  valueAssetObj.changeAddress = sysChangeAddress
+
   if (this.HDSigner) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {

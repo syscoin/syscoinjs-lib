@@ -49,15 +49,11 @@ Param txHex: Required. Raw transaction hex
 Returns: Returns JSON object in response, signature on success and error on denial of notarization
 */
 async function fetchNotarizationFromEndPoint (endPoint, txHex) {
-  try {
-    const request = await axios.post(endPoint, { tx: txHex })
-    if (request && request.data) {
-      return request.data
-    }
-    return null
-  } catch (e) {
-    throw e
+  const request = await axios.post(endPoint, { tx: txHex })
+  if (request && request.data) {
+    return request.data
   }
+  return null
 }
 
 /* fetchBackendAsset
@@ -87,7 +83,7 @@ Returns: Returns JSON object in response, UTXO object array in JSON
 */
 async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   try {
-    var url = backendURL + '/api/v2/utxo/' + addressOrXpub
+    let url = backendURL + '/api/v2/utxo/' + addressOrXpub
     if (options) {
       url += '?' + options
     }
@@ -112,7 +108,7 @@ Returns: Returns JSON object in response, account object in JSON
 */
 async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
   try {
-    var url = backendURL
+    let url = backendURL
     if (xpub) {
       url += '/api/v2/xpub/'
     } else {
@@ -215,7 +211,7 @@ async function buildEthProof (assetOpts) {
     let bridgetransferid = 0
     const txReceipt = Receipt.fromHex(result.receiptProof[2][1]).toObject()
     let amount = 0
-    for (var i = 0; i < txReceipt.setOfLogs.length; i++) {
+    for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
       const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject()
       if (log.topics && log.topics.length !== 1) {
         continue
@@ -450,12 +446,12 @@ HDSigner.prototype.restore = function (password) {
   }
   const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
   this.mnemonic = decryptedData.mnemonic
-  var numAccounts = decryptedData.numAccounts
+  const numAccounts = decryptedData.numAccounts
   // sanity checks
   if (this.accountIndex > 1000) {
     return false
   }
-  for (var i = 0; i <= numAccounts; i++) {
+  for (let i = 0; i <= numAccounts; i++) {
     const child = this.deriveAccount(i)
     /* eslint new-cap: ["error", { "newIsCap": false }] */
     this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
@@ -548,8 +544,8 @@ HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
       if (token.path) {
         const splitPath = token.path.split('/')
         if (splitPath.length >= 6) {
-          var change = parseInt(splitPath[4], 10)
-          var index = parseInt(splitPath[5], 10)
+          const change = parseInt(splitPath[4], 10)
+          const index = parseInt(splitPath[5], 10)
           if (change === 1) {
             if (index > this.changeIndex) {
               this.changeIndex = index
