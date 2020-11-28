@@ -238,9 +238,9 @@ Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
 SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress, 'confirmed=true')
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), 'confirmed=true')
     }
   }
   if (this.HDSigner) {
@@ -299,9 +299,9 @@ Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
 SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress, 'confirmed=true')
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), 'confirmed=true')
     }
   }
   if (this.HDSigner) {
@@ -351,9 +351,9 @@ Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
 SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress, 'confirmed=true')
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), 'confirmed=true')
     }
   }
   if (this.HDSigner) {
