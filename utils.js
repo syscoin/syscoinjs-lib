@@ -263,7 +263,7 @@ Param txOpts: Optional. If its passed in we use allowOtherNotarizedAssetInputs f
 Param assetMap: Optional. Destination outputs for transaction requiring UTXO sanitizing, used in allowOtherNotarizedAssetInputs check described above
 Returns: Returns sanitized UTXO object for use internally in this library
 */
-function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
+function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap, excludeZeroConf) {
   if (!txOpts) {
     txOpts = { rbf: false }
   }
@@ -327,6 +327,9 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap) {
     utxoObj.utxos.forEach(utxo => {
       if (!utxo.address) {
         console.log('SKIPPING utxo: no address field defined')
+        return
+      }
+      if (excludeZeroConf && utxo.confirmations <= 0) {
         return
       }
       const newUtxo = { type: 'LEGACY', address: utxo.address, txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime }

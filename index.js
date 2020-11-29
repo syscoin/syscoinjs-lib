@@ -238,9 +238,9 @@ Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
 SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress, 'confirmed=true')
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), 'confirmed=true')
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -255,7 +255,8 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
   const assetMap = new Map([
     [0, { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysReceivingAddress }] }]
   ])
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
+  // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -299,9 +300,9 @@ Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
 SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress, 'confirmed=true')
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), 'confirmed=true')
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -319,7 +320,8 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
       }
     }
   }
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
+  // true last param for filtering out 0 conf UTXO
+  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -351,9 +353,9 @@ Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
 SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress, 'confirmed=true')
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub(), 'confirmed=true')
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
     }
   }
   if (this.HDSigner) {
@@ -373,7 +375,8 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
       }
     }
   }
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
+  // true last param for filtering out 0 conf UTXO
+  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
