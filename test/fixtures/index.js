@@ -432,7 +432,7 @@ module.exports = [{
   description: 'send multi asset allocations (varied sys values) with notarization',
   version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
   txOpts: {
-    rbf: true // don't use zdag as size of tx is large
+    rbf: false // should override rbf as size of tx is > 1100
   },
   mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
   feeRate: new BN(10),
