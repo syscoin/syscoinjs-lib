@@ -66,6 +66,9 @@ module.exports = [{
   assetGuid: 2529870008,
   assetOpts: { updatecapabilityflags: 123, contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'), description: 'new publicvalue' },
   sysChangeAddress: 'tsys1qt8aq6hrrlc6ueps4wqc6ynfckrxxrw20ydamc9',
+  assetMap: new Map([
+    [2529870008, { changeAddress: 'tsys1qt8aq6hrrlc6ueps4wqc6ynfckrxxrw20ydamc9', outputs: [{ value: new BN(0), address: 'tsys1qt8aq6hrrlc6ueps4wqc6ynfckrxxrw20ydamc9' }] }]
+  ]),
   xpubTokens: [
     { path: "m/84'/1'/0'/0/0" },
     { path: "m/84'/1'/0'/1/0" }

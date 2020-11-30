@@ -66,7 +66,7 @@ fixtures.forEach(async function (f) {
         }
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_UPDATE) {
-      const psbt = await syscoinjs.assetUpdate(f.assetGuid, f.assetOpts, txOpts, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const psbt = await syscoinjs.assetUpdate(f.assetGuid, f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)

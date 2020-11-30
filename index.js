@@ -265,6 +265,18 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
 /* assetUpdate
 Purpose: Update existing Syscoin SPT.
 Param assetGuid: Required. Asset GUID to update.
+Param assetMap: Required. Description of Map:
+  Index assetGuid. Required. Numeric Asset GUID you are sending to
+  Value is described below:
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field outputs. Required. Array of objects described below:
+      Field value. Required. Big Number representing satoshi's to send. Should be 0 if doing an update.
+      Field address. Optional. Destination address for asset.
+  Example:
+    const assetMap = new Map([
+      [assetGuid, { outputs: [{ value: new BN(0), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
+    ])
+    Would update assetGuid asset and send it as change back to 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae'. Change is the 0-value UTXO for asset ownership.
 Param assetOpts: Required. Asset details. Fields described below:
   Field description. Optional. Description in ASCII describing token. The description will be encoded via JSON in the pubdata field for the asset and will be in the 'desc' field of the JSON object.
   Field contract. Optional. ERC20 address of the contract connected to this SPT for use in the SysEthereum bridge.
@@ -297,7 +309,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
 */
-SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -309,11 +321,6 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
-  }
-  const assetMap = new Map([
-    [assetGuid, { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysChangeAddress }] }]
-  ])
-  if (this.HDSigner) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()

@@ -41,22 +41,22 @@
     "browserify": "browserify index.js -s syscoinjs -o syscoinjs-lib.browser.js"
   },
   "devDependencies": {
-    "browserify": "^16.5.2",
-    "nyc": "^8.3.2",
+    "browserify": "^17.0.0",
+    "nyc": "^15.1.0",
     "standard": "*",
-    "tape": "^4.13.3"
+    "tape": "^5.0.1"
   },
   "dependencies": {
-    "axios": "^0.19.2",
-    "bip84": "^0.2.3",
+    "axios": "^0.21.0",
+    "bip84": "^0.2.4",
     "bitcoin-ops": "^1.4.1",
-    "bitcoinjs-lib": "^5.1.10",
-    "bn.js": "^5.1.2",
+    "bitcoinjs-lib": "^5.2.0",
+    "bn.js": "^5.1.3",
     "crypto-js": "^4.0.0",
     "eth-object": "^1.0.3",
     "eth-proof": "^2.1.4",
-    "rlp": "^2.2.4",
-    "syscointx-js": "^1.0.55",
+    "rlp": "^2.2.6",
+    "syscointx-js": "^1.0.56",
     "varuint-bitcoin": "^1.1.2",
     "web3": "^1.3.0"
   }
