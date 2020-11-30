@@ -148,6 +148,60 @@ module.exports = [{
   }
 },
 {
+  description: 'transfer asset with SYS change to new output',
+  version: syscointx.utils.SYSCOIN_TX_VERSION_ASSET_UPDATE,
+  txOpts: {
+    rbf: true
+  },
+  mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
+  feeRate: new BN(10),
+  utxoObj: {
+    utxos: [
+      { txid: 'a7f5c979d8fc80f05d8434e04cb9e46cdaa56551d23dd790ba5d7f2c15f529fd', vout: 1, address: 'tsys1qq43tjdd753rct3jj39yvr855gytwf3y8p5kuf9', path: "m/84'/1'/0'/1/0", value: '84999996550', assetInfo: { assetGuid: 2529870008, value: '0' } }
+    ],
+    assets: [
+      {
+        assetGuid: 2529870008,
+        decimals: 8,
+        pubData: { desc: syscointx.utils.encodeToBase64('publicvalue') },
+        symbol: syscointx.utils.encodeToBase64('CAT'),
+        updateCapabilityFlags: 127,
+        totalSupply: '10000000000',
+        maxSupply: '100000000000'
+      }
+    ]
+  },
+  assetGuid: 2529870008,
+  assetOpts: { updatecapabilityflags: 123, contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'), description: 'new publicvalue' },
+  sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
+  assetMap: new Map([
+    [2529870008, { outputs: [{ value: new BN(0), address: 'tsys1qcflmge9vann8405ws2y69jwt94sv40kd7rqexs' }] }]
+  ]),
+  xpubTokens: [
+    { path: "m/84'/1'/0'/0/0" },
+    { path: "m/84'/1'/0'/1/0" }
+  ],
+  expected: {
+    hex: '83000000000101fd29f5152c7f5dba90d73dd25165a5da6ce4b94ce034845df080fcd879c9f5a70100000000fdffffff03b202000000000000160014c27fb464acece67abe8e8289a2c9cb2d60cabecd0000000000000000626a4c5f01b8c0ca96010000000843142b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc001f7b2264657363223a22626d563349484231596d787059335a686248566c227d1b7b2264657363223a226348566962476c6a646d46736457553d227d7b7f10f864ca130000001600140f8137adebd136ebb5d3c9796e79916ddcff77cb02483045022100f820f0e41fb51b0eccfbfcba73d138233c1549ddcd4fab5b8b50c3ebb1be00d4022025fa89e401c3767f2e1c78e501a6370d8655ba9b304d5ad00d568f25e2047dec012103e4d8568a37e0afb8f220178b640454e91c9e9e7e2425be9e43142a7c3140e2e900000000',
+    rbf: true,
+    numOutputs: 3,
+    script: Buffer.from('6a4c5f01b8c0ca96010000000843142b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc001f7b2264657363223a22626d563349484231596d787059335a686248566c227d1b7b2264657363223a226348566962476c6a646d46736457553d227d7b7f', 'hex'),
+    asset: {
+      allocation: [{ assetGuid: 2529870008, values: [{ n: 0, value: new BN(0) }], notarysig: Buffer.from('') }],
+      precision: 8,
+      updateflags: 67,
+      contract: Buffer.from('2b1e58b979e4b2d72d8bca5bb4646ccc032ddbfc', 'hex'),
+      prevcontract: Buffer.from(''),
+      pubdata: syscointx.utils.encodePubDataFromFields({ desc: 'new publicvalue' }),
+      prevpubdata: syscointx.utils.encodePubDataFromFields({ desc: 'publicvalue' }),
+      updatecapabilityflags: 123,
+      prevupdatecapabilityflags: 127
+    },
+    receivingIndex: 0,
+    changeIndex: 0
+  }
+},
+{
   description: 'send asset',
   version: syscointx.utils.SYSCOIN_TX_VERSION_ASSET_SEND,
   txOpts: {
