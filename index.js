@@ -224,7 +224,7 @@ Param assetOpts: Required. Asset details. Fields described below:
     Mask 16 (ASSET_UPDATE_NOTARY_DETAILS, can you update notary details?)
     Mask 32 (ASSET_UPDATE_AUXFEE, can you update aux fees?)
     Mask 64 (ASSET_UPDATE_CAPABILITYFLAGS, can you update capability flags?)
-    Mask 127 (All flags enabled)
+    Mask 127 (ASSET_CAPABILITY_ALL, All flags enabled)
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used. Will be overrided to False, cannot be set to True for new asset transactions.
   Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
@@ -299,7 +299,7 @@ Param assetOpts: Required. Asset details. Fields described below:
     Mask 16 (ASSET_UPDATE_NOTARY_DETAILS, can you update notary details?)
     Mask 32 (ASSET_UPDATE_AUXFEE, can you update aux fees?)
     Mask 64 (ASSET_UPDATE_CAPABILITYFLAGS, can you update capability flags?)
-    Mask 127 (All flags enabled)
+    Mask 127 (ASSET_CAPABILITY_ALL, All flags enabled)
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
   Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
