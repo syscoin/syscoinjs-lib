@@ -138,7 +138,7 @@ fixtures.forEach(async function (f) {
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
             t.same(output.script, f.expected.script)
-            const asset = syscointx.bufferUtils.deserializeAllocationBurnToEthereum(chunks[1])
+            const asset = syscointx.bufferUtils.deserializeAllocationBurn(chunks[1])
             t.same(asset, f.expected.asset)
             t.same(asset.allocation, f.expected.asset.allocation)
           }

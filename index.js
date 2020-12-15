@@ -126,10 +126,12 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
     }
   }
   let psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
-  const notarizationDone = await this.getNotarizationSignatures(assets, res)
-  // sign again if notarization was added
-  if (notarizationDone && syscointx.addNotarizationSignatures(res.txVersion, assets, res.outputs) !== -1) {
-    psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
+  if (syscointx.utils.isAssetAllocationTx(res.txVersion)) {
+    const notarizationDone = await this.getNotarizationSignatures(assets, res)
+    // sign again if notarization was added
+    if (notarizationDone && syscointx.addNotarizationSignatures(res.txVersion, assets, res.outputs) !== -1) {
+      psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
+    }
   }
   return psbt
 }
