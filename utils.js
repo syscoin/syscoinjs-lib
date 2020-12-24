@@ -283,7 +283,7 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap, excludeZero
         assetObj.pubdata = Buffer.from(JSON.stringify(asset.pubData))
       }
       if (asset.notaryKeyID) {
-        assetObj.notarykeyid = Buffer.from(asset.notaryKeyID, 'hex')
+        assetObj.notarykeyid = Buffer.from(asset.notaryKeyID, 'base64')
         network = network || syscoinNetworks.mainnet
         assetObj.notaryaddress = bjs.payments.p2wpkh({ hash: assetObj.notarykeyid, network: network }).address
         // in unit tests notarySig may be provided
@@ -307,7 +307,7 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap, excludeZero
       if (asset.auxFeeDetails) {
         assetObj.auxfeedetails = {}
         if (asset.auxFeeDetails.auxFeeKeyID) {
-          assetObj.auxfeedetails.auxfeekeyid = Buffer.from(asset.auxFeeDetails.auxFeeKeyID, 'hex')
+          assetObj.auxfeedetails.auxfeekeyid = Buffer.from(asset.auxFeeDetails.auxFeeKeyID, 'base64')
           assetObj.auxfeedetails.auxfeeaddress = bjs.payments.p2wpkh({ hash: assetObj.auxfeedetails.auxfeekeyid, network: syscoinNetworks.testnet }).address
         } else {
           assetObj.auxfeedetails.auxfeekeyid = Buffer.from('')
