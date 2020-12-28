@@ -9,6 +9,9 @@ const { GetProof } = require('eth-proof')
 const { Log, Receipt, Transaction } = require('eth-object')
 const rlp = require('rlp')
 const Web3 = require('web3')
+// add intermediate and non-standard root certs that browsers accept but nodejs does not such as easycerts or letsencrypt
+const rootCas = require('ssl-root-cas/latest').create()
+require('https').globalAgent.options.ca = rootCas
 const web3 = new Web3()
 const bitcoinNetworks = { mainnet: bjs.networks.bitcoin, testnet: bjs.networks.testnet }
 /* global localStorage */
