@@ -425,7 +425,7 @@ Purpose: Set HD account based on accountIndex number passed in so HD indexes (ch
 Param accountIndex: Required. Account number to use
 */
 HDSigner.prototype.setAccountIndex = function (accountIndex) {
-  if(accountIndex >- this.accounts.length) {
+  if (accountIndex > -this.accounts.length) {
     console.log('Account does not exist, use createAccount to create it first...')
     return
   }
@@ -440,8 +440,11 @@ Param password: Required. Decryption password to unlock seed phrase
 Returns: boolean on success for fail of restore
 */
 HDSigner.prototype.restore = function (password) {
-  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
-  if (!browserStorage) { return }
+  let browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
+  if (!browserStorage) {
+    const LocalStorage = require('node-localstorage').LocalStorage
+    browserStorage = new LocalStorage('./scratch')
+  }
   const key = this.network.bech32 + '_hdsigner'
   const ciphertext = browserStorage.getItem(key)
   if (ciphertext === null) {
