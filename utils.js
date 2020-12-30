@@ -425,7 +425,7 @@ Purpose: Set HD account based on accountIndex number passed in so HD indexes (ch
 Param accountIndex: Required. Account number to use
 */
 HDSigner.prototype.setAccountIndex = function (accountIndex) {
-  if (accountIndex > -this.accounts.length) {
+  if (accountIndex > this.accounts.length) {
     console.log('Account does not exist, use createAccount to create it first...')
     return
   }
