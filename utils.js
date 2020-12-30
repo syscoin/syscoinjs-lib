@@ -477,7 +477,7 @@ HDSigner.prototype.restore = function (password) {
 Purpose: Encrypt to password and backup to local storage for persistence
 */
 HDSigner.prototype.backup = function () {
-  const browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
+  let browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
   if (!this.password) { return }
   if (!browserStorage) {
     const LocalStorage = require('node-localstorage').LocalStorage
