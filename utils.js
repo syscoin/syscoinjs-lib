@@ -461,6 +461,10 @@ HDSigner.prototype.restore = function (password) {
   if (this.accountIndex > 1000) {
     return false
   }
+  this.accounts = []
+  this.changeIndex = -1
+  this.receivingIndex = -1
+  this.accountIndex = 0
   for (let i = 0; i <= numAccounts; i++) {
     const child = this.deriveAccount(i)
     /* eslint new-cap: ["error", { "newIsCap": false }] */
@@ -473,8 +477,12 @@ HDSigner.prototype.restore = function (password) {
 Purpose: Encrypt to password and backup to local storage for persistence
 */
 HDSigner.prototype.backup = function () {
-  const browserStorage = (typeof localStorage === 'undefined') ? null : localStorage
-  if (!browserStorage || !this.password) { return }
+  const browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
+  if (!this.password) { return }
+  if (!browserStorage) {
+    const LocalStorage = require('node-localstorage').LocalStorage
+    browserStorage = new LocalStorage('./scratch')
+  }
   const key = this.network.bech32 + '_hdsigner'
   const obj = { mnemonic: this.mnemonic, numAccounts: this.accounts.length }
   const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.password).toString()
