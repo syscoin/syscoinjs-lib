@@ -384,11 +384,11 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.password = password
   this.pubTypes = pubTypes || syscoinZPubTypes
 
-  this.accounts = []
+  this.accounts = [] // length serialized
   this.changeIndex = -1
   this.receivingIndex = -1
   this.mnemonic = mnemonic // serialized
-  this.accountIndex = -1 // serialized
+  this.accountIndex = 0
 
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.fromSeed = new BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
@@ -534,10 +534,10 @@ Purpose: Create and derive a new account
 Returns: Account index of new account
 */
 HDSigner.prototype.createAccount = function () {
-  this.accountIndex++
   this.changeIndex = -1
   this.receivingIndex = -1
-  const child = this.deriveAccount(this.accountIndex)
+  const child = this.deriveAccount(this.accounts.length)
+  this.accountIndex = this.accounts.length
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
   this.backup()
