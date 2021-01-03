@@ -44,8 +44,10 @@ SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) 
       const decodedEndpoint = utils.decodeFromBase64ToASCII(valueAssetObj.notarydetails.endpoint.toString())
       const responseNotary = await this.fetchNotarizationFromEndPoint(decodedEndpoint, txHex)
       if (responseNotary && responseNotary.sig) {
-        valueAssetObj.sig = responseNotary.sig
-        notarizationDone = true
+        valueAssetObj.notarysig = Buffer.from(responseNotary.sig, 'base64')
+        if (valueAssetObj.notarysig.length === 65) {
+          notarizationDone = true
+        }
       }
     }
   }

@@ -422,7 +422,7 @@ module.exports = [{
           HDRequired: 1
         },
         // for unit test only, this normally wouldn't come in payload
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo=')
+        notarySig: 'H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo='
       },
       {
         assetGuid: 650700076,
@@ -438,7 +438,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IBdEHC3NeRiitPNXO0kXNauwzeLL/HK3VvusKanpx/PENy22LOzi/cLAKyZIL0N96ffCAmkePVkxnw0pS4nuAbM=')
+        notarySig: 'IBdEHC3NeRiitPNXO0kXNauwzeLL/HK3VvusKanpx/PENy22LOzi/cLAKyZIL0N96ffCAmkePVkxnw0pS4nuAbM='
       },
       {
         assetGuid: 2699372871,
@@ -454,7 +454,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H2N6qBi/BZgS1FyvYMvIYekeyabZCk2xwQbIf7SCQRYkf+YLAKEu/aY9oiVlihuGIBNVZXeL/nduYzCTpmA7XgE=')
+        notarySig: 'H2N6qBi/BZgS1FyvYMvIYekeyabZCk2xwQbIf7SCQRYkf+YLAKEu/aY9oiVlihuGIBNVZXeL/nduYzCTpmA7XgE='
       },
       {
         assetGuid: 402223530,
@@ -470,7 +470,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IOKXQEHh4+jz6zICP5KA4g54wL1Tx+6UpY0SoMwtO4glL3jVYsRMWas92OP0pVRQ2Qa5lBlxLqCEeCAqdc+wsz0=')
+        notarySig: 'IOKXQEHh4+jz6zICP5KA4g54wL1Tx+6UpY0SoMwtO4glL3jVYsRMWas92OP0pVRQ2Qa5lBlxLqCEeCAqdc+wsz0='
       },
       {
         assetGuid: 1537060536,
@@ -486,7 +486,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H5zJsmzAuqY8czH2yx4viw2jQjapfgY/8gO4mQroB4e/Y8DWEBerH1CRnNbefPNPt0RwU22D8rzMx13irZpA1xw=')
+        notarySig: 'H5zJsmzAuqY8czH2yx4viw2jQjapfgY/8gO4mQroB4e/Y8DWEBerH1CRnNbefPNPt0RwU22D8rzMx13irZpA1xw='
       },
       {
         assetGuid: 2305793883,
@@ -572,7 +572,7 @@ module.exports = [{
           HDRequired: 1
         },
         // for unit test only, this normally wouldn't come in payload
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo=')
+        notarySig: 'H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo='
       },
       {
         assetGuid: 650700076,
@@ -588,7 +588,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IBdEHC3NeRiitPNXO0kXNauwzeLL/HK3VvusKanpx/PENy22LOzi/cLAKyZIL0N96ffCAmkePVkxnw0pS4nuAbM=')
+        notarySig: 'IBdEHC3NeRiitPNXO0kXNauwzeLL/HK3VvusKanpx/PENy22LOzi/cLAKyZIL0N96ffCAmkePVkxnw0pS4nuAbM='
       },
       {
         assetGuid: 2699372871,
@@ -604,7 +604,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H2N6qBi/BZgS1FyvYMvIYekeyabZCk2xwQbIf7SCQRYkf+YLAKEu/aY9oiVlihuGIBNVZXeL/nduYzCTpmA7XgE=')
+        notarySig: 'H2N6qBi/BZgS1FyvYMvIYekeyabZCk2xwQbIf7SCQRYkf+YLAKEu/aY9oiVlihuGIBNVZXeL/nduYzCTpmA7XgE='
       },
       {
         assetGuid: 402223530,
@@ -620,7 +620,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IOKXQEHh4+jz6zICP5KA4g54wL1Tx+6UpY0SoMwtO4glL3jVYsRMWas92OP0pVRQ2Qa5lBlxLqCEeCAqdc+wsz0=')
+        notarySig: 'IOKXQEHh4+jz6zICP5KA4g54wL1Tx+6UpY0SoMwtO4glL3jVYsRMWas92OP0pVRQ2Qa5lBlxLqCEeCAqdc+wsz0='
       },
       {
         assetGuid: 1537060536,
@@ -636,7 +636,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H5zJsmzAuqY8czH2yx4viw2jQjapfgY/8gO4mQroB4e/Y8DWEBerH1CRnNbefPNPt0RwU22D8rzMx13irZpA1xw=')
+        notarySig: 'H5zJsmzAuqY8czH2yx4viw2jQjapfgY/8gO4mQroB4e/Y8DWEBerH1CRnNbefPNPt0RwU22D8rzMx13irZpA1xw='
       },
       {
         assetGuid: 2305793883,
@@ -724,7 +724,7 @@ module.exports = [{
           HDRequired: 1
         },
         // for unit test only, this normally wouldn't come in payload
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo=')
+        notarySig: 'H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo='
       },
       {
         assetGuid: 650700076,
@@ -740,7 +740,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IBdEHC3NeRiitPNXO0kXNauwzeLL/HK3VvusKanpx/PENy22LOzi/cLAKyZIL0N96ffCAmkePVkxnw0pS4nuAbM=')
+        notarySig: 'IBdEHC3NeRiitPNXO0kXNauwzeLL/HK3VvusKanpx/PENy22LOzi/cLAKyZIL0N96ffCAmkePVkxnw0pS4nuAbM='
       },
       {
         assetGuid: 2699372871,
@@ -756,7 +756,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H2N6qBi/BZgS1FyvYMvIYekeyabZCk2xwQbIf7SCQRYkf+YLAKEu/aY9oiVlihuGIBNVZXeL/nduYzCTpmA7XgE=')
+        notarySig: 'H2N6qBi/BZgS1FyvYMvIYekeyabZCk2xwQbIf7SCQRYkf+YLAKEu/aY9oiVlihuGIBNVZXeL/nduYzCTpmA7XgE='
       },
       {
         assetGuid: 402223530,
@@ -772,7 +772,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IOKXQEHh4+jz6zICP5KA4g54wL1Tx+6UpY0SoMwtO4glL3jVYsRMWas92OP0pVRQ2Qa5lBlxLqCEeCAqdc+wsz0=')
+        notarySig: 'IOKXQEHh4+jz6zICP5KA4g54wL1Tx+6UpY0SoMwtO4glL3jVYsRMWas92OP0pVRQ2Qa5lBlxLqCEeCAqdc+wsz0='
       },
       {
         assetGuid: 1537060536,
@@ -788,7 +788,7 @@ module.exports = [{
           instantTransfers: 0,
           HDRequired: 1
         },
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H5zJsmzAuqY8czH2yx4viw2jQjapfgY/8gO4mQroB4e/Y8DWEBerH1CRnNbefPNPt0RwU22D8rzMx13irZpA1xw=')
+        notarySig: 'H5zJsmzAuqY8czH2yx4viw2jQjapfgY/8gO4mQroB4e/Y8DWEBerH1CRnNbefPNPt0RwU22D8rzMx13irZpA1xw='
       },
       {
         assetGuid: 2305793883,
@@ -969,7 +969,7 @@ module.exports = [{
           HDRequired: 1
         },
         // for unit test only, this normally wouldn't come in payload
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98=')
+        notarySig: 'IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98='
       }
     ]
   },
@@ -1033,7 +1033,7 @@ module.exports = [{
           HDRequired: 1
         },
         // for unit test only, this normally wouldn't come in payload
-        notarySig: syscointx.utils.decodeFromBase64ToHex('IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98=')
+        notarySig: 'IB3TMX//cFV3lyCkyXkwj82pVIy6brf/q3zIno09dgeualzicEi9/kdIaRmrhjUXjwiBizK09+NWFWpqldDLP98='
       }
     ]
   },
@@ -1262,7 +1262,7 @@ module.exports = [{
           HDRequired: 1
         },
         // for unit test only, this normally wouldn't come in payload
-        notarySig: syscointx.utils.decodeFromBase64ToHex('H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo=')
+        notarySig: 'H5ZrZe8aCarhYzmgkvqoCilr1x4sbqTkpkD45uSaYbafb73oGnd/MaoLZxfGFz7DdSU25TH77raRxflWOGKTUTo='
       }
     ]
   },
