@@ -49,11 +49,15 @@ Param txHex: Required. Raw transaction hex
 Returns: Returns JSON object in response, signature on success and error on denial of notarization
 */
 async function fetchNotarizationFromEndPoint (endPoint, txHex) {
-  const request = await axios.post(endPoint, { tx: txHex })
-  if (request && request.data) {
-    return request.data
+  try {
+    const request = await axios.post(endPoint, { tx: txHex })
+    if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    return e
   }
-  return null
 }
 
 /* fetchBackendAsset

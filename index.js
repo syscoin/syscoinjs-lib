@@ -43,11 +43,18 @@ SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) 
       }
       const decodedEndpoint = utils.decodeFromBase64ToASCII(valueAssetObj.notarydetails.endpoint.toString())
       const responseNotary = await this.fetchNotarizationFromEndPoint(decodedEndpoint, txHex)
-      if (responseNotary && responseNotary.sig) {
-        valueAssetObj.notarysig = Buffer.from(responseNotary.sig, 'base64')
-        if (valueAssetObj.notarysig.length === 65) {
+      if (!responseNotary) {
+        console.log('No response from notary')
+      } else if (responseNotary.error) {
+        console.log('could not notarize tx! error: ' + responseNotary.error.message)
+      } else if (responseNotary.sig) {
+        const notarysig = Buffer.from(responseNotary.sig, 'base64')
+        if (notarysig.length === 65) {
+          valueAssetObj.notarysig = notarysig
           notarizationDone = true
         }
+      } else {
+        console.log('Unrecognized response from notary backend: ' + responseNotary)
       }
     }
   }
