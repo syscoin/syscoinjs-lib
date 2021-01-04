@@ -25,24 +25,17 @@ function SyscoinJSLib (HDSigner, blockbookURL, network) {
 /* getNotarizationSignatures
 Purpose: Get notarization signatures from a notary endpoint defined in the asset object, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
 Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Param txHex: Required. Signed transaction hex created from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Returns: boolean representing if notarization was done by acquiring a witness signature from notary.
 */
-SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, res) {
+SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, txHex) {
   let notarizationDone = false
   if (!assets) {
     return notarizationDone
   }
-
-  let txHex = null
-  for (const valueAssetObj in assets.values()) {
+  for (const valueAssetObj of assets.values()) {
     if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
-      if (!txHex) {
-        const psbt = this.createPSBTFromRes(res)
-        txHex = psbt.extractTransaction().toHex()
-      }
-      const decodedEndpoint = utils.decodeFromBase64ToASCII(valueAssetObj.notarydetails.endpoint.toString())
-      const responseNotary = await this.fetchNotarizationFromEndPoint(decodedEndpoint, txHex)
+      const responseNotary = await utils.fetchNotarizationFromEndPoint(valueAssetObj.notarydetails.endpoint.toString(), txHex)
       if (!responseNotary) {
         console.log('No response from notary')
       } else if (responseNotary.error) {
@@ -136,7 +129,7 @@ SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
   }
   let psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
   if (syscointx.utils.isAssetAllocationTx(res.txVersion)) {
-    const notarizationDone = await this.getNotarizationSignatures(assets, res)
+    const notarizationDone = await this.getNotarizationSignatures(assets, psbt.extractTransaction().toHex())
     // sign again if notarization was added
     if (notarizationDone && syscointx.addNotarizationSignatures(res.txVersion, assets, res.outputs) !== -1) {
       psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
