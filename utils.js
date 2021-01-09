@@ -261,13 +261,14 @@ async function buildEthProof (assetOpts) {
 
 /* sanitizeBlockbookUTXOs
 Purpose: Sanitize backend provider UTXO objects to be useful for this library
+Param sysFromXpubOrAddress: Required. The XPUB or address that was called to fetch UTXOs
 Param utxoObj: Required. Backend provider UTXO JSON object to be sanitized
 Param network: Optional. Defaults to Syscoin Mainnet. Network to be used to create address for notary and auxfee payout address if those features exist for the asset
 Param txOpts: Optional. If its passed in we use allowOtherNotarizedAssetInputs field of options to skip over (if allowOtherNotarizedAssetInputs is false or null) UTXO's if they use notarization for an asset that is not a part of assetMap
 Param assetMap: Optional. Destination outputs for transaction requiring UTXO sanitizing, used in allowOtherNotarizedAssetInputs check described above
 Returns: Returns sanitized UTXO object for use internally in this library
 */
-function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap, excludeZeroConf) {
+function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts, assetMap, excludeZeroConf) {
   if (!txOpts) {
     txOpts = { rbf: false }
   }
@@ -329,10 +330,8 @@ function sanitizeBlockbookUTXOs (utxoObj, network, txOpts, assetMap, excludeZero
   }
   if (utxoObj.utxos) {
     utxoObj.utxos.forEach(utxo => {
-      if (!utxo.address) {
-        console.log('SKIPPING utxo: no address field defined')
-        return
-      }
+      // xpub queries will return utxo.address and address queries should use sysFromXpubOrAddress as address is not provided
+      utxo.address = utxo.address || sysFromXpubOrAddress
       if (excludeZeroConf && utxo.confirmations <= 0) {
         return
       }

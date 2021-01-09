@@ -195,7 +195,7 @@ SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress
       changeAddress = await this.HDSigner.getNewChangeAddress()
     }
   }
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts)
+  utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, utxos, this.network, txOpts)
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
   const psbt = await this.sign(res, !fromXpubOrAddress, utxos.assets)
   return psbt
@@ -260,7 +260,7 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
     [0, { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysReceivingAddress }] }]
   ])
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap, true)
+  utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -332,7 +332,7 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
     }
   }
   // true last param for filtering out 0 conf UTXO
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap, true)
+  utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -387,7 +387,7 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
     }
   }
   // true last param for filtering out 0 conf UTXO
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap, true)
+  utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -434,7 +434,7 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
       }
     }
   }
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
+  utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -482,7 +482,7 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
       }
     }
   }
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
+  utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -564,7 +564,7 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     }
   }
 
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
+  utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
@@ -611,7 +611,7 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
       }
     }
   }
-  utxos = utils.sanitizeBlockbookUTXOs(utxos, this.network, txOpts, assetMap)
+  utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
   return psbt
