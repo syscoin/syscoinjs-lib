@@ -256,7 +256,7 @@ async function notarizeRes (res, notaryAssets, rawTx) {
   if (notarizationDone) {
     return syscointx.addNotarizationSignatures(res.txVersion, notaryAssets, res.outputs) !== -1
   }
-  return null
+  return false
 }
 
 /* getAssetsRequiringNotarizationFromRes

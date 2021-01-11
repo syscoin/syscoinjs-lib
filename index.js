@@ -29,8 +29,8 @@ SyscoinJSLib.prototype.signAndSend = async function (res, notaryAssets) {
   // notarize if necessary
   let psbt = await this.HDSigner.sign(res)
   if (notaryAssets) {
-    res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
-    if (res) {
+    const wasNotarized = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    if (wasNotarized) {
       psbt = await this.HDSigner.sign(res)
     } else {
       return psbt
@@ -58,8 +58,8 @@ SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, 
   // notarize if necessary
   let psbt = await utils.signWithHDSigner(res, HDSigner)
   if (notaryAssets) {
-    res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
-    if (res) {
+    const wasNotarized = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    if (wasNotarized) {
       psbt = await utils.signWithHDSigner(res, HDSigner)
     } else {
       return psbt
@@ -88,8 +88,8 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (res, wif, notaryAsse
   // notarize if necessary
   let psbt = await utils.signWithWIF(res, wif, this.network)
   if (notaryAssets) {
-    res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
-    if (res) {
+    const wasNotarized = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    if (wasNotarized) {
       psbt = await utils.signWithWIF(res, wif, this.network)
     } else {
       return psbt
