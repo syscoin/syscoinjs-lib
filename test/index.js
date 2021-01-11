@@ -16,16 +16,6 @@ fixtures.forEach(async function (f) {
     // 'null' for no password encryption for local storage and 'true' for testnet
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
-    // example of once you have it signed you can push it to network via backend provider
-    // const resSend = await sjs.utils.sendRawTransaction(syscoinjs.blockbookURL, psbt.extractTransaction().toHex(), HDSigner)
-    // if(resSend.error) {
-    //  console.log('could not send tx! error: ' + resSend.error.message)
-    // } else if(resSend.result) {
-    //  console.log('tx successfully sent! txid: ' + resSend.result)
-    // } else {
-    //  console.log('Unrecognized response from backend')
-    // }
-    //
     if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
       const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
@@ -145,7 +135,17 @@ fixtures.forEach(async function (f) {
         }
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND) {
-      const psbt = await syscoinjs.assetAllocationSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      let psbt = await syscoinjs.assetAllocationSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      if (f.sysFromXpubOrAddress) {
+        // check for VPUB vs regular address
+        if (!f.sysFromXpubOrAddress.startsWith('vpub')) {
+          const kp = HDSigner.deriveKeypair(f.utxoObj.utxos[0].path)
+          psbt = await syscoinjs.signAndSendWithWIF(psbt.res, kp.toWIF(), psbt.assets)
+        } else {
+          psbt = await syscoinjs.signAndSendWithHDSigner(psbt.res, HDSigner, psbt.assets)
+        }
+      }
+
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)

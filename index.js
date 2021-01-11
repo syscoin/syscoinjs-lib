@@ -1,5 +1,4 @@
 const utils = require('./utils')
-const bitcoin = utils.bitcoinjs
 const syscointx = require('syscointx-js')
 const BN = require('bn.js')
 /* SyscoinJSLib
@@ -9,9 +8,7 @@ Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
 function SyscoinJSLib (HDSigner, blockbookURL, network) {
-  if (blockbookURL) {
-    this.blockbookURL = blockbookURL
-  }
+  this.blockbookURL = blockbookURL || 'https://localhost:80'
   if (HDSigner) {
     this.HDSigner = HDSigner
     this.HDSigner.blockbookURL = blockbookURL
@@ -22,151 +19,94 @@ function SyscoinJSLib (HDSigner, blockbookURL, network) {
   }
 }
 
-/* getNotarizationSignatures
-Purpose: Get notarization signatures from a notary endpoint defined in the asset object, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
+/* signAndSend
+Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
+Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
-Param txHex: Required. Signed transaction hex created from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Returns: boolean representing if notarization was done by acquiring a witness signature from notary.
+Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.getNotarizationSignatures = async function (assets, txHex) {
-  let notarizationDone = false
-  if (!assets) {
-    return notarizationDone
-  }
-  for (const valueAssetObj of assets.values()) {
-    if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
-      const responseNotary = await utils.fetchNotarizationFromEndPoint(valueAssetObj.notarydetails.endpoint.toString(), txHex)
-      if (!responseNotary) {
-        console.log('No response from notary')
-      } else if (responseNotary.error) {
-        console.log('could not notarize tx! error: ' + responseNotary.error.message)
-      } else if (responseNotary.sig) {
-        const notarysig = Buffer.from(responseNotary.sig, 'base64')
-        if (notarysig.length === 65) {
-          valueAssetObj.notarysig = notarysig
-          notarizationDone = true
-        }
-      } else {
-        console.log('Unrecognized response from notary backend: ' + responseNotary)
-      }
-    }
-  }
-  return notarizationDone
-}
-
-/* createAndSignPSBTFromRes
-Purpose: Craft PSBT and use bitcoinjs-lib to sign, sign with xpub information from HDSigner (if its set)
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param sign: Optional. If the crafted PSBT is to have signing information embedded from HDSigner, set to false or null if you don't want to sign via HDSigner or you aren't using HDSigner
-Param ownedIndexes: Optional. If sign is set and HDSigner exists then this variable is relevant. It will confirm which inputs are owned by this HDSigner xpub so it can sign the input, ownedIndexes is set in sign()
-Returns: psbt from bitcoinjs-lib
-*/
-SyscoinJSLib.prototype.createAndSignPSBTFromRes = function (res, sign, ownedIndexes) {
-  const psbt = this.createPSBTFromRes(res)
-  if (sign && this.HDSigner) {
-    const rootNode = this.HDSigner.getRootNode()
-    // sign inputs this xpub key owns
-    for (let i = 0; i < res.inputs.length; i++) {
-      if (ownedIndexes.has(i)) {
-        psbt.signInputHD(i, rootNode)
-      }
-    }
-    if (psbt.validateSignaturesOfAllInputs()) {
-      psbt.finalizeAllInputs()
-    }
-  }
-  return psbt
-}
-
-/* sign
-Purpose: Create signing information based on HDSigner (if set) and call createAndSignPSBTFromRes() to actually sign, as well as detect notarization and apply it as required.
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param sign: Optional. If signing is to be done, otherwise just check for notarization and return PSBT unsigned
-Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
-Returns: psbt from bitcoinjs-lib
-*/
-SyscoinJSLib.prototype.sign = async function (res, sign, assets) {
-  const ownedIndexes = new Map()
-  const prevTx = new Map()
-  // if from address is passed in, we don't sign and pass back unsigned transaction
-  if (sign && this.HDSigner) {
-    if (!res || !res.inputs) {
-      console.log('No inputs found! Cannot sign transaction!')
-      return null
-    }
-    const fp = this.HDSigner.getMasterFingerprint()
-    for (let i = 0; i < res.inputs.length; i++) {
-      const input = res.inputs[i]
-      if (input.path) {
-        const pubkey = this.HDSigner.derivePubKey(input.path)
-        if (pubkey) {
-          ownedIndexes.set(i, true)
-          input.bip32Derivation = [
-            {
-              masterFingerprint: fp,
-              path: input.path,
-              pubkey: pubkey
-            }]
-        }
-      }
-      // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
-      // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
-      if (input.type === 'LEGACY') {
-        if (prevTx.has(input.txId)) {
-          input.nonWitnessUtxo = prevTx.get(input.txId)
-        } else {
-          const hexTx = await utils.fetchBackendRawTx(this.blockbookURL, input.txId)
-          if (hexTx) {
-            const bufferTx = Buffer.from(hexTx.hex, 'hex')
-            prevTx.set(input.txId, bufferTx)
-            input.nonWitnessUtxo = bufferTx
-          } else {
-            console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
-          }
-        }
-      }
-    }
-  }
-  let psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
-  if (syscointx.utils.isAssetAllocationTx(res.txVersion)) {
-    const notarizationDone = await this.getNotarizationSignatures(assets, psbt.extractTransaction().toHex())
-    // sign again if notarization was added
-    if (notarizationDone && syscointx.addNotarizationSignatures(res.txVersion, assets, res.outputs) !== -1) {
-      psbt = this.createAndSignPSBTFromRes(res, sign, ownedIndexes)
-    }
-  }
-  return psbt
-}
-
-/* createPSBTFromRes
-Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Returns: psbt from bitcoinjs-lib
-*/
-SyscoinJSLib.prototype.createPSBTFromRes = function (res) {
-  const psbt = new bitcoin.Psbt({ network: this.network })
-  psbt.setVersion(res.txVersion)
-  res.inputs.forEach(input => {
-    const inputObj = {
-      hash: input.txId,
-      index: input.vout,
-      sequence: input.sequence,
-      bip32Derivation: input.bip32Derivation
-    }
-    if (input.nonWitnessUtxo) {
-      inputObj.nonWitnessUtxo = input.nonWitnessUtxo
+SyscoinJSLib.prototype.signAndSend = async function (res, assets) {
+  // notarize if necessary
+  const notaryAssets = utils.getAssetsRequiringNotarizationFromRes(res, assets)
+  let psbt = await this.HDSigner.sign(res)
+  if (notaryAssets) {
+    res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    if (res) {
+      psbt = await this.HDSigner.sign(res)
     } else {
-      inputObj.witnessUtxo = { script: bitcoin.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
+      return psbt
     }
-    psbt.addInput(inputObj)
-  })
-  res.outputs.forEach(output => {
-    psbt.addOutput({
-      script: output.script,
-      address: output.script ? null : output.address,
-      value: output.value.toNumber()
-    })
-  })
+  }
+  const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), this.HDSigner)
+  if (resSend.error) {
+    console.log('could not send tx! error: ' + resSend.error.message)
+  } else if (resSend.result) {
+    console.log('tx successfully sent! txid: ' + resSend.result)
+    return psbt
+  } else {
+    console.log('Unrecognized response from backend: ' + resSend)
+  }
+  return psbt
+}
+
+/* signAndSend
+Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
+Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
+Returns: PSBT signed success or unsigned if failure
+*/
+SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, assets) {
+  // notarize if necessary
+  const notaryAssets = utils.getAssetsRequiringNotarizationFromRes(res, assets)
+  let psbt = await utils.signWithHDSigner(res, HDSigner)
+  if (notaryAssets) {
+    res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    if (res) {
+      psbt = await utils.signWithHDSigner(res, HDSigner)
+    } else {
+      return psbt
+    }
+  }
+  const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), HDSigner)
+  if (resSend.error) {
+    console.log('could not send tx! error: ' + resSend.error.message)
+  } else if (resSend.result) {
+    console.log('tx successfully sent! txid: ' + resSend.result)
+    return psbt
+  } else {
+    console.log('Unrecognized response from backend: ' + resSend)
+  }
+  return psbt
+}
+
+/* signAndSendWithWIF
+Purpose: Signs/Notarizes if necessary and Sends transaction to network using WIF
+Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Param wif: Required. Private key in WIF format to sign inputs of the transaction for
+Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
+Returns: PSBT signed success or unsigned if failure
+*/
+SyscoinJSLib.prototype.signAndSendWithWIF = async function (res, wif, assets) {
+  // notarize if necessary
+  const notaryAssets = utils.getAssetsRequiringNotarizationFromRes(res, assets)
+  let psbt = await utils.signWithWIF(res, wif, this.network)
+  if (notaryAssets) {
+    res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    if (res) {
+      psbt = await utils.signWithWIF(res, wif, this.network)
+    } else {
+      return psbt
+    }
+  }
+  const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex())
+  if (resSend.error) {
+    console.log('could not send tx! error: ' + resSend.error.message)
+  } else if (resSend.result) {
+    console.log('tx successfully sent! txid: ' + resSend.result)
+    return psbt
+  } else {
+    console.log('Unrecognized response from backend: ' + resSend)
+  }
   return psbt
 }
 
@@ -180,7 +120,7 @@ Param outputsArr: Required. Output array defining tuples to which addresses to s
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -197,8 +137,10 @@ SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress
   }
   utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, utxos, this.network, txOpts)
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
-  const psbt = await this.sign(res, !fromXpubOrAddress, utxos.assets)
-  return psbt
+  if (fromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 /* assetNew
@@ -237,7 +179,7 @@ Param sysReceivingAddress: Optional. Address which will hold the new asset. If n
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -262,8 +204,10 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
-  return psbt
+  if (sysFromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 /* assetUpdate
@@ -311,7 +255,7 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -334,8 +278,10 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
   // true last param for filtering out 0 conf UTXO
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
-  return psbt
+  if (sysFromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 /* assetSend
@@ -359,7 +305,7 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -389,8 +335,10 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
   // true last param for filtering out 0 conf UTXO
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
-  return psbt
+  if (sysFromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 /* assetAllocationSend
@@ -414,7 +362,7 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -436,8 +384,10 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
   }
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
-  return psbt
+  if (sysFromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 /* assetAllocationBurn
@@ -462,7 +412,7 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -484,8 +434,10 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
   }
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
-  return psbt
+  if (sysFromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 /* assetAllocationMint
@@ -520,7 +472,7 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -566,8 +518,10 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
 
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
-  return psbt
+  if (sysFromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 /* syscoinBurnToAssetAllocation
@@ -591,7 +545,7 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: psbt from bitcoinjs-lib, signed if HDSigner is set.
+Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
@@ -613,8 +567,10 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
   }
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.sign(res, !sysFromXpubOrAddress, utxos.assets)
-  return psbt
+  if (sysFromXpubOrAddress) {
+    return { res: res, assets: utxos.assets }
+  }
+  return await this.signAndSend(res, utxos.assets)
 }
 
 module.exports = {
