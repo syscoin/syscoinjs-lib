@@ -22,12 +22,11 @@ function SyscoinJSLib (HDSigner, blockbookURL, network) {
 /* signAndSend
 Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
+Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.signAndSend = async function (res, assets) {
+SyscoinJSLib.prototype.signAndSend = async function (res, notaryAssets) {
   // notarize if necessary
-  const notaryAssets = utils.getAssetsRequiringNotarizationFromRes(res, assets)
   let psbt = await this.HDSigner.sign(res)
   if (notaryAssets) {
     res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
@@ -52,12 +51,11 @@ SyscoinJSLib.prototype.signAndSend = async function (res, assets) {
 /* signAndSend
 Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
+Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, assets) {
+SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, notaryAssets) {
   // notarize if necessary
-  const notaryAssets = utils.getAssetsRequiringNotarizationFromRes(res, assets)
   let psbt = await utils.signWithHDSigner(res, HDSigner)
   if (notaryAssets) {
     res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
@@ -83,12 +81,11 @@ SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, 
 Purpose: Signs/Notarizes if necessary and Sends transaction to network using WIF
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param wif: Required. Private key in WIF format to sign inputs of the transaction for
-Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
+Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.signAndSendWithWIF = async function (res, wif, assets) {
+SyscoinJSLib.prototype.signAndSendWithWIF = async function (res, wif, notaryAssets) {
   // notarize if necessary
-  const notaryAssets = utils.getAssetsRequiringNotarizationFromRes(res, assets)
   let psbt = await utils.signWithWIF(res, wif, this.network)
   if (notaryAssets) {
     res = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
@@ -138,9 +135,9 @@ SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress
   utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, utxos, this.network, txOpts)
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
   if (fromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 /* assetNew
@@ -205,9 +202,9 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 /* assetUpdate
@@ -279,9 +276,9 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 /* assetSend
@@ -336,9 +333,9 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 /* assetAllocationSend
@@ -385,9 +382,9 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 /* assetAllocationBurn
@@ -435,9 +432,9 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 /* assetAllocationMint
@@ -519,9 +516,9 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 /* syscoinBurnToAssetAllocation
@@ -568,9 +565,9 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utxos.assets }
+    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
   }
-  return await this.signAndSend(res, utxos.assets)
+  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
 }
 
 module.exports = {
