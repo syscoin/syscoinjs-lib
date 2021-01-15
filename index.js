@@ -196,7 +196,7 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
   }
   // create dummy map where GUID will be replaced by deterministic one based on first input txid, we need this so fees will be accurately determined on first place of coinselect
   const assetMap = new Map([
-    [0, { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysReceivingAddress }] }]
+    ['0', { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysReceivingAddress }] }]
   ])
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap, true)
