@@ -287,15 +287,16 @@ Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
   Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
 Param assetMap: Required. Description of Map:
-  Index assetGuid. Required. Numeric Asset GUID you are sending to
+  Index assetGuid. Required. Numeric Asset GUID you are sending to as string
   Value is described below:
     Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send
       Field address. Required. Destination address for value.
+      Field NFTID. Optional. A specific ID for NFT purposes for the asset output as string
   Example:
     const assetMap = new Map([
-      [assetGuid, { outputs: [{ value: new BN(1000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
+      [assetGuid, { outputs: [{ value: new BN(1000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }, NFTID: '1'] }]
     ])
     Would send 1000 satoshi to address 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' in asset 'assetGuid'
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
@@ -316,6 +317,14 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
+  }
+  let NFTID = null
+  for (const valueAssetObj of assetMap.values()) {
+    if (NFTID && NFTID !== valueAssetObj.NFTID) {
+      console.log('You must use one type of asset output only (NFT vs FT) and with NFT only 1 type is allowed in assetSend per transaction.')
+      return null
+    }
+    NFTID = valueAssetObj.NFTID
   }
   const BN_ZERO = new BN(0)
   const valueAssetObj = assetMap.values().next().value

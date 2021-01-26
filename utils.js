@@ -277,13 +277,14 @@ function getAssetsRequiringNotarizationFromRes (res, assets) {
   for (let i = 0; i < res.inputs.length; i++) {
     const input = res.inputs[i]
     if (input.assetInfo) {
-      if (!assets.has(input.assetInfo.assetGuid)) {
+      const baseAssetID = syscointx.coinSelect.utils.getBaseAssetID(input.assetInfo.assetGuid)
+      if (!assets.has(baseAssetID)) {
         console.log('Asset input not found in the UTXO assets map!')
         return null
       }
-      const valueAssetObj = assets.get(input.assetInfo.assetGuid)
+      const valueAssetObj = assets.get(baseAssetID)
       if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
-        assetsUsedInTxNeedingNotarization.set(input.assetInfo.assetGuid, valueAssetObj)
+        assetsUsedInTxNeedingNotarization.set(baseAssetID, valueAssetObj)
         foundNotary = true
       }
     }
@@ -486,6 +487,13 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
   if (!txOpts) {
     txOpts = { rbf: false }
   }
+  // create base ID map once and check later per UTXO if base ID exists in map
+  const baseAssetIDMap = new Map()
+  if (assetMap) {
+    for (const k of assetMap.keys()) {
+      baseAssetIDMap.set(syscointx.coinSelect.utils.getBaseAssetID(k), true)
+    }
+  }
   const sanitizedUtxos = { utxos: [] }
   if (Array.isArray(utxoObj)) {
     utxoObj.utxos = utxoObj
@@ -539,6 +547,7 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
 
       assetObj.maxsupply = new BN(asset.maxSupply)
       assetObj.precision = asset.decimals
+
       sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
     })
   }
@@ -554,8 +563,9 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         newUtxo.type = 'BECH32'
       }
       if (utxo.assetInfo) {
+        const baseAssetID = syscointx.coinSelect.utils.getBaseAssetID(utxo.assetInfo.assetGuid)
         newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
-        const assetObj = sanitizedUtxos.assets.get(utxo.assetInfo.assetGuid)
+        const assetObj = sanitizedUtxos.assets.get(baseAssetID)
         // sanity check to ensure sanitizedUtxos.assets has all of the assets being added to UTXO that are assets
         if (!assetObj) {
           return
@@ -564,7 +574,9 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         if (!txOpts.allowOtherNotarizedAssetInputs) {
           // if notarization is required but it isn't a requested asset to send we skip this UTXO as would be dependent on a foreign asset notary
           if (assetObj.notarykeyid && assetObj.notarykeyid.length > 0) {
-            if (!assetMap || !assetMap.has(utxo.assetInfo.assetGuid)) {
+            const baseAssetID = syscointx.coinSelect.utils.getBaseAssetID(utxo.assetInfo.assetGuid)
+            // check against base key's of the assetMap which is requested assets. User always passes in guid's without regard of knowing if its an NFT, thus we need to extract base ID and compare with base ID of UTXO
+            if (!assetMap || !baseAssetIDMap.has(baseAssetID)) {
               console.log('SKIPPING notary utxo')
               return
             }
