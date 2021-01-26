@@ -147,7 +147,6 @@ Returns: Returns txid in response or error
 async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
   try {
     const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
-    console.log('post req')
     if (request && request.data) {
       if (myHDSignerObj) {
         await fetchBackendAccount(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
