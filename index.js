@@ -318,16 +318,6 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
   }
-  let NFTID = null
-  for (const valueAssetObj of assetMap.values()) {
-    for (const output of valueAssetObj.outputs) {
-      if (NFTID && NFTID !== output.NFTID) {
-        console.log('You must use one type of asset output only (NFT vs FT) and with NFT only 1 type is allowed in assetSend per transaction.')
-        return null
-      }
-      NFTID = output.NFTID
-    }
-  }
   const BN_ZERO = new BN(0)
   const valueAssetObj = assetMap.values().next().value
   valueAssetObj.outputs.push({ address: sysChangeAddress, value: BN_ZERO })
