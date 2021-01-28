@@ -276,7 +276,7 @@ function getAssetsRequiringNotarizationFromRes (res, assets) {
   for (let i = 0; i < res.inputs.length; i++) {
     const input = res.inputs[i]
     if (input.assetInfo) {
-      const baseAssetID = syscointx.coinSelect.utils.getBaseAssetID(input.assetInfo.assetGuid)
+      const baseAssetID = getBaseAssetID(input.assetInfo.assetGuid)
       if (!assets.has(baseAssetID)) {
         console.log('Asset input not found in the UTXO assets map!')
         return null
@@ -490,7 +490,7 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
   const baseAssetIDMap = new Map()
   if (assetMap) {
     for (const k of assetMap.keys()) {
-      baseAssetIDMap.set(syscointx.coinSelect.utils.getBaseAssetID(k), true)
+      baseAssetIDMap.set(getBaseAssetID(k), true)
     }
   }
   const sanitizedUtxos = { utxos: [] }
@@ -562,7 +562,7 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         newUtxo.type = 'BECH32'
       }
       if (utxo.assetInfo) {
-        const baseAssetID = syscointx.coinSelect.utils.getBaseAssetID(utxo.assetInfo.assetGuid)
+        const baseAssetID = getBaseAssetID(utxo.assetInfo.assetGuid)
         newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
         const assetObj = sanitizedUtxos.assets.get(baseAssetID)
         // sanity check to ensure sanitizedUtxos.assets has all of the assets being added to UTXO that are assets
@@ -573,7 +573,7 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         if (!txOpts.allowOtherNotarizedAssetInputs) {
           // if notarization is required but it isn't a requested asset to send we skip this UTXO as would be dependent on a foreign asset notary
           if (assetObj.notarykeyid && assetObj.notarykeyid.length > 0) {
-            const baseAssetID = syscointx.coinSelect.utils.getBaseAssetID(utxo.assetInfo.assetGuid)
+            const baseAssetID = getBaseAssetID(utxo.assetInfo.assetGuid)
             // check against base key's of the assetMap which is requested assets. User always passes in guid's without regard of knowing if its an NFT, thus we need to extract base ID and compare with base ID of UTXO
             if (!assetMap || !baseAssetIDMap.has(baseAssetID)) {
               console.log('SKIPPING notary utxo')
@@ -1093,6 +1093,16 @@ class SPSBT extends bjs.Psbt {
     return tx
   }
 }
+
+function createAssetID (NFTID, assetGuid) {
+  const BN_ASSET = new BN(NFTID || 0).shln(32).or(new BN(assetGuid))
+  return BN_ASSET.toString(10)
+}
+
+function getBaseAssetID (assetGuid) {
+  return new BN(assetGuid).and(new BN(0xFFFFFFFF)).toString(10)
+}
+
 bjs.Psbt = SPSBT
 module.exports = {
   bitcoinXPubTypes: bitcoinXPubTypes,
@@ -1118,5 +1128,7 @@ module.exports = {
   signWithHDSigner: signWithHDSigner,
   signWithWIF: signWithWIF,
   bitcoinjs: bjs,
-  BN: BN
+  BN: BN,
+  createAssetID: createAssetID,
+  getBaseAssetID: getBaseAssetID
 }

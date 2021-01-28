@@ -293,10 +293,9 @@ Param assetMap: Required. Description of Map:
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send
       Field address. Required. Destination address for value.
-      Field NFTID. Optional. A specific ID for NFT purposes for the asset output as string
   Example:
     const assetMap = new Map([
-      [assetGuid, { outputs: [{ value: new BN(1000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }, NFTID: '1'] }]
+      [assetGuid, { outputs: [{ value: new BN(1000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
     ])
     Would send 1000 satoshi to address 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' in asset 'assetGuid'
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
@@ -305,7 +304,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -319,10 +318,26 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMap, sysChangeAd
     }
   }
   const BN_ZERO = new BN(0)
-  const valueAssetObj = assetMap.values().next().value
-  valueAssetObj.outputs.push({ address: sysChangeAddress, value: BN_ZERO })
-  valueAssetObj.changeAddress = sysChangeAddress
-
+  const assetMap = new Map()
+  // create new map with base ID's setting zero val output in the base asset outputs array
+  for (const [assetGuid, valueAssetObj] of assetMapIn.entries()) {
+    const baseAssetID = utils.getBaseAssetID(assetGuid)
+    // if NFT
+    if (baseAssetID !== assetGuid) {
+      // likely NFT issuance only with no base value asset issued, create new base value object
+      if (!assetMapIn.has(baseAssetID)) {
+        const valueBaseAssetObj = { outputs: [{ address: sysChangeAddress, value: BN_ZERO }] }
+        valueBaseAssetObj.changeAddress = sysChangeAddress
+        assetMap.set(baseAssetID, valueBaseAssetObj)
+      }
+      assetMap.set(assetGuid, valueAssetObj)
+    // regular FT
+    } else {
+      valueAssetObj.outputs.push({ address: sysChangeAddress, value: BN_ZERO })
+      valueAssetObj.changeAddress = sysChangeAddress
+      assetMap.set(assetGuid, valueAssetObj)
+    }
+  }
   if (this.HDSigner) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
