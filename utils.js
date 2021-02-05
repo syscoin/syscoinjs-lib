@@ -226,16 +226,24 @@ async function getNotarizationSignatures (notaryAssets, txHex) {
       console.log('getNotarizationSignatures: Invalid notary details: ' + JSON.stringify(valueAssetObj))
       continue
     }
+    if (valueAssetObj.notarydone) {
+      continue
+    }
     const responseNotary = await fetchNotarizationFromEndPoint(valueAssetObj.notarydetails.endpoint.toString(), txHex)
     if (!responseNotary) {
       console.log('No response from notary')
     } else if (responseNotary.error) {
       console.log('could not notarize tx! error: ' + responseNotary.error.message)
-    } else if (responseNotary.sig) {
-      const notarysig = Buffer.from(responseNotary.sig, 'base64')
-      if (notarysig.length === 65) {
-        valueAssetObj.notarysig = notarysig
-        notarizationDone = true
+    } else if (responseNotary.sigs) {
+      for (let i = 0; i < responseNotary.sigs; i++) {
+        const sigObj = responseNotary.sigs[i]
+        const notarysig = Buffer.from(sigObj.sig, 'base64')
+        const notaryAssetObj = notaryAssets.get(sigObj.asset)
+        if (notaryAssetObj && notarysig.length === 65) {
+          notaryAssetObj.notarysig = notarysig
+          notaryAssetObj.notarydone = true
+          notarizationDone = true
+        }
       }
     } else {
       console.log('Unrecognized response from notary backend: ' + responseNotary)
