@@ -37,6 +37,10 @@ fixtures.forEach(async function (f) {
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_ACTIVATE) {
       const psbt = await syscoinjs.assetNew(f.assetOpts, txOpts, f.sysChangeAddress, f.sysReceivingAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      // ensure getAssetsFromTx returns the asset we created as expected
+      const tx = bitcoin.Transaction.fromHex(psbt.extractTransaction().toHex())
+      const assets = syscointx.getAssetsFromTx(tx)
+      t.same(assets.get(f.expected.asset.allocation[0].assetGuid), {})
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
