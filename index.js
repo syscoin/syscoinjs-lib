@@ -155,7 +155,7 @@ Param assetOpts: Required. Asset details. Fields described below:
     Field hdrequired. Optional. Default is 0 (false). If HD account XPUB and HD path information is required by the notary to verify change addresses belong to the sender account.
   Field auxfeedetails. Optional. Enforce auxiliary fees to every transaction on this asset. Fields described below:
     Field auxfeekeyid. Required. AuxFee KeyID, the hash160 of the address used where fees are paid out to. Should be P2WPKH.
-    Field auxfee. Required. Array of AuxFee amounts based on total value being sent. Fields described below:
+    Field auxfees. Required. Array of AuxFee amounts based on total value being sent. Fields described below:
       Field bound. Required. The amount threshold (in satoshi) where if total output value for this asset is at or above this amount apply a percentage fee.
       Field percent. Required. Percent of total output value applied as a fee. Multiplied by 1000 to avoid floating point precision. For example 1% would be entered as 1000. 0.5% would be entered as 500. 0.001% would be entered as 1 (tenth of a basis point).
   Field updatecapabilityflags. Optional. Defaults to 127 or ALL capabilities. Update capabilities on this asset. Fields are masks which are described below:
@@ -232,7 +232,7 @@ Param assetOpts: Required. Asset details. Fields described below:
     Field hdrequired. Optional. Default is 0 (false). If HD account XPUB and HD path information is required by the notary to verify change addresses belong to the sender account.
   Field auxfeedetails. Optional. Enforce auxiliary fees to every transaction on this asset. Fields described below:
     Field auxfeekeyid. Required. AuxFee KeyID, the hash160 of the address used where fees are paid out to. Should be P2WPKH.
-    Field auxfee. Required. Array of AuxFee amounts based on total value being sent. Fields described below:
+    Field auxfees. Required. Array of AuxFee amounts based on total value being sent. Fields described below:
       Field bound. Required. The amount threshold (in satoshi) where if total output value for this asset is at or above this amount apply a percentage fee.
       Field percent. Required. Percent of total output value applied as a fee. Multiplied by 1000 to avoid floating point precision. For example 1% would be entered as 1000. 0.5% would be entered as 500. 0.001% would be entered as 1 (tenth of a basis point).
   Field updatecapabilityflags. Optional. Defaults to 127 or ALL capabilities. Update capabilities on this asset. Fields are masks which are described below:
