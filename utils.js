@@ -597,6 +597,18 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
   return sanitizedUtxos
 }
 
+/* getMemoFromScript
+Purpose: Return memo from a script, null otherwise
+Param script: Required. OP_RETURN script output
+*/
+function getMemoFromScript (script) {
+  const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(script)
+  if (assetAllocations) {
+    return assetAllocations.memo
+  }
+  return null
+}
+
 /* HDSigner
 Purpose: Manage HD wallet and accounts, connects to SyscoinJS object
 Param mnemonic: Required. Bip32 seed phrase
@@ -1135,6 +1147,7 @@ module.exports = {
   notarizeRes: notarizeRes,
   signWithHDSigner: signWithHDSigner,
   signWithWIF: signWithWIF,
+  getMemoFromScript: getMemoFromScript,
   bitcoinjs: bjs,
   BN: BN,
   createAssetID: createAssetID,
