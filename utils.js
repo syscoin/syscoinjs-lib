@@ -615,7 +615,8 @@ Purpose: Return memo from an array of outputs by finding the OP_RETURN output an
 Param outputs: Required. Tx output array
 */
 function getMemoFromOpReturn (outputs) {
-  outputs.forEach(output => {
+  for (let i = 0; i < outputs.length; i++) {
+    const output = outputs[i]
     if (output.script) {
       // find opreturn
       const chunks = bjs.script.decompile(output.script)
@@ -623,7 +624,7 @@ function getMemoFromOpReturn (outputs) {
         return getMemoFromScript(chunks[1])
       }
     }
-  })
+  }
   return null
 }
 
