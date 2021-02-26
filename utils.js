@@ -4,6 +4,7 @@ const BN = require('bn.js')
 const BIP84 = require('bip84')
 const CryptoJS = require('crypto-js')
 const bjs = require('bitcoinjs-lib')
+const bitcoinops = require('bitcoin-ops')
 const varuint = require('varuint-bitcoin')
 const { GetProof } = require('eth-proof')
 const { Log, Receipt, Transaction } = require('eth-object')
@@ -609,6 +610,23 @@ function getMemoFromScript (script) {
   return null
 }
 
+/* getMemoFromOpReturn
+Purpose: Return memo from an array of outputs by finding the OP_RETURN output and extracting the memo from the script, return null if not found
+Param outputs: Required. Tx output array
+*/
+function getMemoFromOpReturn (outputs) {
+  outputs.forEach(output => {
+    if (output.script) {
+      // find opreturn
+      const chunks = bjs.script.decompile(output.script)
+      if (chunks[0] === bitcoinops.OP_RETURN) {
+        return getMemoFromScript(chunks[1])
+      }
+    }
+  })
+  return null
+}
+
 /* HDSigner
 Purpose: Manage HD wallet and accounts, connects to SyscoinJS object
 Param mnemonic: Required. Bip32 seed phrase
@@ -1148,6 +1166,7 @@ module.exports = {
   signWithHDSigner: signWithHDSigner,
   signWithWIF: signWithWIF,
   getMemoFromScript: getMemoFromScript,
+  getMemoFromOpReturn: getMemoFromOpReturn,
   bitcoinjs: bjs,
   BN: BN,
   createAssetID: createAssetID,
