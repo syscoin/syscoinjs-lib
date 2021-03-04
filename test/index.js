@@ -156,8 +156,8 @@ fixtures.forEach(async function (f) {
       t.same(HDSigner.changeIndex, f.expected.changeIndex)
       t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      t.same(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')), true)
-      t.same(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('test memo')), true)
+      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
+      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('test memo')) != null)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
@@ -177,8 +177,8 @@ fixtures.forEach(async function (f) {
       t.same(HDSigner.changeIndex, f.expected.changeIndex)
       t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      t.same(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')), true)
-      t.same(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('test memo')), true)
+      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
+      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, Buffer.from('test memo')) != null)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn

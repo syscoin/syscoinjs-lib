@@ -633,7 +633,7 @@ function getMemoFromOpReturn (outputs) {
 }
 
 /* setTransactionMemo
-Purpose: Return memo from an transaction hex inside of the OP_RETURN output and extracting the memo from the script, return null if not found
+Purpose: Return transaction with memo appended to the inside of the OP_RETURN output, return null if not found
 Param rawHex: Required. Raw transaction hex
 Param buffMemo: Required. Buffer memo to put into the transaction
 */
@@ -641,7 +641,7 @@ function setTransactionMemo (rawHex, buffMemo) {
   const txn = bjs.Transaction.fromHex(rawHex)
   let processed = false
   if (!buffMemo) {
-    return false
+    return txn
   }
   for (let key = 0; key < txn.outs.length; key++) {
     const out = txn.outs[key]
@@ -657,12 +657,18 @@ function setTransactionMemo (rawHex, buffMemo) {
   }
   if (processed) {
     const memoRet = getMemoFromOpReturn(txn.outs)
-    return memoRet && memoRet.equals(buffMemo)
+    if (!memoRet || !memoRet.equals(buffMemo)) {
+      return null
+    }
+    return txn
   }
   const updatedData = [syscointx.utils.memoHeader, buffMemo]
   txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
   const memoRet = getMemoFromOpReturn(txn.outs)
-  return memoRet && memoRet.equals(buffMemo)
+  if (!memoRet || !memoRet.equals(buffMemo)) {
+    return null
+  }
+  return txn
 }
 
 /* HDSigner
