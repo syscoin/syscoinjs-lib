@@ -601,11 +601,12 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
 /* getMemoFromScript
 Purpose: Return memo from a script, null otherwise
 Param script: Required. OP_RETURN script output
+Param memoHeader: Required. Memo prefix, application specific
 */
-function getMemoFromScript (script) {
+function getMemoFromScript (script, memoHeader) {
   const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(script)
-  if (assetAllocations && assetAllocations.memo.indexOf(syscointx.utils.memoHeader) === 0) {
-    return assetAllocations.memo.slice(syscointx.utils.memoHeader.length)
+  if (assetAllocations && assetAllocations.memo.indexOf(memoHeader) === 0) {
+    return assetAllocations.memo.slice(memoHeader.length)
   }
   return null
 }
@@ -613,8 +614,9 @@ function getMemoFromScript (script) {
 /* getMemoFromOpReturn
 Purpose: Return memo from an array of outputs by finding the OP_RETURN output and extracting the memo from the script, return null if not found
 Param outputs: Required. Tx output array
+Param memoHeader: Required. Memo prefix, application specific
 */
-function getMemoFromOpReturn (outputs) {
+function getMemoFromOpReturn (outputs, memoHeader) {
   for (let i = 0; i < outputs.length; i++) {
     const output = outputs[i]
     if (output.script) {
@@ -622,10 +624,10 @@ function getMemoFromOpReturn (outputs) {
       const chunks = bjs.script.decompile(output.script)
       if (chunks[0] === bitcoinops.OP_RETURN) {
         // if header at beginning means this is standard syscoin transaction otherwise its an asset tx
-        if (chunks[1].indexOf(syscointx.utils.memoHeader) === 0) {
-          return chunks[1].slice(syscointx.utils.memoHeader.length)
+        if (chunks[1].indexOf(memoHeader) === 0) {
+          return chunks[1].slice(memoHeader.length)
         }
-        return getMemoFromScript(chunks[1])
+        return getMemoFromScript(chunks[1], memoHeader)
       }
     }
   }
@@ -635,9 +637,10 @@ function getMemoFromOpReturn (outputs) {
 /* setTransactionMemo
 Purpose: Return transaction with memo appended to the inside of the OP_RETURN output, return null if not found
 Param rawHex: Required. Raw transaction hex
+Param memoHeader: Required. Memo prefix, application specific
 Param buffMemo: Required. Buffer memo to put into the transaction
 */
-function setTransactionMemo (rawHex, buffMemo) {
+function setTransactionMemo (rawHex, memoHeader, buffMemo) {
   const txn = bjs.Transaction.fromHex(rawHex)
   let processed = false
   if (!buffMemo) {
@@ -650,21 +653,21 @@ function setTransactionMemo (rawHex, buffMemo) {
       continue
     }
     txn.outs.splice(key, 1)
-    const updatedData = [chunksIn[1], syscointx.utils.memoHeader, buffMemo]
+    const updatedData = [chunksIn[1], memoHeader, buffMemo]
     txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
     processed = true
     break
   }
   if (processed) {
-    const memoRet = getMemoFromOpReturn(txn.outs)
+    const memoRet = getMemoFromOpReturn(txn.outs, memoHeader)
     if (!memoRet || !memoRet.equals(buffMemo)) {
       return null
     }
     return txn
   }
-  const updatedData = [syscointx.utils.memoHeader, buffMemo]
+  const updatedData = [memoHeader, buffMemo]
   txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
-  const memoRet = getMemoFromOpReturn(txn.outs)
+  const memoRet = getMemoFromOpReturn(txn.outs, memoHeader)
   if (!memoRet || !memoRet.equals(buffMemo)) {
     return null
   }

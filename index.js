@@ -15,7 +15,7 @@ function SyscoinJSLib (HDSigner, blockbookURL, network) {
     this.network = network || this.HDSigner.network
   } else {
     this.HDSigner = null
-    this.network = network
+    this.network = network || utils.syscoinNetworks.mainnet
   }
 }
 
@@ -359,7 +359,8 @@ Purpose: Send an asset allocations to other users.
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
   Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
-  Field memo. Optional. An optional data carrying 80 byte field to include in the transaction.
+  Field memo. Optional. An optional data carrying byte field to include in the transaction.
+  Field memoHeader. Optional. Header that prefixes memo field, memo + memoHeader is max 80 bytes
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
