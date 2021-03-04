@@ -604,8 +604,8 @@ Param script: Required. OP_RETURN script output
 */
 function getMemoFromScript (script) {
   const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(script)
-  if (assetAllocations) {
-    return assetAllocations.memo
+  if (assetAllocations && assetAllocations.memo.indexOf(syscointx.utils.memoHeader) === 0) {
+    return assetAllocations.memo.slice(syscointx.utils.memoHeader.length)
   }
   return null
 }
@@ -621,11 +621,48 @@ function getMemoFromOpReturn (outputs) {
       // find opreturn
       const chunks = bjs.script.decompile(output.script)
       if (chunks[0] === bitcoinops.OP_RETURN) {
+        // if header at beginning means this is standard syscoin transaction otherwise its an asset tx
+        if (chunks[1].indexOf(syscointx.utils.memoHeader) === 0) {
+          return chunks[1].slice(syscointx.utils.memoHeader.length)
+        }
         return getMemoFromScript(chunks[1])
       }
     }
   }
   return null
+}
+
+/* setTransactionMemo
+Purpose: Return memo from an transaction hex inside of the OP_RETURN output and extracting the memo from the script, return null if not found
+Param rawHex: Required. Raw transaction hex
+Param buffMemo: Required. Buffer memo to put into the transaction
+*/
+function setTransactionMemo (rawHex, buffMemo) {
+  const txn = bjs.Transaction.fromHex(rawHex)
+  let processed = false
+  if (!buffMemo) {
+    return false
+  }
+  for (let key = 0; key < txn.outs.length; key++) {
+    const out = txn.outs[key]
+    const chunksIn = bjs.script.decompile(out.script)
+    if (chunksIn[0] !== bjs.opcodes.OP_RETURN) {
+      continue
+    }
+    txn.outs.splice(key, 1)
+    const updatedData = [chunksIn[1], syscointx.utils.memoHeader, buffMemo]
+    txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
+    processed = true
+    break
+  }
+  if (processed) {
+    const memoRet = getMemoFromOpReturn(txn.outs)
+    return memoRet && memoRet.equals(buffMemo)
+  }
+  const updatedData = [syscointx.utils.memoHeader, buffMemo]
+  txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
+  const memoRet = getMemoFromOpReturn(txn.outs)
+  return memoRet && memoRet.equals(buffMemo)
 }
 
 /* HDSigner
@@ -1171,5 +1208,6 @@ module.exports = {
   bitcoinjs: bjs,
   BN: BN,
   createAssetID: createAssetID,
-  getBaseAssetID: getBaseAssetID
+  getBaseAssetID: getBaseAssetID,
+  setTransactionMemo: setTransactionMemo
 }
