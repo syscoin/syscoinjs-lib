@@ -169,7 +169,39 @@ Returns: Returns JSON object in response, transaction object in JSON
 async function fetchBackendRawTx (backendURL, txid) {
   try {
     const request = await axios.get(backendURL + '/api/v2/tx/' + txid)
-    if (request && request.data && request.data) {
+    if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    return e
+  }
+}
+
+/* fetchProviderInfo
+Purpose: Get prover info including blockbook and backend data
+Returns: Returns JSON object in response, provider object in JSON
+*/
+async function fetchProviderInfo (backendURL) {
+  try {
+    const request = await axios.get(backendURL + '/api/v2/tx/')
+    if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    return e
+  }
+}
+
+/* fetchBackendBlock
+Purpose: Get block from backend
+Returns: Returns JSON object in response, block object in JSON
+*/
+async function fetchBackendBlock (backendURL, blockhash) {
+  try {
+    const request = await axios.get(backendURL + '/api/v2/block/' + blockhash)
+    if (request && request.data) {
       return request.data
     }
     return null
@@ -1205,6 +1237,8 @@ module.exports = {
   fetchBackendAsset: fetchBackendAsset,
   fetchBackendRawTx: fetchBackendRawTx,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
+  fetchProviderInfo: fetchProviderInfo,
+  fetchBackendBlock: fetchBackendBlock,
   sendRawTransaction: sendRawTransaction,
   buildEthProof: buildEthProof,
   createPSBTFromRes: createPSBTFromRes,
