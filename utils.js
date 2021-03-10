@@ -184,7 +184,7 @@ Returns: Returns JSON object in response, provider object in JSON
 */
 async function fetchProviderInfo (backendURL) {
   try {
-    const request = await axios.get(backendURL + '/api/v2/tx/')
+    const request = await axios.get(backendURL + '/api/v2')
     if (request && request.data) {
       return request.data
     }
