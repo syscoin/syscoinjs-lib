@@ -736,7 +736,7 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.accountIndex = 0
 
   /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.fromSeed = new BIP84.fromSeed(mnemonic, this.isTestnet, SLIP44, this.pubTypes, this.network)
+  this.fromSeed = new BIP84.fromSeed(mnemonic, password, this.isTestnet, SLIP44, this.pubTypes, this.network)
   // try to restore, if it does not succeed then initialize from scratch
   if (!this.password || !this.restore(this.password)) {
     this.createAccount()

@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "bip84": "^0.2.4",
+    "bip84": "^0.2.5",
     "bitcoin-ops": "^1.4.1",
     "bitcoinjs-lib": "^5.2.0",
     "bn.js": "^5.1.3",
