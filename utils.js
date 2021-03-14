@@ -636,9 +636,9 @@ Param script: Required. OP_RETURN script output
 Param memoHeader: Required. Memo prefix, application specific
 */
 function getMemoFromScript (script, memoHeader) {
-  const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(script)
-  if (assetAllocations && assetAllocations.memo.indexOf(memoHeader) === 0) {
-    return assetAllocations.memo.slice(memoHeader.length)
+  const pos = script.indexOf(memoHeader)
+  if (pos >= 0) {
+    return script.slice(pos + memoHeader.length)
   }
   return null
 }
@@ -655,10 +655,6 @@ function getMemoFromOpReturn (outputs, memoHeader) {
       // find opreturn
       const chunks = bjs.script.decompile(output.script)
       if (chunks[0] === bitcoinops.OP_RETURN) {
-        // if header at beginning means this is standard syscoin transaction otherwise its an asset tx
-        if (chunks[1].indexOf(memoHeader) === 0) {
-          return chunks[1].slice(memoHeader.length)
-        }
         return getMemoFromScript(chunks[1], memoHeader)
       }
     }
