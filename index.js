@@ -8,7 +8,7 @@ Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
 function SyscoinJSLib (HDSigner, blockbookURL, network) {
-  this.blockbookURL = blockbookURL || 'https://localhost:80'
+  this.blockbookURL = blockbookURL
   if (HDSigner) {
     this.HDSigner = HDSigner
     this.HDSigner.blockbookURL = blockbookURL
@@ -36,14 +36,22 @@ SyscoinJSLib.prototype.signAndSend = async function (res, notaryAssets) {
       return psbt
     }
   }
-  const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), this.HDSigner)
-  if (resSend.error) {
-    console.log('could not send tx! error: ' + resSend.error.message)
-  } else if (resSend.result) {
-    console.log('tx successfully sent! txid: ' + resSend.result)
-    return psbt
-  } else {
-    console.log('Unrecognized response from backend: ' + resSend)
+  if (this.blockbookURL) {
+    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), this.HDSigner)
+    if (resSend.error) {
+      throw Object.assign(
+        new Error('could not send tx! error: ' + resSend.error.message),
+        { code: 402 }
+      )
+    } else if (resSend.result) {
+      console.log('tx successfully sent! txid: ' + resSend.result)
+      return psbt
+    } else {
+      throw Object.assign(
+        new Error('Unrecognized response from backend: ' + resSend),
+        { code: 402 }
+      )
+    }
   }
   return psbt
 }
@@ -65,14 +73,22 @@ SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, 
       return psbt
     }
   }
-  const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), HDSigner)
-  if (resSend.error) {
-    console.log('could not send tx! error: ' + resSend.error.message)
-  } else if (resSend.result) {
-    console.log('tx successfully sent! txid: ' + resSend.result)
-    return psbt
-  } else {
-    console.log('Unrecognized response from backend: ' + resSend)
+  if (this.blockbookURL) {
+    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), HDSigner)
+    if (resSend.error) {
+      throw Object.assign(
+        new Error('could not send tx! error: ' + resSend.error.message),
+        { code: 402 }
+      )
+    } else if (resSend.result) {
+      console.log('tx successfully sent! txid: ' + resSend.result)
+      return psbt
+    } else {
+      throw Object.assign(
+        new Error('Unrecognized response from backend: ' + resSend),
+        { code: 402 }
+      )
+    }
   }
   return psbt
 }
@@ -95,14 +111,22 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (res, wif, notaryAsse
       return psbt
     }
   }
-  const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex())
-  if (resSend.error) {
-    console.log('could not send tx! error: ' + resSend.error.message)
-  } else if (resSend.result) {
-    console.log('tx successfully sent! txid: ' + resSend.result)
-    return psbt
-  } else {
-    console.log('Unrecognized response from backend: ' + resSend)
+  if (this.blockbookURL) {
+    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex())
+    if (resSend.error) {
+      throw Object.assign(
+        new Error('could not send tx! error: ' + resSend.error.message),
+        { code: 402 }
+      )
+    } else if (resSend.result) {
+      console.log('tx successfully sent! txid: ' + resSend.result)
+      return psbt
+    } else {
+      throw Object.assign(
+        new Error('Unrecognized response from backend: ' + resSend),
+        { code: 402 }
+      )
+    }
   }
   return psbt
 }
