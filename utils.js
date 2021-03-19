@@ -210,6 +210,28 @@ async function fetchBackendBlock (backendURL, blockhash) {
   }
 }
 
+/* fetchEstimateFee
+Purpose: Get estimated fee from backend
+Returns: Returns JSON object in response, fee object in JSON
+Param options: Optional. possible value conservative=true or false for conservative fee. Default is true.
+Returns: Returns JSON fee object in response
+*/
+async function fetchEstimateFee (backendURL, blocks, options) {
+  try {
+    let url = backendURL + '/api/v2/estimatefee/' + blocks
+    if (options) {
+      url += '?' + options
+    }
+    const request = await axios.get(url)
+    if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    return e
+  }
+}
+
 /* createPSBTFromRes
 Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
@@ -268,7 +290,7 @@ async function getNotarizationSignatures (notaryAssets, txHex) {
     } else if (responseNotary.error) {
       console.log('could not notarize tx! error: ' + responseNotary.error.message)
     } else if (responseNotary.sigs) {
-      for (let i = 0; i < responseNotary.sigs; i++) {
+      for (let i = 0; i < responseNotary.sigs.length; i++) {
         const sigObj = responseNotary.sigs[i]
         const notarysig = Buffer.from(sigObj.sig, 'base64')
         const notaryAssetObj = notaryAssets.get(sigObj.asset)
@@ -1235,6 +1257,7 @@ module.exports = {
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   fetchProviderInfo: fetchProviderInfo,
   fetchBackendBlock: fetchBackendBlock,
+  fetchEstimateFee: fetchEstimateFee,
   sendRawTransaction: sendRawTransaction,
   buildEthProof: buildEthProof,
   createPSBTFromRes: createPSBTFromRes,
