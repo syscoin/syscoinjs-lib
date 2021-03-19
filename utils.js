@@ -213,6 +213,7 @@ async function fetchBackendBlock (backendURL, blockhash) {
 /* fetchEstimateFee
 Purpose: Get estimated fee from backend
 Returns: Returns JSON object in response, fee object in JSON
+Param blocks: Required. How many blocks to estimate fee for.
 Param options: Optional. possible value conservative=true or false for conservative fee. Default is true.
 Returns: Returns JSON fee object in response
 */
