@@ -4,6 +4,7 @@ const BN = require('bn.js')
 const BIP84 = require('bip84')
 const CryptoJS = require('crypto-js')
 const bjs = require('bitcoinjs-lib')
+const bitcoinops = require('bitcoin-ops')
 const varuint = require('varuint-bitcoin')
 const { GetProof } = require('eth-proof')
 const { Log, Receipt, Transaction } = require('eth-object')
@@ -652,6 +653,78 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
   return sanitizedUtxos
 }
 
+/* getMemoFromScript
+Purpose: Return memo from a script, null otherwise
+Param script: Required. OP_RETURN script output
+Param memoHeader: Required. Memo prefix, application specific
+*/
+function getMemoFromScript (script, memoHeader) {
+  const pos = script.indexOf(memoHeader)
+  if (pos >= 0) {
+    return script.slice(pos + memoHeader.length)
+  }
+  return null
+}
+
+/* getMemoFromOpReturn
+Purpose: Return memo from an array of outputs by finding the OP_RETURN output and extracting the memo from the script, return null if not found
+Param outputs: Required. Tx output array
+Param memoHeader: Required. Memo prefix, application specific
+*/
+function getMemoFromOpReturn (outputs, memoHeader) {
+  for (let i = 0; i < outputs.length; i++) {
+    const output = outputs[i]
+    if (output.script) {
+      // find opreturn
+      const chunks = bjs.script.decompile(output.script)
+      if (chunks[0] === bitcoinops.OP_RETURN) {
+        return getMemoFromScript(chunks[1], memoHeader)
+      }
+    }
+  }
+  return null
+}
+
+/* setTransactionMemo
+Purpose: Return transaction with memo appended to the inside of the OP_RETURN output, return null if not found
+Param rawHex: Required. Raw transaction hex
+Param memoHeader: Required. Memo prefix, application specific
+Param buffMemo: Required. Buffer memo to put into the transaction
+*/
+function setTransactionMemo (rawHex, memoHeader, buffMemo) {
+  const txn = bjs.Transaction.fromHex(rawHex)
+  let processed = false
+  if (!buffMemo) {
+    return txn
+  }
+  for (let key = 0; key < txn.outs.length; key++) {
+    const out = txn.outs[key]
+    const chunksIn = bjs.script.decompile(out.script)
+    if (chunksIn[0] !== bjs.opcodes.OP_RETURN) {
+      continue
+    }
+    txn.outs.splice(key, 1)
+    const updatedData = [chunksIn[1], memoHeader, buffMemo]
+    txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
+    processed = true
+    break
+  }
+  if (processed) {
+    const memoRet = getMemoFromOpReturn(txn.outs, memoHeader)
+    if (!memoRet || !memoRet.equals(buffMemo)) {
+      return null
+    }
+    return txn
+  }
+  const updatedData = [memoHeader, buffMemo]
+  txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
+  const memoRet = getMemoFromOpReturn(txn.outs, memoHeader)
+  if (!memoRet || !memoRet.equals(buffMemo)) {
+    return null
+  }
+  return txn
+}
+
 /* HDSigner
 Purpose: Manage HD wallet and accounts, connects to SyscoinJS object
 Param mnemonic: Required. Bip32 seed phrase
@@ -1193,8 +1266,11 @@ module.exports = {
   notarizeRes: notarizeRes,
   signWithHDSigner: signWithHDSigner,
   signWithWIF: signWithWIF,
+  getMemoFromScript: getMemoFromScript,
+  getMemoFromOpReturn: getMemoFromOpReturn,
   bitcoinjs: bjs,
   BN: BN,
   createAssetID: createAssetID,
-  getBaseAssetID: getBaseAssetID
+  getBaseAssetID: getBaseAssetID,
+  setTransactionMemo: setTransactionMemo
 }
