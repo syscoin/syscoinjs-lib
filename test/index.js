@@ -5,7 +5,6 @@ const tape = require('tape')
 const syscointx = require('syscointx-js')
 const bitcoin = sjs.utils.bitcoinjs
 const bitcoinops = require('bitcoin-ops')
-const memoHeader = Buffer.from([0xff, 0xff, 0xaf, 0xaf, 0xaa, 0xaa])
 fixtures.forEach(async function (f) {
   tape(f.description, async function (t) {
     const utxos = f.utxoObj
@@ -156,8 +155,8 @@ fixtures.forEach(async function (f) {
       t.same(HDSigner.changeIndex, f.expected.changeIndex)
       t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
-      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('test memo')) != null)
+      t.assert(syscointx.utils.setTransactionMemo(f.expected.hex, syscointx.utils.memoHeader, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
+      t.assert(syscointx.utils.setTransactionMemo(f.expected.hex, syscointx.utils.memoHeader, Buffer.from('test memo')) != null)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
@@ -177,8 +176,8 @@ fixtures.forEach(async function (f) {
       t.same(HDSigner.changeIndex, f.expected.changeIndex)
       t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
-      t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('test memo')) != null)
+      t.assert(syscointx.utils.setTransactionMemo(f.expected.hex, syscointx.utils.memoHeader, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
+      t.assert(syscointx.utils.setTransactionMemo(f.expected.hex, syscointx.utils.memoHeader, Buffer.from('test memo')) != null)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
