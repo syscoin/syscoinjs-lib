@@ -225,9 +225,9 @@ async function fetchEstimateFee (backendURL, blocks, options) {
     }
     const request = await axios.get(url)
     if (request && request.data && request.data.result) {
-      const feeInt = parseInt(request.data.result)
+      let feeInt = parseInt(request.data.result)
       // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
-      if(feeInt <= 0) {
+      if (feeInt <= 0) {
         feeInt = 1000
       }
       return feeInt
