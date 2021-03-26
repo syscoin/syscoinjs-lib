@@ -215,7 +215,7 @@ Purpose: Get estimated fee from backend
 Returns: Returns JSON object in response, fee object in JSON
 Param blocks: Required. How many blocks to estimate fee for.
 Param options: Optional. possible value conservative=true or false for conservative fee. Default is true.
-Returns: Returns JSON fee object in response
+Returns: Returns fee response in integer. Fee rate in satoshi per kilobytes.
 */
 async function fetchEstimateFee (backendURL, blocks, options) {
   try {
@@ -224,8 +224,13 @@ async function fetchEstimateFee (backendURL, blocks, options) {
       url += '?' + options
     }
     const request = await axios.get(url)
-    if (request && request.data) {
-      return request.data
+    if (request && request.data && request.data.result) {
+      const feeInt = parseInt(request.data.result)
+      // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
+      if(feeInt <= 0) {
+        feeInt = 1000
+      }
+      return feeInt
     }
     return null
   } catch (e) {
