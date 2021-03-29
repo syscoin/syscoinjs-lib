@@ -348,7 +348,7 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMapIn, sysChange
     const baseAssetID = utils.getBaseAssetID(assetGuid)
     // if NFT
     if (baseAssetID !== assetGuid) {
-      // likely NFT issuance only with no base value asset issued, create new base value object
+      // likely NFT issuance only with no base value asset issued, create new base value object so assetSend can perform proof of ownership
       if (!assetMapIn.has(baseAssetID)) {
         const valueBaseAssetObj = { outputs: [{ address: sysChangeAddress, value: BN_ZERO }] }
         valueBaseAssetObj.changeAddress = sysChangeAddress

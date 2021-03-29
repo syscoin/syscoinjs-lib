@@ -346,6 +346,9 @@ function getAssetsRequiringNotarizationFromRes (res, assets) {
     const input = res.inputs[i]
     if (input.assetInfo) {
       const baseAssetID = getBaseAssetID(input.assetInfo.assetGuid)
+      if(assetsUsedInTxNeedingNotarization.has(baseAssetID)) {
+        continue
+      }
       if (!assets.has(baseAssetID)) {
         console.log('Asset input not found in the UTXO assets map!')
         return null
