@@ -693,6 +693,14 @@ function getMemoFromOpReturn (outputs, memoHeader) {
   return null
 }
 
+/* getAllocationsFromTx
+Purpose: Return allocation information for an asset transaction. Pass through to syscointx-js
+Param tx: Required. bitcoinjs transaction
+*/
+function getAllocationsFromTx (tx) {
+  return syscointx.getAllocationsFromTx(tx)
+}
+
 /* setTransactionMemo
 Purpose: Return transaction with memo appended to the inside of the OP_RETURN output, return null if not found
 Param rawHex: Required. Raw transaction hex
@@ -1276,6 +1284,7 @@ module.exports = {
   signWithWIF: signWithWIF,
   getMemoFromScript: getMemoFromScript,
   getMemoFromOpReturn: getMemoFromOpReturn,
+  getAllocationsFromTx: getAllocationsFromTx,
   bitcoinjs: bjs,
   BN: BN,
   createAssetID: createAssetID,
