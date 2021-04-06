@@ -550,20 +550,13 @@ Purpose: Sanitize backend provider UTXO objects to be useful for this library
 Param sysFromXpubOrAddress: Required. The XPUB or address that was called to fetch UTXOs
 Param utxoObj: Required. Backend provider UTXO JSON object to be sanitized
 Param network: Optional. Defaults to Syscoin Mainnet. Network to be used to create address for notary and auxfee payout address if those features exist for the asset
-Param txOpts: Optional. If its passed in we use allowOtherNotarizedAssetInputs field of options to skip over (if allowOtherNotarizedAssetInputs is false or null) UTXO's if they use notarization for an asset that is not a part of assetMap
-Param assetMap: Optional. Destination outputs for transaction requiring UTXO sanitizing, used in allowOtherNotarizedAssetInputs check described above
+Param txOpts: Optional. If its passed in we use assetWhiteList field of options to skip over (if assetWhiteList is null) UTXO's if they use notarization for an asset that is not a part of assetMap
+Param assetMap: Optional. Destination outputs for transaction requiring UTXO sanitizing, used in assetWhiteList check described above
 Returns: Returns sanitized UTXO object for use internally in this library
 */
 function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts, assetMap, excludeZeroConf) {
   if (!txOpts) {
     txOpts = { rbf: false }
-  }
-  // create base ID map once and check later per UTXO if base ID exists in map
-  const baseAssetIDMap = new Map()
-  if (assetMap) {
-    for (const k of assetMap.keys()) {
-      baseAssetIDMap.set(getBaseAssetID(k), true)
-    }
   }
   const sanitizedUtxos = { utxos: [] }
   if (Array.isArray(utxoObj)) {
@@ -641,17 +634,10 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         if (!assetObj) {
           return
         }
-        // allowOtherNotarizedAssetInputs option if set will skip this check, by default this check is done and inputs will be skipped if they are notary asset inputs and user is not sending those assets (used as gas to fulfill requested output amount of SYS)
-        if (!txOpts.allowOtherNotarizedAssetInputs) {
-          // if notarization is required but it isn't a requested asset to send we skip this UTXO as would be dependent on a foreign asset notary
-          if (assetObj.notarykeyid && assetObj.notarykeyid.length > 0) {
-            const baseAssetID = getBaseAssetID(utxo.assetInfo.assetGuid)
-            // check against base key's of the assetMap which is requested assets. User always passes in guid's without regard of knowing if its an NFT, thus we need to extract base ID and compare with base ID of UTXO
-            if (!assetMap || !baseAssetIDMap.has(baseAssetID)) {
-              console.log('SKIPPING notary utxo')
-              return
-            }
-          }
+        // not sending this asset (assetMap) and assetWhiteList option if set with this asset will skip this check, by default this check is done and inputs will be skipped if they are notary asset inputs and user is not sending those assets (used as gas to fulfill requested output amount of SYS)
+        if ((!assetMap || !assetMap.has(utxo.assetInfo.assetGuid)) && (txOpts.assetWhiteList && !txOpts.assetWhiteList.has(utxo.assetInfo.assetGuid) && !txOpts.assetWhiteList.has(getBaseAssetID(utxo.assetInfo.assetGuid)))) {
+          console.log('SKIPPING utxo')
+          return
         }
       }
       sanitizedUtxos.utxos.push(newUtxo)

@@ -693,7 +693,7 @@ module.exports = [{
   description: 'send multi asset allocations with notarization + gas in non-selected asset',
   version: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
   txOpts: {
-    allowOtherNotarizedAssetInputs: true,
+    assetWhiteList: new Map([['1635229542', {}]]),
     rbf: true
   },
   mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',
@@ -1227,7 +1227,7 @@ module.exports = [{
   description: 'standard sys send with asset inputs',
   version: 2,
   txOpts: {
-    allowOtherNotarizedAssetInputs: true,
+    assetWhiteList: new Map([['2305793883', {}], ['2369540753', {}]]),
     rbf: true
   },
   mnemonic: 'club toss element melody skin ship rifle student reason real interest insane elevator beauty movie',

@@ -135,7 +135,7 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (res, wif, notaryAsse
 Purpose: Send Syscoin or Bitcoin or like coins.
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param changeAddress: Optional. Change address if defined is where change outputs are sent to. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param outputsArr: Required. Output array defining tuples to which addresses to send coins to and how much
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
@@ -194,7 +194,7 @@ Param assetOpts: Required. Asset details. Fields described below:
     Mask 127 (ASSET_CAPABILITY_ALL, All flags enabled)
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used. Will be overrided to False, cannot be set to True for new asset transactions.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param sysReceivingAddress: Optional. Address which will hold the new asset. If not defined and HDSigner is defined then a new receiving address will be automatically created using the next available receiving address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
@@ -271,7 +271,7 @@ Param assetOpts: Required. Asset details. Fields described below:
     Mask 127 (ASSET_CAPABILITY_ALL, All flags enabled)
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
@@ -309,7 +309,7 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
 Purpose: Issue supply by sending it from asset to an address holding an allocation of the asset.
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to as string
   Value is described below:
@@ -382,7 +382,7 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMapIn, sysChange
 Purpose: Send an asset allocations to other users.
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
   Field memo. Optional. An optional data carrying byte field to include in the transaction.
   Field memoHeader. Optional. Header that prefixes memo field, memo + memoHeader is max 80 bytes
 Param assetMap: Required. Description of Map:
@@ -435,7 +435,7 @@ Param assetOpts: Optional. Fields described below:
   Field ethaddress. Optional. If burning for purpose of sending over SysEthereum bridge specify the destination Ethereum address where tokens should be sent to on Ethereum.
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
@@ -495,7 +495,7 @@ Param assetOpts: Optional. If you have the Ethereum TXID and want to use eth-pro
   Field receiptparentnodes. Optional. Buffer value of the receipt merkle proof encoded in RLP format
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param assetMap: Optional. Auto-filled by eth-proof if it is used (pass ethtxid and infuraurl in assetOpts). Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
@@ -567,7 +567,7 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
 Purpose: Burn Syscoin to mint SYSX
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
-  Field allowOtherNotarizedAssetInputs. Optional. False by default. Allows UTXO's to be added, from assets other than this one, that require notarization (which means API call to external API service and may mean transaction gets rejected for unknown reasons by that API)
+  Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
