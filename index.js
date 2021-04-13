@@ -10,7 +10,7 @@ Param network: Optional. The blockchain network and bip32 settings. The utils fi
 function SyscoinJSLib (HDSigner, blockbookURL, network) {
   // remove trailing slash as axios API will have issues with double slashes which get added by util API call
   if (blockbookURL) {
-    blockbookURL.replace(/\/$/, '')
+    blockbookURL = blockbookURL.replace(/\/$/, '')
   }
   this.blockbookURL = blockbookURL
   if (HDSigner) {
