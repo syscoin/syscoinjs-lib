@@ -291,13 +291,13 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
     }
   }
   if (this.HDSigner) {
-    if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
-    }
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
+    }
+    if (!sysChangeAddress) {
+      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
   }
   // true last param for filtering out 0 conf UTXO
@@ -416,13 +416,13 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
     }
   }
   if (this.HDSigner) {
-    if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
-    }
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
+    }
+    if (!sysChangeAddress) {
+      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
   }
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
@@ -526,15 +526,15 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
     }
   }
   if (this.HDSigner) {
-    if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
-    }
     if (assetMap) {
       for (const valueAssetObj of assetMap.values()) {
         if (!valueAssetObj.changeAddress) {
           valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
         }
       }
+    }
+    if (!sysChangeAddress) {
+      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
   }
   if (!assetMap) {
@@ -599,13 +599,13 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
     }
   }
   if (this.HDSigner) {
-    if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
-    }
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
         valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
       }
+    }
+    if (!sysChangeAddress) {
+      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
     }
   }
   utxos = utils.sanitizeBlockbookUTXOs(sysFromXpubOrAddress, utxos, this.network, txOpts, assetMap)
