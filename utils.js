@@ -70,7 +70,11 @@ Returns: Returns JSON object in response, asset information object in JSON
 */
 async function fetchBackendAsset (backendURL, assetGuid) {
   try {
-    const request = await axios.get(backendURL + '/api/v2/asset/' + assetGuid + '?details=basic')
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    const request = await axios.get(blockbookURL + '/api/v2/asset/' + assetGuid + '?details=basic')
     if (request && request.data && request.data.asset) {
       return request.data.asset
     }
@@ -89,7 +93,11 @@ Returns: Returns JSON object in response, UTXO object array in JSON
 */
 async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   try {
-    let url = backendURL + '/api/v2/utxo/' + addressOrXpub
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    let url = blockbookURL + '/api/v2/utxo/' + addressOrXpub
     if (options) {
       url += '?' + options
     }
@@ -114,7 +122,11 @@ Returns: Returns JSON object in response, account object in JSON
 */
 async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
   try {
-    let url = backendURL
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    let url = blockbookURL
     if (xpub) {
       url += '/api/v2/xpub/'
     } else {
@@ -147,10 +159,14 @@ Returns: Returns txid in response or error
 */
 async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
   try {
-    const request = await axios.post(backendURL + '/api/v2/sendtx/', txHex)
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
       if (myHDSignerObj) {
-        await fetchBackendAccount(backendURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
+        await fetchBackendAccount(blockbookURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
       }
       return request.data
     }
@@ -168,7 +184,11 @@ Returns: Returns JSON object in response, transaction object in JSON
 */
 async function fetchBackendRawTx (backendURL, txid) {
   try {
-    const request = await axios.get(backendURL + '/api/v2/tx/' + txid)
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    const request = await axios.get(blockbookURL + '/api/v2/tx/' + txid)
     if (request && request.data) {
       return request.data
     }
@@ -184,7 +204,11 @@ Returns: Returns JSON object in response, provider object in JSON
 */
 async function fetchProviderInfo (backendURL) {
   try {
-    const request = await axios.get(backendURL + '/api/v2')
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    const request = await axios.get(blockbookURL + '/api/v2')
     if (request && request.data) {
       return request.data
     }
@@ -200,7 +224,11 @@ Returns: Returns JSON object in response, block object in JSON
 */
 async function fetchBackendBlock (backendURL, blockhash) {
   try {
-    const request = await axios.get(backendURL + '/api/v2/block/' + blockhash)
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    const request = await axios.get(blockbookURL + '/api/v2/block/' + blockhash)
     if (request && request.data) {
       return request.data
     }
@@ -219,7 +247,11 @@ Returns: Returns fee response in integer. Fee rate in satoshi per kilobytes.
 */
 async function fetchEstimateFee (backendURL, blocks, options) {
   try {
-    let url = backendURL + '/api/v2/estimatefee/' + blocks
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    let url = blockbookURL + '/api/v2/estimatefee/' + blocks
     if (options) {
       url += '?' + options
     }
@@ -663,7 +695,7 @@ function getMemoFromScript (script, memoHeader) {
 /* getMemoFromOpReturn
 Purpose: Return memo from an array of outputs by finding the OP_RETURN output and extracting the memo from the script, return null if not found
 Param outputs: Required. Tx output array
-Param memoHeader: Required. Memo prefix, application specific
+Param memoHeader: Optional. Memo prefix, application specific. If not passed in just return the raw opreturn script if found.
 */
 function getMemoFromOpReturn (outputs, memoHeader) {
   for (let i = 0; i < outputs.length; i++) {
@@ -672,7 +704,11 @@ function getMemoFromOpReturn (outputs, memoHeader) {
       // find opreturn
       const chunks = bjs.script.decompile(output.script)
       if (chunks[0] === bitcoinops.OP_RETURN) {
-        return getMemoFromScript(chunks[1], memoHeader)
+        if (memoHeader) {
+          return getMemoFromScript(chunks[1], memoHeader)
+        } else {
+          return chunks[1]
+        }
       }
     }
   }

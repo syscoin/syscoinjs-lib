@@ -8,10 +8,6 @@ Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
 function SyscoinJSLib (HDSigner, blockbookURL, network) {
-  // remove trailing slash as axios API will have issues with double slashes which get added by util API call
-  if (blockbookURL) {
-    blockbookURL = blockbookURL.replace(/\/$/, '')
-  }
   this.blockbookURL = blockbookURL
   if (HDSigner) {
     this.HDSigner = HDSigner
