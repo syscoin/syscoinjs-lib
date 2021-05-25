@@ -84,6 +84,28 @@ async function fetchBackendAsset (backendURL, assetGuid) {
   }
 }
 
+/* fetchBackendListAssets
+Purpose: Fetch list of assets from backend Blockbook provider via a filter
+Param backendURL: Required. Fully qualified URL for blockbook
+Param filter: Required. Asset to fetch via filter, will filter contract or symbol fields
+Returns: Returns JSON array in response, asset information objects in JSON
+*/
+async function fetchBackendListAssets (backendURL, filter) {
+  try {
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    const request = await axios.get(blockbookURL + '/api/v2/assets/' + filter)
+    if (request && request.data && request.data.asset) {
+      return request.data.asset
+    }
+    return null
+  } catch (e) {
+    return e
+  }
+}
+
 /* fetchBackendUTXOS
 Purpose: Fetch UTXO's for an address or XPUB from backend Blockbook provider
 Param backendURL: Required. Fully qualified URL for blockbook
@@ -1292,6 +1314,7 @@ module.exports = {
   sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,
   fetchBackendAccount: fetchBackendAccount,
   fetchBackendAsset: fetchBackendAsset,
+  fetchBackendListAssets: fetchBackendListAssets,
   fetchBackendRawTx: fetchBackendRawTx,
   fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   fetchProviderInfo: fetchProviderInfo,
