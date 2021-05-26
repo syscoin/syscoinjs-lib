@@ -144,9 +144,9 @@ fixtures.forEach(async function (f) {
         // check for VPUB vs regular address
         if (!f.sysFromXpubOrAddress.startsWith('vpub')) {
           const kp = HDSigner.deriveKeypair(f.utxoObj.utxos[0].path)
-          psbt = await syscoinjs.signAndSendWithWIF(psbt.res, kp.toWIF(), psbt.assets)
+          psbt = await syscoinjs.signAndSendWithWIF(psbt.psbt, kp.toWIF(), psbt.assets)
         } else {
-          psbt = await syscoinjs.signAndSendWithHDSigner(psbt.res, HDSigner, psbt.assets)
+          psbt = await syscoinjs.signAndSend(psbt.psbt, psbt.assets)
         }
       }
 

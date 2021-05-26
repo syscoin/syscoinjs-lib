@@ -292,39 +292,6 @@ async function fetchEstimateFee (backendURL, blocks, options) {
   }
 }
 
-/* createPSBTFromRes
-Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Returns: psbt from bitcoinjs-lib
-*/
-function createPSBTFromRes (res, network) {
-  const psbt = new bjs.Psbt({ network: network })
-  psbt.setVersion(res.txVersion)
-  res.inputs.forEach(input => {
-    const inputObj = {
-      hash: input.txId,
-      index: input.vout,
-      sequence: input.sequence,
-      bip32Derivation: input.bip32Derivation || []
-    }
-    if (input.nonWitnessUtxo) {
-      inputObj.nonWitnessUtxo = input.nonWitnessUtxo
-    } else {
-      inputObj.witnessUtxo = { script: bjs.address.toOutputScript(input.address, network), value: input.value.toNumber() }
-    }
-    psbt.addInput(inputObj)
-  })
-  res.outputs.forEach(output => {
-    psbt.addOutput({
-      script: output.script,
-      address: output.script ? null : output.address,
-      value: output.value.toNumber()
-    })
-  })
-
-  return psbt
-}
-
 /* getNotarizationSignatures
 Purpose: Get notarization signatures from a notary endpoint defined in the asset object, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
 Param notaryAssets: Required. Asset objects that require notarization, fetch signatures via fetchNotarizationFromEndPoint()
@@ -367,121 +334,47 @@ async function getNotarizationSignatures (notaryAssets, txHex) {
   return notarizationDone
 }
 
-/* notarizeRes
+/* notarizePSBT
 Purpose: Notarize Result object from syscointx.createTransaction()/syscointx.createAssetTransaction() if required by the assets in the inputs of the transaction
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param notaryAssets: Required. Asset objects require notarization, fetch signatures via fetchNotarizationFromEndPoint()
-Returns: new result object notarized, you will need to create PSBT and sign it after this call
+Returns: new result PSBT object notarized
 */
-async function notarizeRes (res, notaryAssets, rawTx) {
+async function notarizePSBT (psbt, notaryAssets, rawTx) {
   const notarizationDone = await getNotarizationSignatures(notaryAssets, rawTx)
   if (notarizationDone) {
-    return syscointx.addNotarizationSignatures(res.txVersion, notaryAssets, res.outputs) !== -1
+    return syscointx.addNotarizationSignatures(psbt.version, notaryAssets, psbt.txOutputs) !== -1
   }
   return false
 }
 
-/* getAssetsRequiringNotarizationFromRes
+/* getAssetsRequiringNotarization
 Purpose: Get assets from Result object assigned from syscointx.createTransaction()/syscointx.createAssetTransaction() that require notarization
 Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
 Returns: Asset map of objects requiring notarization or null if no notarization is required
 */
-function getAssetsRequiringNotarizationFromRes (res, assets) {
-  if (!syscointx.utils.isAssetAllocationTx(res.txVersion)) {
+function getAssetsRequiringNotarization (psbt, assets) {
+  if (!syscointx.utils.isAssetAllocationTx(psbt.version)) {
     return null
   }
+  const assetsInTx = syscointx.getAssetsFromOutputs(psbt.txOutputs)
   let foundNotary = false
   const assetsUsedInTxNeedingNotarization = new Map()
-  if (!res || !res.inputs) {
-    console.log('No inputs found! Cannot decode transaction!')
-    return null
-  }
-  for (let i = 0; i < res.inputs.length; i++) {
-    const input = res.inputs[i]
-    if (input.assetInfo) {
-      const baseAssetID = getBaseAssetID(input.assetInfo.assetGuid)
-      if (assetsUsedInTxNeedingNotarization.has(baseAssetID)) {
-        continue
-      }
-      if (!assets.has(baseAssetID)) {
-        console.log('Asset input not found in the UTXO assets map!')
-        return null
-      }
-      const valueAssetObj = assets.get(baseAssetID)
-      if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
-        assetsUsedInTxNeedingNotarization.set(baseAssetID, valueAssetObj)
-        foundNotary = true
-      }
+  assetsInTx.forEach((value, baseAssetID) => {
+    if (assetsUsedInTxNeedingNotarization.has(baseAssetID)) {
+      return
     }
-  }
+    if (!assets.has(baseAssetID)) {
+      console.log('Asset input not found in the UTXO assets map!')
+      return null
+    }
+    const valueAssetObj = assets.get(baseAssetID)
+    if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
+      assetsUsedInTxNeedingNotarization.set(baseAssetID, valueAssetObj)
+      foundNotary = true
+    }
+  })
   return foundNotary ? assetsUsedInTxNeedingNotarization : null
-}
-/* signPSBTWithHDSigner
-Purpose: Sign PSBT with XPUB information from external HDSigner
-Param psbt: Required. Partially signed transaction object
-Param HDSigner: Required. External HDSigner that has information required to sign the PSBT
-Param ownedIndexes: Optional. If sign is set and HDSigner exists then this variable is relevant. It will confirm which inputs are owned by this HDSigner xpub so it can sign the input, ownedIndexes is set in sign()
-Returns: psbt from bitcoinjs-lib
-*/
-function signPSBTWithHDSigner (psbt, HDSigner, ownedIndexes) {
-  const rootNode = HDSigner.getRootNode()
-  // sign inputs this xpub key owns
-  for (let i = 0; i < psbt.inputCount; i++) {
-    if (ownedIndexes.has(i)) {
-      psbt.signInputHD(i, rootNode)
-    }
-  }
-  if (psbt.validateSignaturesOfAllInputs()) {
-    psbt.finalizeAllInputs()
-  }
-  return psbt
-}
-/* signWithHDSigner
-Purpose: Sign Result object with XPUB information from external HDSigner
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param HDSigner: Required. External HDSigner that has information required to sign the PSBT
-Returns: psbt from bitcoinjs-lib
-*/
-async function signWithHDSigner (res, HDSigner) {
-  const ownedIndexes = new Map()
-  const prevTx = new Map()
-  if (!res || !res.inputs) {
-    console.log('No inputs found! Cannot sign transaction!')
-    return null
-  }
-  const fp = HDSigner.getMasterFingerprint()
-  for (let i = 0; i < res.inputs.length; i++) {
-    const input = res.inputs[i]
-    if (input.path) {
-      const pubkey = HDSigner.derivePubKey(input.path)
-      if (pubkey) {
-        ownedIndexes.set(i, true)
-        input.bip32Derivation = [
-          {
-            masterFingerprint: fp,
-            path: input.path,
-            pubkey: pubkey
-          }]
-      }
-    }
-    // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
-    // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
-    if (input.type === 'LEGACY') {
-      if (prevTx.has(input.txId)) {
-        input.nonWitnessUtxo = prevTx.get(input.txId)
-      } else {
-        const hexTx = await fetchBackendRawTx(this.blockbookURL, input.txId)
-        if (hexTx) {
-          const bufferTx = Buffer.from(hexTx.hex, 'hex')
-          prevTx.set(input.txId, bufferTx)
-          input.nonWitnessUtxo = bufferTx
-        } else {
-          console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
-        }
-      }
-    }
-  }
-  return signPSBTWithHDSigner(createPSBTFromRes(res, HDSigner.network), HDSigner, ownedIndexes)
 }
 
 /* signPSBTWithWIF
@@ -513,8 +406,8 @@ Param wif: Required. Private key in WIF format to sign inputs with
 Param network: Required. bitcoinjs-lib Network object
 Returns: psbt from bitcoinjs-lib
 */
-function signWithWIF (res, wif, network) {
-  return signPSBTWithWIF(createPSBTFromRes(res, network), wif, network)
+function signWithWIF (psbt, wif, network) {
+  return signPSBTWithWIF(psbt, wif, network)
 }
 /* buildEthProof
 Purpose: Build Ethereum SPV proof using eth-proof library
@@ -823,6 +716,66 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   }
 }
 
+/* createPSBTFromRes
+Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
+Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Returns: psbt from bitcoinjs-lib
+*/
+HDSigner.prototype.createPSBTFromRes = async function (res) {
+  const psbt = new bjs.Psbt({ network: this.network })
+  const prevTx = new Map()
+  psbt.setVersion(res.txVersion)
+  const fp = this.getMasterFingerprint()
+  for (let i = 0; i < res.inputs.length; i++) {
+    const input = res.inputs[i]
+    const inputObj = {
+      hash: input.txId,
+      index: input.vout,
+      sequence: input.sequence,
+      bip32Derivation: input.bip32Derivation || []
+    }
+    if (input.path && inputObj.bip32Derivation.length === 0) {
+      const pubkey = this.derivePubKey(input.path)
+      if (pubkey) {
+        inputObj.bip32Derivation = [
+          {
+            masterFingerprint: fp,
+            path: input.path,
+            pubkey: pubkey
+          }]
+      }
+    }
+    // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
+    // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
+    if (input.type === 'LEGACY') {
+      if (prevTx.has(input.txId)) {
+        inputObj.nonWitnessUtxo = prevTx.get(input.txId)
+      } else {
+        const hexTx = await fetchBackendRawTx(this.backendURL, input.txId)
+        if (hexTx) {
+          const bufferTx = Buffer.from(hexTx.hex, 'hex')
+          prevTx.set(input.txId, bufferTx)
+          inputObj.nonWitnessUtxo = bufferTx
+        } else {
+          console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
+        }
+      }
+    } else {
+      inputObj.witnessUtxo = { script: bjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
+    }
+    psbt.addInput(inputObj)
+  }
+  res.outputs.forEach(output => {
+    psbt.addOutput({
+      script: output.script,
+      address: output.script ? null : output.address,
+      value: output.value.toNumber()
+    })
+  })
+
+  return psbt
+}
+
 /* signPSBT
 Purpose: Sign PSBT with XPUB information from HDSigner
 Param psbt: Required. Partially signed transaction object
@@ -844,50 +797,30 @@ HDSigner.prototype.signPSBT = function (psbt, ownedIndexes) {
 }
 
 /* sign
-Purpose: Create signing information based on HDSigner (if set) and call createAndSignPSBTFromRes() to actually sign, as well as detect notarization and apply it as required.
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Purpose: Create signing information based on HDSigner (if set) and call signPSBT() to actually sign, as well as detect notarization and apply it as required.
+Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
-HDSigner.prototype.sign = async function (res) {
+HDSigner.prototype.sign = async function (psbt) {
   const ownedIndexes = new Map()
-  const prevTx = new Map()
-  if (!res || !res.inputs) {
+  const txInputs = psbt.data.inputs
+  if (!psbt || !txInputs) {
     console.log('No inputs found! Cannot sign transaction!')
     return null
   }
-  const fp = this.getMasterFingerprint()
-  for (let i = 0; i < res.inputs.length; i++) {
-    const input = res.inputs[i]
-    if (input.path) {
-      const pubkey = this.derivePubKey(input.path)
-      if (pubkey) {
-        ownedIndexes.set(i, true)
-        input.bip32Derivation = [
-          {
-            masterFingerprint: fp,
-            path: input.path,
-            pubkey: pubkey
-          }]
-      }
-    }
-    // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
-    // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
-    if (input.type === 'LEGACY') {
-      if (prevTx.has(input.txId)) {
-        input.nonWitnessUtxo = prevTx.get(input.txId)
-      } else {
-        const hexTx = await fetchBackendRawTx(this.blockbookURL, input.txId)
-        if (hexTx) {
-          const bufferTx = Buffer.from(hexTx.hex, 'hex')
-          prevTx.set(input.txId, bufferTx)
-          input.nonWitnessUtxo = bufferTx
-        } else {
-          console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
+  for (let i = 0; i < txInputs.length; i++) {
+    const input = txInputs[i]
+    if (input.bip32Derivation && input.bip32Derivation.length > 0) {
+      for (let j = 0; j < input.bip32Derivation.length; j++) {
+        const pubkey = this.derivePubKey(input.bip32Derivation[j].path)
+        if (pubkey) {
+          ownedIndexes.set(i, true)
+          break
         }
       }
     }
   }
-  return this.signPSBT(createPSBTFromRes(res, this.network), ownedIndexes)
+  return this.signPSBT(psbt, ownedIndexes)
 }
 
 /* getMasterFingerprint
@@ -1323,10 +1256,8 @@ module.exports = {
   fetchEstimateFee: fetchEstimateFee,
   sendRawTransaction: sendRawTransaction,
   buildEthProof: buildEthProof,
-  createPSBTFromRes: createPSBTFromRes,
-  getAssetsRequiringNotarizationFromRes: getAssetsRequiringNotarizationFromRes,
-  notarizeRes: notarizeRes,
-  signWithHDSigner: signWithHDSigner,
+  getAssetsRequiringNotarization: getAssetsRequiringNotarization,
+  notarizePSBT: notarizePSBT,
   signWithWIF: signWithWIF,
   getMemoFromScript: getMemoFromScript,
   getMemoFromOpReturn: getMemoFromOpReturn,

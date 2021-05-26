@@ -19,56 +19,31 @@ function SyscoinJSLib (HDSigner, blockbookURL, network) {
   }
 }
 
-/* signAndSend
-Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
-Returns: PSBT signed success or unsigned if failure
-*/
-SyscoinJSLib.prototype.signAndSend = async function (res, notaryAssets) {
-  // notarize if necessary
-  let psbt = await this.HDSigner.sign(res)
-  if (notaryAssets) {
-    const wasNotarized = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
-    if (wasNotarized) {
-      psbt = await this.HDSigner.sign(res)
-    } else {
-      return psbt
-    }
-  }
-  if (this.blockbookURL) {
-    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), this.HDSigner)
-    if (resSend.error) {
-      throw Object.assign(
-        new Error('could not send tx! error: ' + resSend.error.message),
-        { code: 402 }
-      )
-    } else if (resSend.result) {
-      console.log('tx successfully sent! txid: ' + resSend.result)
-      return psbt
-    } else {
-      throw Object.assign(
-        new Error('Unrecognized response from backend: ' + resSend),
-        { code: 402 }
-      )
-    }
-  }
-  return psbt
+// proxy to signAndSend
+SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (psbt, HDSignerIn, notaryAssets) {
+  return this.signAndSend(psbt, notaryAssets, HDSignerIn)
 }
 
 /* signAndSend
 Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
+Param HDSignerIn: Optional. HDSigner used to sign transaction
 Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, notaryAssets) {
+SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) {
   // notarize if necessary
-  let psbt = await utils.signWithHDSigner(res, HDSigner)
+  const HDSigner = HDSignerIn || this.HDSigner
+  psbt = await HDSigner.sign(psbt)
+  try {
+    psbt.extractTransaction()
+  } catch (err) {
+    return psbt
+  }
   if (notaryAssets) {
-    const wasNotarized = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    const wasNotarized = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
     if (wasNotarized) {
-      psbt = await utils.signWithHDSigner(res, HDSigner)
+      psbt = await HDSigner.sign(psbt)
     } else {
       return psbt
     }
@@ -95,18 +70,23 @@ SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (res, HDSigner, 
 
 /* signAndSendWithWIF
 Purpose: Signs/Notarizes if necessary and Sends transaction to network using WIF
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param wif: Required. Private key in WIF format to sign inputs of the transaction for
 Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.signAndSendWithWIF = async function (res, wif, notaryAssets) {
+SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) {
   // notarize if necessary
-  let psbt = await utils.signWithWIF(res, wif, this.network)
+  psbt = await utils.signWithWIF(psbt, wif, this.network)
+  try {
+    psbt.extractTransaction()
+  } catch (err) {
+    return psbt
+  }
   if (notaryAssets) {
-    const wasNotarized = await utils.notarizeRes(res, notaryAssets, psbt.extractTransaction().toHex())
+    const wasNotarized = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
     if (wasNotarized) {
-      psbt = await utils.signWithWIF(res, wif, this.network)
+      psbt = await utils.signWithWIF(psbt, wif, this.network)
     } else {
       return psbt
     }
@@ -205,10 +185,11 @@ SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (fromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 /* assetNew
@@ -265,10 +246,11 @@ SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAd
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 /* assetUpdate
@@ -339,10 +321,11 @@ SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpt
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 /* assetSend
@@ -405,10 +388,11 @@ SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMapIn, sysChange
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 /* assetAllocationSend
@@ -450,10 +434,11 @@ SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, s
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 /* assetAllocationBurn
@@ -494,10 +479,11 @@ SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, 
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 /* assetAllocationMint
@@ -572,10 +558,11 @@ SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, 
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 /* syscoinBurnToAssetAllocation
@@ -615,10 +602,11 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.HDSigner.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
-    return { res: res, assets: utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets) }
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
-  return await this.signAndSend(res, utils.getAssetsRequiringNotarizationFromRes(res, utxos.assets))
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
 module.exports = {
