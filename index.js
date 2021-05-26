@@ -34,16 +34,19 @@ Returns: PSBT signed success or unsigned if failure
 SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) {
   // notarize if necessary
   const HDSigner = HDSignerIn || this.HDSigner
+  const psbtToNotarize = psbt.clone()
   psbt = await HDSigner.sign(psbt)
+  // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
+    // will fail if not complete
     psbt.extractTransaction()
   } catch (err) {
     return psbt
   }
   if (notaryAssets) {
-    const wasNotarized = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+    const wasNotarized = await utils.notarizePSBT(psbtToNotarize, notaryAssets, psbt.extractTransaction().toHex())
     if (wasNotarized) {
-      psbt = await HDSigner.sign(psbt)
+      psbt = await HDSigner.sign(psbtToNotarize)
     } else {
       return psbt
     }
@@ -77,16 +80,19 @@ Returns: PSBT signed success or unsigned if failure
 */
 SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) {
   // notarize if necessary
+  const psbtToNotarize = psbt.clone()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
+  // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
+    // will fail if not complete
     psbt.extractTransaction()
   } catch (err) {
     return psbt
   }
   if (notaryAssets) {
-    const wasNotarized = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+    const wasNotarized = await utils.notarizePSBT(psbtToNotarize, notaryAssets, psbt.extractTransaction().toHex())
     if (wasNotarized) {
-      psbt = await utils.signWithWIF(psbt, wif, this.network)
+      psbt = await utils.signWithWIF(psbtToNotarize, wif, this.network)
     } else {
       return psbt
     }
@@ -143,7 +149,7 @@ SyscoinJSLib.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOr
       fromXpubOrAddress.forEach(addressOrXpub => utxoRequests.push(utils.fetchBackendUTXOS(this.blockbookURL, addressOrXpub)))
       const responses = await Promise.all(utxoRequests)
       responses.forEach(response => {
-        const utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, response, this.network, txOpts, assetMap, excludeZeroConf)
+        const utxos = utils.sanitizeBlockbookUTXOs(response.addressOrXpub, response, this.network, txOpts, assetMap, excludeZeroConf)
         if (!concatSanitizedUTXOS.utxos) {
           concatSanitizedUTXOS.utxos = utxos.utxos
         } else {

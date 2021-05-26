@@ -125,6 +125,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     }
     const request = await axios.get(url)
     if (request && request.data) {
+      request.data.addressOrXpub = addressOrXpub
       return request.data
     }
     return null
