@@ -24,6 +24,42 @@ SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (psbt, HDSignerI
   return this.signAndSend(psbt, notaryAssets, HDSignerIn)
 }
 
+SyscoinJSLib.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScript) {
+  const psbtNew = new utils.bitcoinjs.Psbt({ network: this.network })
+  psbtNew.setVersion(psbt.version)
+  const txInputs = psbt.txInputs
+  for (let i = 0; i < txInputs.length; i++) {
+    const input = txInputs[i]
+    const dataInput = psbt.data.inputs[i]
+    const inputObj = {
+      hash: input.hash,
+      index: input.index,
+      sequence: input.sequence,
+      bip32Derivation: input.bip32Derivation || []
+    }
+    if (dataInput.nonWitnessUtxo) {
+      inputObj.nonWitnessUtxo = dataInput.nonWitnessUtxo
+    } else if (dataInput.witnessUtxo) {
+      inputObj.witnessUtxo = dataInput.witnessUtxo
+    }
+    psbtNew.addInput(inputObj)
+  }
+  const txOutputs = psbt.txOutputs
+  for (let i = 0; i < txOutputs.length; i++) {
+    const output = txOutputs[i]
+    if (i === outputIndexToModify) {
+      psbtNew.addOutput({
+        script: outputScript,
+        address: outputScript,
+        value: output.value
+      })
+    } else {
+      psbtNew.addOutput(output)
+    }
+  }
+  return psbtNew
+}
+
 /* signAndSend
 Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
 Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
@@ -45,7 +81,7 @@ SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSigne
   if (notaryAssets) {
     const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
     if (notarizedDetails && notarizedDetails.output) {
-      psbt.updateOutput(notarizedDetails.index, notarizedDetails.output)
+      psbt = this.copyPSBT(psbt, notarizedDetails.index, notarizedDetails.output)
       psbt = await HDSigner.sign(psbt)
     } else {
       return psbt
@@ -91,8 +127,8 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAss
   if (notaryAssets) {
     const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
     if (notarizedDetails && notarizedDetails.output) {
-      psbt.updateOutput(notarizedDetails.index, notarizedDetails.output)
-      psbt = await HDSigner.sign(psbt)
+      psbt = this.copyPSBT(psbt, notarizedDetails.index, notarizedDetails.output)
+      psbt = await utils.signWithWIF(psbt, wif, this.network)
     } else {
       return psbt
     }
