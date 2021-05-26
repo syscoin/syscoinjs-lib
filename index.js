@@ -70,6 +70,7 @@ Returns: PSBT signed success or unsigned if failure
 SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) {
   // notarize if necessary
   const HDSigner = HDSignerIn || this.HDSigner
+  const psbtClone = psbt.clone()
   psbt = await HDSigner.sign(psbt)
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
@@ -81,7 +82,7 @@ SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSigne
   if (notaryAssets) {
     const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
     if (notarizedDetails && notarizedDetails.output) {
-      psbt = this.copyPSBT(psbt, notarizedDetails.index, notarizedDetails.output)
+      psbt = this.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
       psbt = await HDSigner.sign(psbt)
     } else {
       return psbt
@@ -116,6 +117,7 @@ Returns: PSBT signed success or unsigned if failure
 */
 SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) {
   // notarize if necessary
+  const psbtClone = psbt.clone()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
@@ -127,7 +129,7 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAss
   if (notaryAssets) {
     const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
     if (notarizedDetails && notarizedDetails.output) {
-      psbt = this.copyPSBT(psbt, notarizedDetails.index, notarizedDetails.output)
+      psbt = this.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
       psbt = await utils.signWithWIF(psbt, wif, this.network)
     } else {
       return psbt
