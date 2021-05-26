@@ -35,7 +35,7 @@ SyscoinJSLib.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScr
       hash: input.hash,
       index: input.index,
       sequence: input.sequence,
-      bip32Derivation: input.bip32Derivation || []
+      bip32Derivation: dataInput.bip32Derivation || []
     }
     if (dataInput.nonWitnessUtxo) {
       inputObj.nonWitnessUtxo = dataInput.nonWitnessUtxo

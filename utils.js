@@ -385,15 +385,13 @@ Param wif: Required. Private key in WIF format to sign inputs with
 Param network: Required. bitcoinjs-lib Network object
 Returns: psbt from bitcoinjs-lib
 */
-function signPSBTWithWIF (psbt, wif, network) {
+async function signPSBTWithWIF (psbt, wif, network) {
   const wifObject = bjs.ECPair.fromWIF(
     wif,
     network
   )
   // sign inputs with wif
-  for (let i = 0; i < psbt.inputCount; i++) {
-    psbt.signInput(i, wifObject)
-  }
+  await psbt.signAllInputsAsync(wifObject)
   if (psbt.validateSignaturesOfAllInputs()) {
     psbt.finalizeAllInputs()
   }
@@ -407,8 +405,8 @@ Param wif: Required. Private key in WIF format to sign inputs with
 Param network: Required. bitcoinjs-lib Network object
 Returns: psbt from bitcoinjs-lib
 */
-function signWithWIF (psbt, wif, network) {
-  return signPSBTWithWIF(psbt, wif, network)
+async function signWithWIF (psbt, wif, network) {
+  return await signPSBTWithWIF(psbt, wif, network)
 }
 /* buildEthProof
 Purpose: Build Ethereum SPV proof using eth-proof library
@@ -780,17 +778,10 @@ HDSigner.prototype.createPSBTFromRes = async function (res) {
 /* signPSBT
 Purpose: Sign PSBT with XPUB information from HDSigner
 Param psbt: Required. Partially signed transaction object
-Param ownedIndexes: Optional. If sign is set and HDSigner exists then this variable is relevant. It will confirm which inputs are owned by this HDSigner xpub so it can sign the input, ownedIndexes is set in sign()
 Returns: psbt from bitcoinjs-lib
 */
-HDSigner.prototype.signPSBT = function (psbt, ownedIndexes) {
-  const rootNode = this.getRootNode()
-  // sign inputs this xpub key owns
-  for (let i = 0; i < psbt.inputCount; i++) {
-    if (ownedIndexes.has(i)) {
-      psbt.signInputHD(i, rootNode)
-    }
-  }
+HDSigner.prototype.signPSBT = async function (psbt) {
+  await psbt.signAllInputsHDAsync(this.getRootNode())
   if (psbt.validateSignaturesOfAllInputs()) {
     psbt.finalizeAllInputs()
   }
@@ -803,25 +794,7 @@ Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
 HDSigner.prototype.sign = async function (psbt) {
-  const ownedIndexes = new Map()
-  const txInputs = psbt.data.inputs
-  if (!psbt || !txInputs) {
-    console.log('No inputs found! Cannot sign transaction!')
-    return null
-  }
-  for (let i = 0; i < txInputs.length; i++) {
-    const input = txInputs[i]
-    if (input.bip32Derivation && input.bip32Derivation.length > 0) {
-      for (let j = 0; j < input.bip32Derivation.length; j++) {
-        const pubkey = this.derivePubKey(input.bip32Derivation[j].path)
-        if (pubkey) {
-          ownedIndexes.set(i, true)
-          break
-        }
-      }
-    }
-  }
-  return this.signPSBT(psbt, ownedIndexes)
+  return await this.signPSBT(psbt)
 }
 
 /* getMasterFingerprint
