@@ -339,12 +339,12 @@ async function getNotarizationSignatures (notaryAssets, txHex) {
 Purpose: Notarize Result object from syscointx.createTransaction()/syscointx.createAssetTransaction() if required by the assets in the inputs of the transaction
 Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param notaryAssets: Required. Asset objects require notarization, fetch signatures via fetchNotarizationFromEndPoint()
-Returns: new result PSBT object notarized
+Returns: new result PSBT output notarized along with index
 */
 async function notarizePSBT (psbt, notaryAssets, rawTx) {
   const notarizationDone = await getNotarizationSignatures(notaryAssets, rawTx)
   if (notarizationDone) {
-    return syscointx.addNotarizationSignatures(psbt.version, notaryAssets, psbt.txOutputs) !== -1
+    return syscointx.addNotarizationSignatures(psbt.version, notaryAssets, psbt.txOutputs)
   }
   return false
 }

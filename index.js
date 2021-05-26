@@ -34,7 +34,6 @@ Returns: PSBT signed success or unsigned if failure
 SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) {
   // notarize if necessary
   const HDSigner = HDSignerIn || this.HDSigner
-  const psbtToNotarize = psbt.clone()
   psbt = await HDSigner.sign(psbt)
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
@@ -44,9 +43,10 @@ SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSigne
     return psbt
   }
   if (notaryAssets) {
-    const wasNotarized = await utils.notarizePSBT(psbtToNotarize, notaryAssets, psbt.extractTransaction().toHex())
-    if (wasNotarized) {
-      psbt = await HDSigner.sign(psbtToNotarize)
+    const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+    if (notarizedDetails && notarizedDetails.output) {
+      psbt.updateOutput(notarizedDetails.index, notarizedDetails.output)
+      psbt = await HDSigner.sign(psbt)
     } else {
       return psbt
     }
@@ -80,7 +80,6 @@ Returns: PSBT signed success or unsigned if failure
 */
 SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) {
   // notarize if necessary
-  const psbtToNotarize = psbt.clone()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
@@ -90,9 +89,10 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAss
     return psbt
   }
   if (notaryAssets) {
-    const wasNotarized = await utils.notarizePSBT(psbtToNotarize, notaryAssets, psbt.extractTransaction().toHex())
-    if (wasNotarized) {
-      psbt = await utils.signWithWIF(psbtToNotarize, wif, this.network)
+    const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+    if (notarizedDetails && notarizedDetails.output) {
+      psbt.updateOutput(notarizedDetails.index, notarizedDetails.output)
+      psbt = await HDSigner.sign(psbt)
     } else {
       return psbt
     }
