@@ -392,8 +392,12 @@ async function signPSBTWithWIF (psbt, wif, network) {
   )
   // sign inputs with wif
   await psbt.signAllInputsAsync(wifObject)
-  if (psbt.validateSignaturesOfAllInputs()) {
-    psbt.finalizeAllInputs()
+  try {
+    if (psbt.validateSignaturesOfAllInputs()) {
+      psbt.finalizeAllInputs()
+    }
+  } catch (err) {
+    console.log('Transaction incomplete, requires more signatures...')
   }
   return psbt
 }
@@ -774,9 +778,7 @@ HDSigner.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScript)
       hash: input.hash,
       index: input.index,
       sequence: input.sequence,
-      bip32Derivation: dataInput.bip32Derivation || [],
-      address: input.address || dataInput.address,
-      path: input.path || dataInput.path
+      bip32Derivation: dataInput.bip32Derivation || []
     }
     if (dataInput.nonWitnessUtxo) {
       inputObj.nonWitnessUtxo = dataInput.nonWitnessUtxo
@@ -784,6 +786,9 @@ HDSigner.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScript)
       inputObj.witnessUtxo = dataInput.witnessUtxo
     }
     psbtNew.addInput(inputObj)
+    dataInput.unknownKeyVals.forEach(unknownKeyVal => {
+      psbtNew.addUnknownKeyValToInput(i, unknownKeyVal)
+    })
   }
   const txOutputs = psbt.txOutputs
   for (let i = 0; i < txOutputs.length; i++) {
@@ -826,8 +831,12 @@ HDSigner.prototype.signPSBT = async function (psbt) {
     }
   }
   await psbt.signAllInputsHDAsync(this.getRootNode())
-  if (psbt.validateSignaturesOfAllInputs()) {
-    psbt.finalizeAllInputs()
+  try {
+    if (psbt.validateSignaturesOfAllInputs()) {
+      psbt.finalizeAllInputs()
+    }
+  } catch (err) {
+    console.log('Transaction incomplete, requires more signatures...')
   }
   return psbt
 }

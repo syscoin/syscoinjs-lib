@@ -48,6 +48,12 @@ SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSigne
     if (notarizedDetails && notarizedDetails.output) {
       psbt = HDSigner.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
       psbt = await HDSigner.sign(psbt)
+      try {
+        // will fail if not complete
+        psbt.extractTransaction()
+      } catch (err) {
+        return psbt
+      }
     } else {
       return psbt
     }
@@ -84,20 +90,41 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAss
   const HDSigner = HDSignerIn || this.HDSigner
   const psbtClone = psbt.clone()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
+  let tx = null
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
     // will fail if not complete
-    psbt.extractTransaction()
+    tx = psbt.extractTransaction()
   } catch (err) {
     return psbt
   }
   if (notaryAssets) {
-    const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
-    if (notarizedDetails && notarizedDetails.output) {
-      psbt = HDSigner.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
-      psbt = await utils.signWithWIF(psbt, wif, this.network)
-    } else {
-      return psbt
+    // check to see if notarization was already done
+    const allocations = utils.getAllocationsFromTx(tx)
+    const emptySig = Buffer.alloc(65, 0)
+    let needNotary = false
+    for (let i = 0; i < allocations.length; i++) {
+      // if notarySignature exists and is an empty signature (default prior to filling) then we need to notarize this asset allocation send
+      if (allocations.notarySig && allocations.notarySig.length > 0 && allocations.notarySig.equals(emptySig)) {
+        needNotary = true
+        break
+      }
+    }
+    // if notarization is required
+    if (needNotary) {
+      const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+      if (notarizedDetails && notarizedDetails.output) {
+        psbt = HDSigner.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
+        psbt = await utils.signWithWIF(psbt, wif, this.network)
+        try {
+          // will fail if not complete
+          psbt.extractTransaction()
+        } catch (err) {
+          return psbt
+        }
+      } else {
+        return psbt
+      }
     }
   }
   if (this.blockbookURL) {
@@ -156,15 +183,18 @@ SyscoinJSLib.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOr
         if (!concatSanitizedUTXOS.utxos) {
           concatSanitizedUTXOS.utxos = utxos.utxos
         } else {
-          concatSanitizedUTXOS.utxos = { ...concatSanitizedUTXOS.utxos, ...utxos.utxos }
+          concatSanitizedUTXOS.utxos = [...concatSanitizedUTXOS.utxos].concat([...utxos.utxos])
         }
         if (!concatSanitizedUTXOS.assets && utxos.assets) {
           concatSanitizedUTXOS.assets = utxos.assets
         } else if (concatSanitizedUTXOS.assets && utxos.assets) {
-          concatSanitizedUTXOS.assets = { ...concatSanitizedUTXOS.assets, ...utxos.assets }
+          concatSanitizedUTXOS.assets = new Map([...concatSanitizedUTXOS.assets].concat([...utxos.assets]))
         }
       })
       utxos = concatSanitizedUTXOS
+      utxos.utxos = Object.values(utxos.utxos).reduce(function (r, k) {
+        return r.concat(k)
+      }, [])
     } else if (this.HDSigner) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
       utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, utxos, this.network, txOpts, assetMap, excludeZeroConf)
