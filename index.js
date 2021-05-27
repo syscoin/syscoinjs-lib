@@ -36,10 +36,11 @@ SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSigne
   const HDSigner = HDSignerIn || this.HDSigner
   const psbtClone = psbt.clone()
   psbt = await HDSigner.sign(psbt)
+  let tx = null
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
     // will fail if not complete
-    psbt.extractTransaction()
+    tx = psbt.extractTransaction()
   } catch (err) {
     console.log('Transaction incomplete, requires more signatures...')
     return psbt
