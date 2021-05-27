@@ -724,25 +724,13 @@ HDSigner.prototype.createPSBTFromRes = async function (res) {
   const psbt = new bjs.Psbt({ network: this.network })
   const prevTx = new Map()
   psbt.setVersion(res.txVersion)
-  const fp = this.getMasterFingerprint()
   for (let i = 0; i < res.inputs.length; i++) {
     const input = res.inputs[i]
     const inputObj = {
       hash: input.txId,
       index: input.vout,
       sequence: input.sequence,
-      bip32Derivation: input.bip32Derivation || []
-    }
-    if (input.path && inputObj.bip32Derivation.length === 0) {
-      const pubkey = this.derivePubKey(input.path)
-      if (pubkey) {
-        inputObj.bip32Derivation = [
-          {
-            masterFingerprint: fp,
-            path: input.path,
-            pubkey: pubkey
-          }]
-      }
+      bip32Derivation: []
     }
     // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
     // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
@@ -763,6 +751,8 @@ HDSigner.prototype.createPSBTFromRes = async function (res) {
       inputObj.witnessUtxo = { script: bjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
     }
     psbt.addInput(inputObj)
+    psbt.addUnknownKeyValToInput(i, { key: Buffer.from('address'), value: Buffer.from(input.address) })
+    psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
   }
   res.outputs.forEach(output => {
     psbt.addOutput({
@@ -771,8 +761,44 @@ HDSigner.prototype.createPSBTFromRes = async function (res) {
       value: output.value.toNumber()
     })
   })
-
   return psbt
+}
+HDSigner.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScript) {
+  const psbtNew = new bjs.Psbt({ network: this.network })
+  psbtNew.setVersion(psbt.version)
+  const txInputs = psbt.txInputs
+  for (let i = 0; i < txInputs.length; i++) {
+    const input = txInputs[i]
+    const dataInput = psbt.data.inputs[i]
+    const inputObj = {
+      hash: input.hash,
+      index: input.index,
+      sequence: input.sequence,
+      bip32Derivation: dataInput.bip32Derivation || [],
+      address: input.address || dataInput.address,
+      path: input.path || dataInput.path
+    }
+    if (dataInput.nonWitnessUtxo) {
+      inputObj.nonWitnessUtxo = dataInput.nonWitnessUtxo
+    } else if (dataInput.witnessUtxo) {
+      inputObj.witnessUtxo = dataInput.witnessUtxo
+    }
+    psbtNew.addInput(inputObj)
+  }
+  const txOutputs = psbt.txOutputs
+  for (let i = 0; i < txOutputs.length; i++) {
+    const output = txOutputs[i]
+    if (i === outputIndexToModify) {
+      psbtNew.addOutput({
+        script: outputScript,
+        address: outputScript,
+        value: output.value
+      })
+    } else {
+      psbtNew.addOutput(output)
+    }
+  }
+  return psbtNew
 }
 
 /* signPSBT
@@ -781,6 +807,24 @@ Param psbt: Required. Partially signed transaction object
 Returns: psbt from bitcoinjs-lib
 */
 HDSigner.prototype.signPSBT = async function (psbt) {
+  const txInputs = psbt.txInputs
+  const fp = this.getMasterFingerprint()
+  for (let i = 0; i < txInputs.length; i++) {
+    const dataInput = psbt.data.inputs[i]
+    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && dataInput.bip32Derivation.length === 0) {
+      const path = dataInput.unknownKeyVals[1].value.toString()
+      const pubkey = this.derivePubKey(path)
+      const address = this.getAddressFromPubKey(pubkey)
+      if (pubkey && dataInput.unknownKeyVals[0].value.toString() === address) {
+        dataInput.bip32Derivation = [
+          {
+            masterFingerprint: fp,
+            path: path,
+            pubkey: pubkey
+          }]
+      }
+    }
+  }
   await psbt.signAllInputsHDAsync(this.getRootNode())
   if (psbt.validateSignaturesOfAllInputs()) {
     psbt.finalizeAllInputs()
