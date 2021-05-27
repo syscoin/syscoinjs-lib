@@ -52,7 +52,7 @@ SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSigne
     let needNotary = false
     for (let i = 0; i < allocations.length; i++) {
       // if notarySignature exists and is an empty signature (default prior to filling) then we need to notarize this asset allocation send
-      if (allocations.notarySig && allocations.notarySig.length > 0 && allocations.notarySig.equals(emptySig)) {
+      if (allocations[i].notarysig && allocations[i].notarysig.length > 0 && allocations[i].notarysig.equals(emptySig)) {
         needNotary = true
         break
       }
@@ -122,7 +122,7 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAss
     let needNotary = false
     for (let i = 0; i < allocations.length; i++) {
       // if notarySignature exists and is an empty signature (default prior to filling) then we need to notarize this asset allocation send
-      if (allocations.notarySig && allocations.notarySig.length > 0 && allocations.notarySig.equals(emptySig)) {
+      if (allocations[i].notarysig && allocations[i].notarysig.length > 0 && allocations[i].notarysig.equals(emptySig)) {
         needNotary = true
         break
       }

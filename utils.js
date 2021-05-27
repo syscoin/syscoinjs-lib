@@ -815,7 +815,7 @@ HDSigner.prototype.signPSBT = async function (psbt) {
   const fp = this.getMasterFingerprint()
   for (let i = 0; i < txInputs.length; i++) {
     const dataInput = psbt.data.inputs[i]
-    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && dataInput.bip32Derivation.length === 0) {
+    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0)) {
       const path = dataInput.unknownKeyVals[1].value.toString()
       const pubkey = this.derivePubKey(path)
       const address = this.getAddressFromPubKey(pubkey)
