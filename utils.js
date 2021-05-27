@@ -397,7 +397,6 @@ async function signPSBTWithWIF (psbt, wif, network) {
       psbt.finalizeAllInputs()
     }
   } catch (err) {
-    console.log('Transaction incomplete, requires more signatures...')
   }
   return psbt
 }
@@ -836,7 +835,6 @@ HDSigner.prototype.signPSBT = async function (psbt) {
       psbt.finalizeAllInputs()
     }
   } catch (err) {
-    console.log('Transaction incomplete, requires more signatures...')
   }
   return psbt
 }

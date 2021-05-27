@@ -41,21 +41,37 @@ SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSigne
     // will fail if not complete
     psbt.extractTransaction()
   } catch (err) {
+    console.log('Transaction incomplete, requires more signatures...')
     return psbt
   }
   if (notaryAssets) {
-    const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
-    if (notarizedDetails && notarizedDetails.output) {
-      psbt = HDSigner.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
-      psbt = await HDSigner.sign(psbt)
-      try {
-        // will fail if not complete
-        psbt.extractTransaction()
-      } catch (err) {
+    // check to see if notarization was already done
+    const allocations = utils.getAllocationsFromTx(tx)
+    const emptySig = Buffer.alloc(65, 0)
+    let needNotary = false
+    for (let i = 0; i < allocations.length; i++) {
+      // if notarySignature exists and is an empty signature (default prior to filling) then we need to notarize this asset allocation send
+      if (allocations.notarySig && allocations.notarySig.length > 0 && allocations.notarySig.equals(emptySig)) {
+        needNotary = true
+        break
+      }
+    }
+    // if notarization is required
+    if (needNotary) {
+      const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+      if (notarizedDetails && notarizedDetails.output) {
+        psbt = HDSigner.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
+        psbt = await HDSigner.sign(psbt)
+        try {
+          // will fail if not complete
+          psbt.extractTransaction()
+        } catch (err) {
+          console.log('Transaction incomplete, requires more signatures...')
+          return psbt
+        }
+      } else {
         return psbt
       }
-    } else {
-      return psbt
     }
   }
   if (this.blockbookURL) {
