@@ -754,10 +754,10 @@ HDSigner.prototype.createPSBTFromRes = async function (res) {
       inputObj.witnessUtxo = { script: bjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
     }
     psbt.addInput(inputObj)
-    if(input.address) {
+    if (input.address) {
       psbt.addUnknownKeyValToInput(i, { key: Buffer.from('address'), value: Buffer.from(input.address) })
     }
-    if(input.path) {
+    if (input.path) {
       psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
     }
   }
