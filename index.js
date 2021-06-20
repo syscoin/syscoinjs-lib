@@ -1,13 +1,14 @@
 const utils = require('./utils')
 const syscointx = require('syscointx-js')
 const BN = require('bn.js')
-/* SyscoinJSLib
+
+/* Syscoin
 Purpose: Top level object used by consuming libraries to craft Syscoin/Bitcoin transactions. For Syscoin SPT support is provided
-Param HDSigner: Optional. If letting SyscoinJSLib manage XPUB keys you would want to use an HDSigner. With HDSigner assigned, signing will happen automatically when creating raw transactions.
+Param HDSigner: Optional. If you want to manage XPUB keys with this package you would want to use an HDSigner. With HDSigner assigned, signing will happen automatically when creating raw transactions.
 Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and required information to sign. User can always provide their own list of UTXO's in the same format as blockbook using utils.sanitizeBlockbookUTXOs to sanitize the UTXO data to acceptable internal format
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
-function SyscoinJSLib (HDSigner, blockbookURL, network) {
+function Syscoin (HDSigner, blockbookURL, network) {
   this.blockbookURL = blockbookURL
   if (HDSigner) {
     this.HDSigner = HDSigner
@@ -20,7 +21,7 @@ function SyscoinJSLib (HDSigner, blockbookURL, network) {
 }
 
 // proxy to signAndSend
-SyscoinJSLib.prototype.signAndSendWithHDSigner = async function (psbt, HDSignerIn, notaryAssets) {
+Syscoin.prototype.signAndSendWithHDSigner = async function (psbt, HDSignerIn, notaryAssets) {
   return this.signAndSend(psbt, notaryAssets, HDSignerIn)
 }
 
@@ -31,7 +32,7 @@ Param notaryAssets: Optional. Asset objects that are required for notarization, 
 Param HDSignerIn: Optional. HDSigner used to sign transaction
 Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) {
+Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) {
   // notarize if necessary
   const HDSigner = HDSignerIn || this.HDSigner
   const psbtClone = psbt.clone()
@@ -102,7 +103,7 @@ Param wif: Required. Private key in WIF format to sign inputs of the transaction
 Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets, HDSignerIn) {
+Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets, HDSignerIn) {
   // notarize if necessary
   const HDSigner = HDSignerIn || this.HDSigner
   const psbtClone = psbt.clone()
@@ -163,6 +164,7 @@ SyscoinJSLib.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAss
   }
   return psbt
 }
+
 /* fetchAndSanitizeUTXOs
 Purpose: Fetch UTXO's for an address or XPUB from backend Blockbook provider and sanitize them for use by upstream libraries
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
@@ -185,7 +187,7 @@ Param assetMap: Optional (For asset transactions only). Description of Map:
 Param excludeZeroConf: Optional. False by default. Filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
 Returns: Returns JSON object in response, sanitized UTXO object array in JSON
 */
-SyscoinJSLib.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddress, txOpts, assetMap, excludeZeroConf) {
+Syscoin.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddress, txOpts, assetMap, excludeZeroConf) {
   if (!utxos) {
     if (fromXpubOrAddress) {
       if (!Array.isArray(fromXpubOrAddress)) {
@@ -221,6 +223,7 @@ SyscoinJSLib.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOr
   }
   return utxos
 }
+
 /* createTransaction
 Purpose: Send Syscoin or Bitcoin or like coins.
 Param txOpts: Optional. Transaction options. Fields are described below:
@@ -233,7 +236,7 @@ Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or ad
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
+Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
   if (this.HDSigner) {
     if (!changeAddress) {
       changeAddress = await this.HDSigner.getNewChangeAddress()
@@ -286,7 +289,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos) {
+Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (this.HDSigner) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
@@ -356,7 +359,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -407,7 +410,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (this.HDSigner) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
@@ -476,7 +479,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (this.HDSigner) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
@@ -521,7 +524,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (this.HDSigner) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.HDSigner.getNewChangeAddress()
@@ -576,7 +579,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (this.HDSigner) {
     if (assetMap) {
       for (const valueAssetObj of assetMap.values()) {
@@ -644,7 +647,7 @@ Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
+Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (this.HDSigner) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
@@ -666,6 +669,7 @@ SyscoinJSLib.prototype.syscoinBurnToAssetAllocation = async function (txOpts, as
 }
 
 module.exports = {
-  SyscoinJSLib: SyscoinJSLib,
+  SyscoinJSLib: Syscoin, // Left to be backwards compatible
+  syscoin: Syscoin,
   utils: utils
 }
