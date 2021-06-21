@@ -1251,6 +1251,11 @@ class SPSBT extends bjs.Psbt {
     inputFinalizeGetAmts(this.data.inputs, tx, c, true)
     return tx
   }
+
+  getTransactionID () {
+    let txHashBuffer = this.extractTransaction(true).getHash()
+    return syscointx.syscoinBufferUtils.reverseBuffer(txHashBuffer).toString('hex')
+  }
 }
 
 function createAssetID (NFTID, assetGuid) {
