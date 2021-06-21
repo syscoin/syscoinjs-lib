@@ -134,6 +134,10 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
   }
 }
 
+async function fetchBackendUTXOs (backendURL, addressOrXpub, options) {
+  return fetchBackendUTXOS(backendURL, addressOrXpub, options)
+}
+
 /* fetchBackendAccount
 Purpose: Fetch address or XPUB information including transactions and balance information (based on options) from backend Blockbook provider
 Param backendURL: Required. Fully qualified URL for blockbook
@@ -1283,6 +1287,7 @@ module.exports = {
   syscoinSLIP44: syscoinSLIP44,
   bitcoinSLIP44: bitcoinSLIP44,
   HDSigner: HDSigner,
+  fetchBackendUTXOs: fetchBackendUTXOs,
   fetchBackendUTXOS: fetchBackendUTXOS,
   sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,
   fetchBackendAccount: fetchBackendAccount,
