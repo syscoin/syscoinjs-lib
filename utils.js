@@ -1262,6 +1262,11 @@ function getBaseAssetID (assetGuid) {
   return new BN(assetGuid).and(new BN(0xFFFFFFFF)).toString(10)
 }
 
+function getAssetIDs (assetGuid) {
+  const BN_NFT = new BN(assetGuid).shrn(32)
+  return { baseAssetID: getBaseAssetID(assetGuid), NFTID: BN_NFT.toString(10) }
+}
+
 bjs.Psbt = SPSBT
 module.exports = {
   bitcoinXPubTypes: bitcoinXPubTypes,
@@ -1295,5 +1300,6 @@ module.exports = {
   BN: BN,
   createAssetID: createAssetID,
   getBaseAssetID: getBaseAssetID,
+  getAssetIDs: getAssetIDs,
   setTransactionMemo: setTransactionMemo
 }
