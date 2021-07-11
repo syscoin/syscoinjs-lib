@@ -413,11 +413,14 @@ async function signWithWIF (psbt, wif, network) {
 }
 /* buildEthProof
 Purpose: Build Ethereum SPV proof using eth-proof library
-Param assetOpts: Required. Object containing infuraurl and ethtxid fields populated
+Param assetOpts: Required. Object containing web3url and ethtxid fields populated
 Returns: Returns JSON object in response, SPV proof object in JSON
 */
 async function buildEthProof (assetOpts) {
-  const ethProof = new GetProof(assetOpts.infuraurl)
+  const ethProof = new GetProof(assetOpts.web3url)
+  const ERC20ManagerTestnet = '0x0765efb302d504751c652c5b1d65e8e9edf2e70f'
+  const ERC20ManagerMainnet = '0xFF957eA28b537b34E0c6E6B50c6c938668DD28a0'
+  const tokenFreezeFunction = ('9c6dea23fe3b510bb5d170df49dc74e387692eaa3258c691918cd3aa94f5fb74').toLowerCase() // token freeze function signature
   try {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txvalue = rlp.encode(rlp.decode(result.txProof[2][1])).toString('hex')
@@ -439,15 +442,13 @@ async function buildEthProof (assetOpts) {
     const txparentnodes = rlp.encode(result.txProof).toString('hex')
     const txpath = rlp.encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
-
+    const blockhash = await web3.eth.getBlock(blocknumber).hash
     result = await ethProof.receiptProof(assetOpts.ethtxid)
     const receiptvalue = rlp.encode(rlp.decode(result.receiptProof[2][1])).toString('hex')
     const receiptroot = rlp.encode(result.header[5]).toString('hex')
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
-    const tokenFreezeFunction = ('9c6dea23fe3b510bb5d170df49dc74e387692eaa3258c691918cd3aa94f5fb74').toLowerCase() // token freeze function signature
-    const testnet = assetOpts.infuraurl.indexOf('mainnet') === -1
-    const ERC20Manager = (testnet ? '0x0765efb302d504751c652c5b1d65e8e9edf2e70f' : '0xFF957eA28b537b34E0c6E6B50c6c938668DD28a0').toLowerCase()
-    let bridgetransferid = 0
+    const testnet = assetOpts.web3url.indexOf('mainnet') === -1
+    const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
     const txReceipt = Receipt.fromHex(result.receiptProof[2][1]).toObject()
     let amount = 0
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
@@ -456,7 +457,7 @@ async function buildEthProof (assetOpts) {
         continue
       }
 
-      // event TokenFreeze(address freezer, uint value, uint transferIdAndPrecisions);
+      // event TokenFreeze(address freezer, uint value, uint precisions);
       if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction && log.address.toLowerCase() === ERC20Manager) {
         const paramResults = web3.eth.abi.decodeParameters([{
           type: 'address',
@@ -466,15 +467,14 @@ async function buildEthProof (assetOpts) {
           name: 'value'
         }, {
           type: 'uint',
-          name: 'transferIdAndPrecisions'
+          name: 'precisions'
         }], log.data)
-        const transferIdAndPrecisions = new web3.utils.BN(paramResults.transferIdAndPrecisions)
-        bridgetransferid = transferIdAndPrecisions.maskn(32).toNumber()
+        const precisions = new web3.utils.BN(paramResults.precisions)
         const value = new web3.utils.BN(paramResults.value)
 
         // get precision
-        const erc20precision = transferIdAndPrecisions.shrn(32).maskn(8)
-        const sptprecision = transferIdAndPrecisions.shrn(40)
+        const erc20precision = precisions.maskn(32).toNumber()
+        const sptprecision = precisions.shrn(32).maskn(8)
         // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
         // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
         if (sptprecision > erc20precision) {
@@ -488,7 +488,7 @@ async function buildEthProof (assetOpts) {
         break
       }
     }
-    return { assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes, bridgetransferid }
+    return { ethtxid: assetOpts.ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
     return e
   }
@@ -718,58 +718,6 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   }
 }
 
-/* createPSBTFromRes
-Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
-Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Returns: psbt from bitcoinjs-lib
-*/
-HDSigner.prototype.createPSBTFromRes = async function (res) {
-  const psbt = new bjs.Psbt({ network: this.network })
-  const prevTx = new Map()
-  psbt.setVersion(res.txVersion)
-  for (let i = 0; i < res.inputs.length; i++) {
-    const input = res.inputs[i]
-    const inputObj = {
-      hash: input.txId,
-      index: input.vout,
-      sequence: input.sequence,
-      bip32Derivation: []
-    }
-    // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
-    // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
-    if (input.type === 'LEGACY') {
-      if (prevTx.has(input.txId)) {
-        inputObj.nonWitnessUtxo = prevTx.get(input.txId)
-      } else {
-        const hexTx = await fetchBackendRawTx(this.backendURL, input.txId)
-        if (hexTx) {
-          const bufferTx = Buffer.from(hexTx.hex, 'hex')
-          prevTx.set(input.txId, bufferTx)
-          inputObj.nonWitnessUtxo = bufferTx
-        } else {
-          console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
-        }
-      }
-    } else {
-      inputObj.witnessUtxo = { script: bjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
-    }
-    psbt.addInput(inputObj)
-    if (input.address) {
-      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('address'), value: Buffer.from(input.address) })
-    }
-    if (input.path) {
-      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
-    }
-  }
-  res.outputs.forEach(output => {
-    psbt.addOutput({
-      script: output.script,
-      address: output.script ? null : output.address,
-      value: output.value.toNumber()
-    })
-  })
-  return psbt
-}
 HDSigner.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScript) {
   const psbtNew = new bjs.Psbt({ network: this.network })
   psbtNew.setVersion(psbt.version)
@@ -1262,6 +1210,10 @@ function getBaseAssetID (assetGuid) {
   return new BN(assetGuid).and(new BN(0xFFFFFFFF)).toString(10)
 }
 
+function getAssetIDs (assetGuid) {
+  const BN_NFT = new BN(assetGuid).shrn(32)
+  return { baseAssetID: getBaseAssetID(assetGuid), NFTID: BN_NFT.toString(10) }
+}
 bjs.Psbt = SPSBT
 module.exports = {
   bitcoinXPubTypes: bitcoinXPubTypes,
@@ -1274,6 +1226,7 @@ module.exports = {
   bitcoinSLIP44: bitcoinSLIP44,
   HDSigner: HDSigner,
   fetchBackendUTXOS: fetchBackendUTXOS,
+  fetchBackendUTXOs: fetchBackendUTXOS,
   sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,
   fetchBackendAccount: fetchBackendAccount,
   fetchBackendAsset: fetchBackendAsset,
@@ -1295,5 +1248,6 @@ module.exports = {
   BN: BN,
   createAssetID: createAssetID,
   getBaseAssetID: getBaseAssetID,
+  getAssetIDs: getAssetIDs,
   setTransactionMemo: setTransactionMemo
 }

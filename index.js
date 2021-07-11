@@ -24,7 +24,58 @@ function Syscoin (HDSigner, blockbookURL, network) {
 Syscoin.prototype.signAndSendWithHDSigner = async function (psbt, HDSignerIn, notaryAssets) {
   return this.signAndSend(psbt, notaryAssets, HDSignerIn)
 }
-
+/* createPSBTFromRes
+Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
+Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
+Returns: psbt from bitcoinjs-lib
+*/
+Syscoin.prototype.createPSBTFromRes = async function (res) {
+  const psbt = new utils.bitcoinjs.Psbt({ network: this.network })
+  const prevTx = new Map()
+  psbt.setVersion(res.txVersion)
+  for (let i = 0; i < res.inputs.length; i++) {
+    const input = res.inputs[i]
+    const inputObj = {
+      hash: input.txId,
+      index: input.vout,
+      sequence: input.sequence,
+      bip32Derivation: []
+    }
+    // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
+    // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
+    if (input.type === 'LEGACY') {
+      if (prevTx.has(input.txId)) {
+        inputObj.nonWitnessUtxo = prevTx.get(input.txId)
+      } else {
+        const hexTx = await utils.fetchBackendRawTx(this.backendURL, input.txId)
+        if (hexTx) {
+          const bufferTx = Buffer.from(hexTx.hex, 'hex')
+          prevTx.set(input.txId, bufferTx)
+          inputObj.nonWitnessUtxo = bufferTx
+        } else {
+          console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
+        }
+      }
+    } else {
+      inputObj.witnessUtxo = { script: utils.bitcoinjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
+    }
+    psbt.addInput(inputObj)
+    if (input.address) {
+      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('address'), value: Buffer.from(input.address) })
+    }
+    if (input.path) {
+      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
+    }
+  }
+  res.outputs.forEach(output => {
+    psbt.addOutput({
+      script: output.script,
+      address: output.script ? null : output.address,
+      value: output.value.toNumber()
+    })
+  })
+  return psbt
+}
 /* signAndSend
 Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
 Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
@@ -244,7 +295,7 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (fromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -305,7 +356,7 @@ Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -380,7 +431,7 @@ Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, as
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -447,7 +498,7 @@ Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddre
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -493,7 +544,7 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -538,7 +589,7 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -547,22 +598,21 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
 
 /* assetAllocationMint
 Purpose: Minting new asset using proof-of-lock on Ethereum as a proof to mint tokens on Syscoin.
-Param assetOpts: Optional. If you have the Ethereum TXID and want to use eth-proof you can just specify the ethtxid and infuraurl fields. Fields described below:
-  Field ethtxid. Optional. If using eth-proof specify Ethereum proof-of-lock txid on Ethereum. The trasaction that calls freezeBurnERC20() on ERC20Manager contract
-  Field infuraurl. Optional. Fully qualified Infura API URL including Infura ID for web3 access that eth-proof needs to obtain the tx proof and receipt proof information needed by Syscoin to valdiate the mint
-  Field bridgetransferid. Optional. If ethtxid or infuraurl is not provided, manually enter proof info. Bridge transfer ID is the unique counter of locks on Ethereum. The freezeBurnERC20() emits a log that includes the unique ID which is entered here.
-  Field blocknumber. Optional. Block number of transaction including freezeBurnERC20() call
-  Field txvalue. Optional. Buffer value of the transaction hex encoded in RLP format
-  Field txroot. Optional. Buffer value of the transaction merkle root encoded in RLP format
-  Field txparentnodes. Optional. Buffer value of the transaction merkle proof encoded in RLP format
-  Field txpath. Optional. Buffer value of the merkle path for the transaction and receipt proof
-  Field receiptvalue. Optional. Buffer value of the transaction receipt hex encoded in RLP format
-  Field receiptroot. Optional. Buffer value of the receipt merkle root encoded in RLP format
-  Field receiptparentnodes. Optional. Buffer value of the receipt merkle proof encoded in RLP format
+Param assetOpts: Optional. If you have the Ethereum TXID and want to use eth-proof you can just specify the ethtxid and web3url fields. Fields described below:
+  Field ethtxid. Required. The trasaction that calls freezeBurnERC20() on ERC20Manager contract
+  Field web3url. Optional. If using eth-proof fully qualified Web3 HTTP-RPC URL that eth-proof needs to obtain the tx proof and receipt proof information needed by Syscoin to valdiate the mint
+  Field blocknumber. Optional if ethtxid/web3url not provided. Block number of transaction including freezeBurnERC20() call
+  Field txvalue. Optional if ethtxid/web3url not provided. Buffer value of the transaction hex encoded in RLP format
+  Field txroot. Optional if ethtxid/web3url not provided. Buffer value of the transaction merkle root encoded in RLP format
+  Field txparentnodes. Optional if ethtxid/web3url not provided. Buffer value of the transaction merkle proof encoded in RLP format
+  Field txpath. Optional if ethtxid/web3url not provided. Buffer value of the merkle path for the transaction and receipt proof
+  Field receiptvalue. Optional if ethtxid/web3url not provided. Buffer value of the transaction receipt hex encoded in RLP format
+  Field receiptroot. Optional if ethtxid/web3url not provided. Buffer value of the receipt merkle root encoded in RLP format
+  Field receiptparentnodes. Optional if ethtxid/web3url not provided. Buffer value of the receipt merkle proof encoded in RLP format
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
   Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
-Param assetMap: Optional. Auto-filled by eth-proof if it is used (pass ethtxid and infuraurl in assetOpts). Description of Map:
+Param assetMap: Optional. Auto-filled by eth-proof if it is used (pass ethtxid and web3url in assetOpts). Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
     Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
@@ -597,13 +647,18 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
     let changeAddress
     if (this.HDSigner) {
       changeAddress = await this.HDSigner.getNewChangeAddress()
+    // if no HDSigner then we use the ethProof.destinationaddress as a funding source as well as change address
+    } else {
+      changeAddress = ethProof.destinationaddress
+      sysChangeAddress = ethProof.destinationaddress
+      sysFromXpubOrAddress = ethProof.destinationaddress
     }
     assetMap = new Map([
       [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: new BN(ethProof.amount), address: ethProof.destinationaddress }] }]
     ])
     assetOpts = {
-      bridgetransferid: ethProof.bridgetransferid,
-      blocknumber: ethProof.blocknumber,
+      ethtxid: Buffer.from(ethProof.ethtxid, 'hex'),
+      blockhash: Buffer.from(ethProof.blockhash, 'hex'),
       txvalue: Buffer.from(ethProof.txvalue, 'hex'),
       txroot: Buffer.from(ethProof.txroot, 'hex'),
       txparentnodes: Buffer.from(ethProof.txparentnodes, 'hex'),
@@ -617,7 +672,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -661,7 +716,7 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.HDSigner.createPSBTFromRes(res)
+  const psbt = await this.createPSBTFromRes(res)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
