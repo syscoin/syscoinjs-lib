@@ -6,8 +6,8 @@ const CryptoJS = require('crypto-js')
 const bjs = require('bitcoinjs-lib')
 const bitcoinops = require('bitcoin-ops')
 const varuint = require('varuint-bitcoin')
-const { GetProof } = require('eth-proof')
-const { Log, Receipt, Transaction } = require('eth-object')
+const { VerifyProof, GetProof } = require('eth-proof')
+const { Log } = require('eth-object')
 const rlp = require('rlp')
 const Web3 = require('web3')
 const syscointx = require('syscointx-js')
@@ -424,9 +424,8 @@ async function buildEthProof (assetOpts) {
   try {
     console.log('buildEthProof ' + assetOpts.ethtxid)
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
-    console.log('transactionProof result ' + JSON.stringify(result))
-    const txvalue = rlp.encode(rlp.decode(result.txProof[2][1])).toString('hex')
-    const txObj = Transaction.fromHex(result.txProof[2][1]).toObject()
+    const txObj = VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
+    const txvalue = txObj.hex
     txObj.data = txObj.data.substring(10)
     const paramTxResults = web3.eth.abi.decodeParameters([{
       type: 'uint',
@@ -444,16 +443,14 @@ async function buildEthProof (assetOpts) {
     const txparentnodes = rlp.encode(result.txProof).toString('hex')
     const txpath = rlp.encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
-    const blockhash = await web3.eth.getBlock(blocknumber).blockHash
-    console.log('receiptProof ' + assetOpts.ethtxid)
-    result = await ethProof.receiptProof(assetOpts.ethtxid)
-    console.log('receiptProof result ' + JSON.stringify(result))
-    const receiptvalue = rlp.encode(rlp.decode(result.receiptProof[2][1])).toString('hex')
+    const blockhash = VerifyProof.getBlockHashFromHeader(result.header)
     const receiptroot = rlp.encode(result.header[5]).toString('hex')
+    result = await ethProof.receiptProof(assetOpts.ethtxid)
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
     const testnet = assetOpts.web3url.indexOf('mainnet') === -1
     const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
-    const txReceipt = Receipt.fromHex(result.receiptProof[2][1]).toObject()
+    const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
+    const receiptvalue = txReceipt.hex
     let amount = 0
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
       const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject()
