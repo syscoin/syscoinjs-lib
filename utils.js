@@ -419,14 +419,13 @@ Returns: Returns JSON object in response, SPV proof object in JSON
 async function buildEthProof (assetOpts) {
   const ethProof = new GetProof(assetOpts.web3url)
   const ERC20ManagerTestnet = '0x0765efb302d504751c652c5b1d65e8e9edf2e70f'
-  const ERC20ManagerMainnet = '0xFF957eA28b537b34E0c6E6B50c6c938668DD28a0'
-  const tokenFreezeFunction = ('9c6dea23fe3b510bb5d170df49dc74e387692eaa3258c691918cd3aa94f5fb74').toLowerCase() // token freeze function signature
+  const ERC20ManagerMainnet = '0x5b00eeC38D64a32C6f35f341a390aeb5f935dd08'
+  const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
   try {
-    console.log('buildEthProof ' + assetOpts.ethtxid)
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
-    const txvalue = txObj.hex
-    const input_data = txObj.data.slice(4).toString('hex');  // get only data without function selector
+    const txvalue = txObj.hex.substring(2) // remove hex prefix
+    const input_data = txObj.data.slice(4).toString('hex')  // get only data without function selector
     const paramTxResults = web3.eth.abi.decodeParameters([{
       type: 'uint',
       name: 'value'
@@ -450,15 +449,13 @@ async function buildEthProof (assetOpts) {
     const testnet = assetOpts.web3url.indexOf('mainnet') === -1
     const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
     const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
-    const receiptvalue = txReceipt.hex
+    const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
     let amount = 0
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
       const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject()
       if (log.topics && log.topics.length !== 1) {
         continue
       }
-      console.log("log.topics[0].toString('hex').toLowerCase() " + log.topics[0].toString('hex').toLowerCase())
-      console.log('log.address.toLowerCase() ' + log.address.toLowerCase())
       // event TokenFreeze(address freezer, uint value, uint precisions);
       if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction && log.address.toLowerCase() === ERC20Manager) {
         const paramResults = web3.eth.abi.decodeParameters([{
@@ -477,7 +474,6 @@ async function buildEthProof (assetOpts) {
         // get precision
         const erc20precision = precisions.maskn(32).toNumber()
         const sptprecision = precisions.shrn(32).maskn(8)
-        console.log('erc20precision ' + erc20precision + ' sptprecision ' + sptprecision)
         // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
         // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
         if (sptprecision > erc20precision) {
@@ -488,7 +484,6 @@ async function buildEthProof (assetOpts) {
         } else {
           amount = value.toNumber()
         }
-        console.log('amount ' + amount)
         break
       }
     }
