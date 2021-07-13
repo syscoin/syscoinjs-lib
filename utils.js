@@ -425,7 +425,7 @@ async function buildEthProof (assetOpts) {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex.substring(2) // remove hex prefix
-    const input_data = txObj.data.slice(4).toString('hex')  // get only data without function selector
+    const inputData = txObj.data.slice(4).toString('hex') // get only data without function selector
     const paramTxResults = web3.eth.abi.decodeParameters([{
       type: 'uint',
       name: 'value'
@@ -435,7 +435,7 @@ async function buildEthProof (assetOpts) {
     }, {
       type: 'string',
       name: 'syscoinAddress'
-    }], input_data)
+    }], inputData)
     const assetguid = paramTxResults.assetGUID
     const destinationaddress = paramTxResults.syscoinAddress
     const txroot = rlp.encode(result.header[4]).toString('hex')
