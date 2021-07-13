@@ -424,7 +424,7 @@ async function buildEthProof (assetOpts) {
   try {
     console.log('buildEthProof ' + assetOpts.ethtxid)
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
-    const txObj = VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
+    const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex
     txObj.data = txObj.data.substring(10)
     const paramTxResults = web3.eth.abi.decodeParameters([{
