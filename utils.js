@@ -426,7 +426,7 @@ async function buildEthProof (assetOpts) {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex
-    const input_data = '0x' + txObj.data.slice(10).toString('hex');  // get only data without function selector
+    const input_data = txObj.data.slice(4).toString('hex');  // get only data without function selector
     const paramTxResults = web3.eth.abi.decodeParameters([{
       type: 'uint',
       name: 'value'
