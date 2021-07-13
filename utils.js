@@ -422,7 +422,9 @@ async function buildEthProof (assetOpts) {
   const ERC20ManagerMainnet = '0xFF957eA28b537b34E0c6E6B50c6c938668DD28a0'
   const tokenFreezeFunction = ('9c6dea23fe3b510bb5d170df49dc74e387692eaa3258c691918cd3aa94f5fb74').toLowerCase() // token freeze function signature
   try {
+    console.log('buildEthProof ' + assetOpts.ethtxid)
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
+    console.log('transactionProof result ' + JSON.stringify(result))
     const txvalue = rlp.encode(rlp.decode(result.txProof[2][1])).toString('hex')
     const txObj = Transaction.fromHex(result.txProof[2][1]).toObject()
     txObj.data = txObj.data.substring(10)
@@ -443,7 +445,9 @@ async function buildEthProof (assetOpts) {
     const txpath = rlp.encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
     const blockhash = await web3.eth.getBlock(blocknumber).blockHash
+    console.log('receiptProof ' + assetOpts.ethtxid)
     result = await ethProof.receiptProof(assetOpts.ethtxid)
+    console.log('receiptProof result ' + JSON.stringify(result))
     const receiptvalue = rlp.encode(rlp.decode(result.receiptProof[2][1])).toString('hex')
     const receiptroot = rlp.encode(result.header[5]).toString('hex')
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
@@ -457,7 +461,7 @@ async function buildEthProof (assetOpts) {
         continue
       }
       console.log("log.topics[0].toString('hex').toLowerCase() " + log.topics[0].toString('hex').toLowerCase())
-      console.log("log.address.toLowerCase() " + log.address.toLowerCase())
+      console.log('log.address.toLowerCase() ' + log.address.toLowerCase())
       // event TokenFreeze(address freezer, uint value, uint precisions);
       if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction && log.address.toLowerCase() === ERC20Manager) {
         const paramResults = web3.eth.abi.decodeParameters([{
@@ -476,7 +480,7 @@ async function buildEthProof (assetOpts) {
         // get precision
         const erc20precision = precisions.maskn(32).toNumber()
         const sptprecision = precisions.shrn(32).maskn(8)
-        console.log("erc20precision " + erc20precision + " sptprecision " + sptprecision)
+        console.log('erc20precision ' + erc20precision + ' sptprecision ' + sptprecision)
         // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
         // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
         if (sptprecision > erc20precision) {
@@ -487,7 +491,7 @@ async function buildEthProof (assetOpts) {
         } else {
           amount = value.toNumber()
         }
-        console.log("amount " + amount)
+        console.log('amount ' + amount)
         break
       }
     }
