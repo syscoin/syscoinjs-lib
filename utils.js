@@ -475,14 +475,14 @@ async function buildEthProof (assetOpts) {
         const value = new web3.utils.BN(paramResults.value)
 
         // get precision
-        const erc20precision = precisions.maskn(32).toNumber()
+        const erc20precision = precisions.maskn(32)
         const sptprecision = precisions.shrn(32).maskn(8)
         // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
         // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
-        if (sptprecision > erc20precision) {
+        if (sptprecision.gt(erc20precision)) {
           amount = value.mul(new web3.utils.BN(10).pow(sptprecision.sub(erc20precision))).toNumber()
           // ensure we truncate decimals to fit within int64 if erc20's precision is more than our asset precision
-        } else if (sptprecision < erc20precision) {
+        } else if (sptprecision.lt(erc20precision)) {
           amount = value.div(new web3.utils.BN(10).pow(erc20precision.sub(sptprecision))).toNumber()
         } else {
           amount = value.toNumber()
