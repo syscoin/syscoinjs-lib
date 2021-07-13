@@ -490,7 +490,7 @@ async function buildEthProof (assetOpts) {
         break
       }
     }
-    return { ethtxid: assetOpts.ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
+    return { ethtxid: assetOpts.ethtxid.substring(2), blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
     return e
   }
