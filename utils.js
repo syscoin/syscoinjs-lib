@@ -418,8 +418,8 @@ Returns: Returns JSON object in response, SPV proof object in JSON
 */
 async function buildEthProof (assetOpts) {
   const ethProof = new GetProof(assetOpts.web3url)
-  const ERC20ManagerTestnet = '0x000BB0813038bd7766489c5E6A098263fA4D9Ede'
-  const ERC20ManagerMainnet = '0x000BB0813038bd7766489c5E6A098263fA4D9Ede'
+  const ERC20ManagerTestnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
+  const ERC20ManagerMainnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
   const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
   try {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
