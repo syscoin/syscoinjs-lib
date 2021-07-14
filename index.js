@@ -654,7 +654,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
       sysFromXpubOrAddress = ethProof.destinationaddress
     }
     assetMap = new Map([
-      [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: new BN(ethProof.amount), address: ethProof.destinationaddress }] }]
+      [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: ethProof.amount, address: ethProof.destinationaddress }] }]
     ])
     assetOpts = {
       ethtxid: Buffer.from(ethProof.ethtxid, 'hex'),

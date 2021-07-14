@@ -480,12 +480,12 @@ async function buildEthProof (assetOpts) {
         // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
         // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
         if (sptprecision.gt(erc20precision)) {
-          amount = value.mul(new web3.utils.BN(10).pow(sptprecision.sub(erc20precision))).toNumber()
+          amount = value.mul(new web3.utils.BN(10).pow(sptprecision.sub(erc20precision)))
           // ensure we truncate decimals to fit within int64 if erc20's precision is more than our asset precision
         } else if (sptprecision.lt(erc20precision)) {
-          amount = value.div(new web3.utils.BN(10).pow(erc20precision.sub(sptprecision))).toNumber()
+          amount = value.div(new web3.utils.BN(10).pow(erc20precision.sub(sptprecision)))
         } else {
-          amount = value.toNumber()
+          amount = value
         }
         break
       }
