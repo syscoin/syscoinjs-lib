@@ -5,7 +5,8 @@ const BN = require('bn.js')
 /* Syscoin
 Purpose: Top level object used by consuming libraries to craft Syscoin/Bitcoin transactions. For Syscoin SPT support is provided
 Param HDSigner: Optional. If you want to manage XPUB keys with this package you would want to use an HDSigner. With HDSigner assigned, signing will happen automatically when creating raw transactions.
-Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and required information to sign. User can always provide their own list of UTXO's in the same format as blockbook using utils.sanitizeBlockbookUTXOs to sanitize the UTXO data to acceptable internal format
+Param blockbookURL: Optional. A 
+blockbook URL that will provide UTXO and required information to sign. User can always provide their own list of UTXO's in the same format as blockbook using utils.sanitizeBlockbookUTXOs to sanitize the UTXO data to acceptable internal format
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
 function Syscoin (HDSigner, blockbookURL, network) {
@@ -47,7 +48,7 @@ Syscoin.prototype.createPSBTFromRes = async function (res) {
       if (prevTx.has(input.txId)) {
         inputObj.nonWitnessUtxo = prevTx.get(input.txId)
       } else {
-        const hexTx = await utils.fetchBackendRawTx(this.backendURL, input.txId)
+        const hexTx = await utils.fetchBackendRawTx(this.blockbookURL, input.txId)
         if (hexTx) {
           const bufferTx = Buffer.from(hexTx.hex, 'hex')
           prevTx.set(input.txId, bufferTx)
