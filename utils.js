@@ -140,10 +140,10 @@ Param backendURL: Required. Fully qualified URL for blockbook
 Param addressOrXpub: Required. An address or XPUB to fetch UTXO's for
 Param options: Optional. Optional queries based on https://github.com/syscoin/blockbook/blob/master/docs/api.md#get-xpub
 Param xpub: Optional. If addressOrXpub is an XPUB set to true.
-Param myHDSignerObj: Optional. HDSigner object if you wish to update change/receiving indexes from backend provider (and XPUB token information is provided in response)
+Param mySignerObj: Optional. Signer object if you wish to update change/receiving indexes from backend provider (and XPUB token information is provided in response)
 Returns: Returns JSON object in response, account object in JSON
 */
-async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, myHDSignerObj) {
+async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, mySignerObj) {
   try {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
@@ -162,8 +162,8 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     const request = await axios.get(url)
     if (request && request.data) {
       // if fetching xpub data
-      if (xpub && request.data.tokens && myHDSignerObj) {
-        myHDSignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
+      if (xpub && request.data.tokens && mySignerObj) {
+        mySignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
       }
       return request.data
     }
@@ -177,10 +177,10 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
 Purpose: Send raw transaction to backend Blockbook provider to send to the network
 Param backendURL: Required. Fully qualified URL for blockbook
 Param txHex: Required. Raw transaction hex
-Param myHDSignerObj: Optional. HDSigner object if you wish to update change/receiving indexes from backend provider through fetchBackendAccount()
+Param mySignerObj: Optional. Signer object if you wish to update change/receiving indexes from backend provider through fetchBackendAccount()
 Returns: Returns txid in response or error
 */
-async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
+async function sendRawTransaction (backendURL, txHex, mySignerObj) {
   try {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
@@ -188,8 +188,8 @@ async function sendRawTransaction (backendURL, txHex, myHDSignerObj) {
     }
     const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex)
     if (request && request.data) {
-      if (myHDSignerObj) {
-        await fetchBackendAccount(blockbookURL, myHDSignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, myHDSignerObj)
+      if (mySignerObj) {
+        await fetchBackendAccount(blockbookURL, mySignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, mySignerObj)
       }
       return request.data
     }
@@ -682,46 +682,8 @@ function setTransactionMemo (rawHex, memoHeader, buffMemo) {
   }
   return txn
 }
-
-/* HDSigner
-Purpose: Manage HD wallet and accounts, connects to SyscoinJS object
-Param mnemonic: Required. Bip32 seed phrase
-Param password: Optional. Encryption password for local storage on web clients
-Param isTestnet: Optional. Is using testnet network?
-Param networks: Optional. Defaults to Syscoin network. bitcoinjs-lib network settings for coin being used.
-Param SLIP44: Optional. SLIP44 value for the coin, see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-Param pubTypes: Optional. Defaults to Syscoin ZPub/VPub types. Specific ZPub for bip84 and VPub for testnet
-*/
-function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
-  this.isTestnet = isTestnet || false
-  SLIP44 = this.isTestnet ? 1 : SLIP44 || syscoinSLIP44 // 1 is testnet for all coins,
-  this.networks = networks || syscoinNetworks
-
-  if (!this.isTestnet) {
-    this.network = this.networks.mainnet || syscoinNetworks.mainnet
-  } else {
-    this.network = this.networks.testnet || syscoinNetworks.testnet
-  }
-
-  this.password = password
-  this.pubTypes = pubTypes || syscoinZPubTypes
-
-  this.accounts = [] // length serialized
-  this.changeIndex = -1
-  this.receivingIndex = -1
-  this.mnemonic = mnemonic // serialized
-  this.accountIndex = 0
-
-  /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.fromSeed = new BIP84.fromSeed(mnemonic, password, this.isTestnet, SLIP44, this.pubTypes, this.network)
-  // try to restore, if it does not succeed then initialize from scratch
-  if (!this.password || !this.restore(this.password)) {
-    this.createAccount()
-  }
-}
-
-HDSigner.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScript) {
-  const psbtNew = new bjs.Psbt({ network: this.network })
+function copyPSBT (psbt, networkIn, outputIndexToModify, outputScript) {
+  const psbtNew = new bjs.Psbt({ network: networkIn })
   psbtNew.setVersion(psbt.version)
   const txInputs = psbt.txInputs
   for (let i = 0; i < txInputs.length; i++) {
@@ -757,6 +719,52 @@ HDSigner.prototype.copyPSBT = function (psbt, outputIndexToModify, outputScript)
     }
   }
   return psbtNew
+}
+
+/* HDSigner
+Purpose: Manage HD wallet and accounts, connects to SyscoinJS object
+Param mnemonic: Required. Bip32 seed phrase
+Param password: Optional. Encryption password for local storage on web clients
+Param isTestnet: Optional. Is using testnet network?
+Param networks: Optional. Defaults to Syscoin network. bitcoinjs-lib network settings for coin being used.
+Param SLIP44: Optional. SLIP44 value for the coin, see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+Param pubTypes: Optional. Defaults to Syscoin ZPub/VPub types. Specific ZPub for bip84 and VPub for testnet
+*/
+function Signer (password, isTestnet, networks, SLIP44, pubTypes) {
+  this.isTestnet = isTestnet || false
+  this.networks = networks || syscoinNetworks
+  this.password = password
+  this.SLIP44 = this.isTestnet ? 1 : SLIP44 || syscoinSLIP44 // 1 is testnet for all coins,
+  if (!this.isTestnet) {
+    this.network = this.networks.mainnet || syscoinNetworks.mainnet
+  } else {
+    this.network = this.networks.testnet || syscoinNetworks.testnet
+  }
+
+  this.pubTypes = pubTypes || syscoinZPubTypes
+  this.accounts = [] // length serialized
+  this.changeIndex = -1
+  this.receivingIndex = -1
+  this.accountIndex = 0
+}
+function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes) {
+  this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
+
+  // try to restore, if it does not succeed then initialize from scratch
+  if (!this.Signer.password || !this.restore(this.Signer.password)) {
+    this.createAccount()
+  }
+}
+function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
+  this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
+  this.mnemonic = mnemonic // serialized
+
+  /* eslint new-cap: ["error", { "newIsCap": false }] */
+  this.fromSeed = new BIP84.fromSeed(mnemonic, this.Signer.password, this.Signer.isTestnet, this.Signer.SLIP44, this.Signer.pubTypes, this.Signer.network)
+  // try to restore, if it does not succeed then initialize from scratch
+  if (!this.Signer.password || !this.restore(this.Signer.password)) {
+    this.createAccount()
+  }
 }
 
 /* signPSBT
@@ -798,6 +806,9 @@ Purpose: Create signing information based on HDSigner (if set) and call signPSBT
 Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
+TrezorSigner.prototype.sign = async function (psbt) {
+  // TODO: sign with trezor connect here
+}
 HDSigner.prototype.sign = async function (psbt) {
   return await this.signPSBT(psbt)
 }
@@ -807,7 +818,7 @@ Purpose: Get master seed fingerprint used for signing with bitcoinjs-lib PSBT's
 Returns: bip32 root master fingerprint
 */
 HDSigner.prototype.getMasterFingerprint = function () {
-  return bjs.bip32.fromSeed(this.fromSeed.seed, this.network).fingerprint
+  return bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network).fingerprint
 }
 
 /* deriveAccount
@@ -815,11 +826,54 @@ Purpose: Derive HD account based on index number passed in
 Param index: Required. Account number to derive
 Returns: bip32 node for derived account
 */
+TrezorSigner.prototype.deriveAccount = function (index) {
+  /* TODO make this work with trezor
+  let bipNum = 44
+  if (this.Signer.pubTypes === syscoinZPubTypes ||
+    this.Signer.pubTypes === bitcoinZPubTypes) {
+    bipNum = 84
+  }
+  const coin = this.Signer.SLIP44 === syscoinSLIP44? "SYS": "BTC"
+  const keypath = 'm/' + bipNum + "'/" + this.Signer.SLIP44 + "'/" + index + "'" 
+  if (this.Signer.isTestnet) {
+    const message = "Trezor doesn't support SYS testnet";
+    chrome.notifications.create(new Date().getTime().toString(), {
+      type: 'basic',
+      iconUrl: 'assets/icons/favicon-48.png',
+      title: 'Cant create hardware wallet on testnet',
+      message
+    });
+    return
+  }
+  console.log(window.trezorConnect)
+  window.trezorConnect.getAccountInfo({
+    path,
+    coin
+  })
+    .then((response: any) => {
+      const message = response.success
+        ? `Trezor Wallet Account Created`
+        : `Error: ${response.payload.error}`;
+      chrome.notifications.create(new Date().getTime().toString(), {
+        type: 'basic',
+        iconUrl: 'assets/icons/favicon-48.png',
+        title: 'Hardware Wallet connected',
+        message,
+      });
+      if (response.success) {
+        account.subscribeAccount(true, response.payload);
+      }
+    })
+    .catch((error: any) => {
+      console.error('TrezorConnectError', error);
+    });
+*/
+}
 HDSigner.prototype.deriveAccount = function (index) {
-  let bipNum = '44'
-  if (this.pubTypes === syscoinZPubTypes ||
-    this.pubTypes === bitcoinZPubTypes) {
-    bipNum = '84'
+  let bipNum = 44
+  if (this.Signer.pubTypes === syscoinZPubTypes ||
+    this.Signer.pubTypes === bitcoinZPubTypes) {
+    bipNum = 84
   }
   return this.fromSeed.deriveAccount(index, bipNum)
 }
@@ -828,7 +882,7 @@ HDSigner.prototype.deriveAccount = function (index) {
 Purpose: Set HD account based on accountIndex number passed in so HD indexes (change/receiving) will be updated accordingly to this account
 Param accountIndex: Required. Account number to use
 */
-HDSigner.prototype.setAccountIndex = function (accountIndex) {
+Signer.prototype.setAccountIndex = function (accountIndex) {
   if (accountIndex > this.accounts.length) {
     console.log('Account does not exist, use createAccount to create it first...')
     return
@@ -837,19 +891,51 @@ HDSigner.prototype.setAccountIndex = function (accountIndex) {
   this.changeIndex = -1
   this.receivingIndex = -1
 }
+TrezorSigner.prototype.setAccountIndex = function (accountIndex) {
+  this.Signer.setAccountIndex(accountIndex)
+}
+HDSigner.prototype.setAccountIndex = function (accountIndex) {
+  this.Signer.setAccountIndex(accountIndex)
+}
 
 /* restore
 Purpose: Restore on load from local storage and decrypt data to de-serialize objects
 Param password: Required. Decryption password to unlock seed phrase
 Returns: boolean on success for fail of restore
 */
+TrezorSigner.prototype.restore = function (password) {
+  let browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
+  if (!browserStorage) {
+    const LocalStorage = require('node-localstorage').LocalStorage
+    browserStorage = new LocalStorage('./scratch')
+  }
+  const key = this.Signer.network.bech32 + '_trezorsigner'
+  const ciphertext = browserStorage.getItem(key)
+  if (ciphertext === null) {
+    return false
+  }
+  const bytes = CryptoJS.AES.decrypt(ciphertext, password)
+  if (!bytes || bytes.length === 0) {
+    return false
+  }
+  const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
+  // sanity checks
+  if (this.Signer.accountIndex > 1000) {
+    return false
+  }
+  this.Signer.accounts = decryptedData.accounts
+  this.Signer.changeIndex = -1
+  this.Signer.receivingIndex = -1
+  this.Signer.accountIndex = 0
+  return true
+}
 HDSigner.prototype.restore = function (password) {
   let browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
   if (!browserStorage) {
     const LocalStorage = require('node-localstorage').LocalStorage
     browserStorage = new LocalStorage('./scratch')
   }
-  const key = this.network.bech32 + '_hdsigner'
+  const key = this.Signer.network.bech32 + '_hdsigner'
   const ciphertext = browserStorage.getItem(key)
   if (ciphertext === null) {
     return false
@@ -862,17 +948,17 @@ HDSigner.prototype.restore = function (password) {
   this.mnemonic = decryptedData.mnemonic
   const numAccounts = decryptedData.numAccounts
   // sanity checks
-  if (this.accountIndex > 1000) {
+  if (this.Signer.accountIndex > 1000) {
     return false
   }
-  this.accounts = []
-  this.changeIndex = -1
-  this.receivingIndex = -1
-  this.accountIndex = 0
+  this.Signer.accounts = []
+  this.Signer.changeIndex = -1
+  this.Signer.receivingIndex = -1
+  this.Signer.accountIndex = 0
   for (let i = 0; i <= numAccounts; i++) {
     const child = this.deriveAccount(i)
     /* eslint new-cap: ["error", { "newIsCap": false }] */
-    this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
+    this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
   }
   return true
 }
@@ -880,16 +966,28 @@ HDSigner.prototype.restore = function (password) {
 /* backup
 Purpose: Encrypt to password and backup to local storage for persistence
 */
-HDSigner.prototype.backup = function () {
+TrezorSigner.prototype.backup = function () {
   let browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
-  if (!this.password) { return }
+  if (!this.Signer.password) { return }
   if (!browserStorage) {
     const LocalStorage = require('node-localstorage').LocalStorage
     browserStorage = new LocalStorage('./scratch')
   }
-  const key = this.network.bech32 + '_hdsigner'
-  const obj = { mnemonic: this.mnemonic, numAccounts: this.accounts.length }
-  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.password).toString()
+  const key = this.Signer.network.bech32 + '_trezorsigner'
+  const obj = { accounts: this.Signer.accounts }
+  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.Signer.password).toString()
+  browserStorage.setItem(key, ciphertext)
+}
+HDSigner.prototype.backup = function () {
+  let browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
+  if (!this.Signer.password) { return }
+  if (!browserStorage) {
+    const LocalStorage = require('node-localstorage').LocalStorage
+    browserStorage = new LocalStorage('./scratch')
+  }
+  const key = this.Signer.network.bech32 + '_hdsigner'
+  const obj = { mnemonic: this.mnemonic, numAccounts: this.Signer.accounts.length }
+  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.Signer.password).toString()
   browserStorage.setItem(key, ciphertext)
 }
 
@@ -899,15 +997,15 @@ Param skipIncrement: Optional. If we should not count the internal change index 
 Returns: string address used for change outputs
 */
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
-  if (this.changeIndex === -1 && this.blockbookURL) {
+  if (this.Signer.changeIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
-  const keyPair = this.createKeypair(this.changeIndex + 1, true)
-  if (keyPair) {
+  const address = this.createAddress(this.Signer.changeIndex + 1, true)
+  if (address) {
     if (!skipIncrement) {
-      this.changeIndex++
+      this.Signer.changeIndex++
     }
-    return this.getAddressFromKeypair(keyPair)
+    return address
   }
 
   return null
@@ -919,15 +1017,15 @@ Param skipIncrement: Optional. If we should not count the internal receiving ind
 Returns: string address used for receiving outputs
 */
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
-  if (this.receivingIndex === -1 && this.blockbookURL) {
+  if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
-  const keyPair = this.createKeypair(this.receivingIndex + 1, false)
-  if (keyPair) {
+  const address = this.createAddress(this.Signer.receivingIndex + 1, false)
+  if (address) {
     if (!skipIncrement) {
-      this.receivingIndex++
+      this.Signer.receivingIndex++
     }
-    return this.getAddressFromKeypair(keyPair)
+    return address
   }
 
   return null
@@ -937,30 +1035,42 @@ HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
 Purpose: Create and derive a new account
 Returns: Account index of new account
 */
-HDSigner.prototype.createAccount = function () {
-  this.changeIndex = -1
-  this.receivingIndex = -1
-  const child = this.deriveAccount(this.accounts.length)
-  this.accountIndex = this.accounts.length
-  /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.accounts.push(new BIP84.fromZPrv(child, this.pubTypes, this.networks))
+TrezorSigner.prototype.createAccount = function () {
+  this.Signer.changeIndex = -1
+  this.Signer.receivingIndex = -1
+  const child = this.deriveAccount(this.Signer.accounts.length)
+  this.Signer.accountIndex = this.Signer.accounts.length
+  this.Signer.accounts.push(child)
   this.backup()
-  return this.accountIndex
+  return this.Signer.accountIndex
+}
+HDSigner.prototype.createAccount = function () {
+  this.Signer.changeIndex = -1
+  this.Signer.receivingIndex = -1
+  const child = this.deriveAccount(this.Signer.accounts.length)
+  this.Signer.accountIndex = this.Signer.accounts.length
+  /* eslint new-cap: ["error", { "newIsCap": false }] */
+  this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
+  this.backup()
+  return this.Signer.accountIndex
 }
 
 /* getAccountXpub
 Purpose: Get XPUB for account, useful for public provider lookups based on XPUB accounts
 Returns: string representing hex XPUB
 */
+TrezorSigner.prototype.getAccountXpub = function () {
+  return this.Signer.accounts[this.Signer.accountIndex]
+}
 HDSigner.prototype.getAccountXpub = function () {
-  return this.accounts[this.accountIndex].getAccountPublicKey()
+  return this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey()
 }
 
 /* setLatestIndexesFromXPubTokens
 Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from a backend provider response
 Param tokens: Required. XPUB tokens from provider response to XPUB account details.
 */
-HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
+Signer.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   if (tokens) {
     tokens.forEach(token => {
       if (token.path) {
@@ -980,7 +1090,30 @@ HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
     })
   }
 }
+TrezorSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
+  this.Signer.setLatestIndexesFromXPubTokens(tokens)
+}
+HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
+  this.Signer.setLatestIndexesFromXPubTokens(tokens)
+}
 
+TrezorSigner.prototype.createAddress = function (addressIndex, isChange) {
+  let bipNum = 44
+  if (this.Signer.pubTypes === syscoinZPubTypes ||
+    this.Signer.pubTypes === bitcoinZPubTypes) {
+    bipNum = 84
+  }
+  const zPub = new BIP84.fromZPub(this.Signer.accounts[this.Signer.accountIndex], this.Signer.pubTypes, this.Signer.networks)
+  return zPub.getAddress(addressIndex, isChange, bipNum)
+}
+HDSigner.prototype.createAddress = function (addressIndex, isChange) {
+  let bipNum = 44
+  if (this.Signer.pubTypes === syscoinZPubTypes ||
+    this.Signer.pubTypes === bitcoinZPubTypes) {
+    bipNum = 84
+  }
+  return this.Signer.accounts[this.Signer.accountIndex].getAddress(addressIndex, isChange, bipNum)
+}
 /* createKeypair
 Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from a backend provider response
 Param addressIndex: Required. HD path address index
@@ -988,7 +1121,7 @@ Param isChange: Required. HD path change marker
 Returns: bitcoinjs-lib keypair derived from address index and change market
 */
 HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
-  return this.accounts[this.accountIndex].getKeypair(addressIndex, isChange)
+  return this.Signer.accounts[this.Signer.accountIndex].getKeypair(addressIndex, isChange)
 }
 
 /* getAddressFromKeypair
@@ -999,7 +1132,7 @@ Returns: string p2wpkh address
 HDSigner.prototype.getAddressFromKeypair = function (keyPair) {
   const payment = bjs.payments.p2wpkh({
     pubkey: keyPair.publicKey,
-    network: this.network
+    network: this.Signer.network
   })
   return payment.address
 }
@@ -1009,12 +1142,18 @@ Purpose: Takes pubkey and gives back a p2wpkh address
 Param pubkey: Required. bitcoinjs-lib public key
 Returns: string p2wpkh address
 */
-HDSigner.prototype.getAddressFromPubKey = function (pubkey) {
+Signer.prototype.getAddressFromPubKey = function (pubkey) {
   const payment = bjs.payments.p2wpkh({
     pubkey: pubkey,
     network: this.network
   })
   return payment.address
+}
+TrezorSigner.prototype.getAddressFromPubKey = function (pubkey) {
+  return this.Signer.getAddressFromPubKey(pubkey)
+}
+HDSigner.prototype.getAddressFromPubKey = function (pubkey) {
+  return this.Signer.getAddressFromPubKey(pubkey)
 }
 
 /* deriveKeypair
@@ -1023,7 +1162,7 @@ Param keypath: Required. HD BIP32 path of key desired based on internal seed and
 Returns: bitcoinjs-lib keypair
 */
 HDSigner.prototype.deriveKeypair = function (keypath) {
-  const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.network).derivePath(keypath)
+  const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network).derivePath(keypath)
   if (!keyPair) {
     return null
   }
@@ -1036,7 +1175,7 @@ Param keypath: Required. HD BIP32 path of key desired based on internal seed and
 Returns: bitcoinjs-lib pubkey
 */
 HDSigner.prototype.derivePubKey = function (keypath) {
-  const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.network).derivePath(keypath)
+  const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network).derivePath(keypath)
   if (!keyPair) {
     return null
   }
@@ -1048,7 +1187,7 @@ Purpose: Returns HDSigner's BIP32 root node
 Returns: BIP32 root node representing the seed
 */
 HDSigner.prototype.getRootNode = function () {
-  return bjs.bip32.fromSeed(this.fromSeed.seed, this.network)
+  return bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network)
 }
 
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
@@ -1251,5 +1390,6 @@ module.exports = {
   createAssetID: createAssetID,
   getBaseAssetID: getBaseAssetID,
   getAssetIDs: getAssetIDs,
-  setTransactionMemo: setTransactionMemo
+  setTransactionMemo: setTransactionMemo,
+  copyPSBT: copyPSBT
 }

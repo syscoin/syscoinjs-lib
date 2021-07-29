@@ -4,25 +4,25 @@ const BN = require('bn.js')
 
 /* Syscoin
 Purpose: Top level object used by consuming libraries to craft Syscoin/Bitcoin transactions. For Syscoin SPT support is provided
-Param HDSigner: Optional. If you want to manage XPUB keys with this package you would want to use an HDSigner. With HDSigner assigned, signing will happen automatically when creating raw transactions.
+Param Signer: Optional. If you want to manage XPUB keys with this package you would want to use a Signer. With Signer assigned, signing will happen automatically when creating raw transactions.
 Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and required information to sign. User can always provide their own list of UTXO's in the same format as blockbook using utils.sanitizeBlockbookUTXOs to sanitize the UTXO data to acceptable internal format
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
-function Syscoin (HDSigner, blockbookURL, network) {
+function Syscoin (SignerIn, blockbookURL, network) {
   this.blockbookURL = blockbookURL
-  if (HDSigner) {
-    this.HDSigner = HDSigner
-    this.HDSigner.blockbookURL = blockbookURL
-    this.network = network || this.HDSigner.network
+  if (SignerIn) {
+    this.Signer = SignerIn
+    this.Signer.blockbookURL = blockbookURL
+    this.network = network || this.Signer.Signer.network
   } else {
-    this.HDSigner = null
+    this.Signer = null
     this.network = network || utils.syscoinNetworks.mainnet
   }
 }
 
 // proxy to signAndSend
-Syscoin.prototype.signAndSendWithHDSigner = async function (psbt, HDSignerIn, notaryAssets) {
-  return this.signAndSend(psbt, notaryAssets, HDSignerIn)
+Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn, notaryAssets) {
+  return this.signAndSend(psbt, notaryAssets, SignerIn)
 }
 /* createPSBTFromRes
 Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
@@ -77,17 +77,17 @@ Syscoin.prototype.createPSBTFromRes = async function (res) {
   return psbt
 }
 /* signAndSend
-Purpose: Signs/Notarizes if necessary and Sends transaction to network using HDSigner
+Purpose: Signs/Notarizes if necessary and Sends transaction to network using Signer
 Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
-Param HDSignerIn: Optional. HDSigner used to sign transaction
+Param SignerIn: Optional. Signer used to sign transaction
 Returns: PSBT signed success or unsigned if failure
 */
-Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) {
+Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn) {
   // notarize if necessary
-  const HDSigner = HDSignerIn || this.HDSigner
+  const Signer = SignerIn || this.Signer
   const psbtClone = psbt.clone()
-  psbt = await HDSigner.sign(psbt)
+  psbt = await Signer.sign(psbt)
   let tx = null
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
@@ -113,8 +113,8 @@ Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) 
     if (needNotary) {
       const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
       if (notarizedDetails && notarizedDetails.output) {
-        psbt = HDSigner.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
-        psbt = await HDSigner.sign(psbt)
+        psbt = utils.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
+        psbt = await Signer.sign(psbt)
         try {
           // will fail if not complete
           psbt.extractTransaction()
@@ -128,7 +128,7 @@ Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, HDSignerIn) 
     }
   }
   if (this.blockbookURL) {
-    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), HDSigner)
+    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), Signer)
     if (resSend.error) {
       throw Object.assign(
         new Error('could not send tx! error: ' + resSend.error.message),
@@ -154,9 +154,8 @@ Param wif: Required. Private key in WIF format to sign inputs of the transaction
 Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets, HDSignerIn) {
+Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets, SignerIn) {
   // notarize if necessary
-  const HDSigner = HDSignerIn || this.HDSigner
   const psbtClone = psbt.clone()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
   let tx = null
@@ -183,7 +182,7 @@ Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets, 
     if (needNotary) {
       const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
       if (notarizedDetails && notarizedDetails.output) {
-        psbt = HDSigner.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
+        psbt = utils.copyPSBT(psbtClone, this.network, notarizedDetails.index, notarizedDetails.output)
         psbt = await utils.signWithWIF(psbt, wif, this.network)
         try {
           // will fail if not complete
@@ -226,7 +225,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Optional (For asset transactions only). Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If Signer is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send. Should be 0 if doing an update.
       Field address. Optional. Destination address for asset.
@@ -265,8 +264,8 @@ Syscoin.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddre
       utxos.utxos = Object.values(utxos.utxos).reduce(function (r, k) {
         return r.concat(k)
       }, [])
-    } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
+    } else if (this.Signer) {
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.Signer.getAccountXpub())
       utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, utxos, this.network, txOpts, assetMap, excludeZeroConf)
     }
   } else {
@@ -280,17 +279,17 @@ Purpose: Send Syscoin or Bitcoin or like coins.
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
   Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
-Param changeAddress: Optional. Change address if defined is where change outputs are sent to. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param changeAddress: Optional. Change address if defined is where change outputs are sent to. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param outputsArr: Required. Output array defining tuples to which addresses to send coins to and how much
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos) {
-  if (this.HDSigner) {
+  if (this.Signer) {
     if (!changeAddress) {
-      changeAddress = await this.HDSigner.getNewChangeAddress()
+      changeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
@@ -333,20 +332,20 @@ Param assetOpts: Required. Asset details. Fields described below:
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used. Will be overrided to False, cannot be set to True for new asset transactions.
   Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
-Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
-Param sysReceivingAddress: Optional. Address which will hold the new asset. If not defined and HDSigner is defined then a new receiving address will be automatically created using the next available receiving address index in the HD path
+Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param sysReceivingAddress: Optional. Address which will hold the new asset. If not defined and Signer is defined then a new receiving address will be automatically created using the next available receiving address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos) {
-  if (this.HDSigner) {
+  if (this.Signer) {
     if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
+      sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
     if (!sysReceivingAddress) {
-      sysReceivingAddress = await this.HDSigner.getNewReceivingAddress()
+      sysReceivingAddress = await this.Signer.getNewReceivingAddress()
     }
   }
   // create dummy map where GUID will be replaced by deterministic one based on first input txid, we need this so fees will be accurately determined on first place of coinselect
@@ -369,7 +368,7 @@ Param assetGuid: Required. Asset GUID to update.
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If Signer is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send. Should be 0 if doing an update.
       Field address. Optional. Destination address for asset.
@@ -404,28 +403,28 @@ Param assetOpts: Required. Asset details. Fields described below:
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
   Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
-Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
-    } else if (this.HDSigner) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.HDSigner.getAccountXpub())
+    } else if (this.Signer) {
+      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.Signer.getAccountXpub())
     }
   }
-  if (this.HDSigner) {
+  if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
-        valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+        valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
       }
     }
     if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
+      sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
@@ -446,7 +445,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to as string
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If Signer is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send
       Field address. Required. Destination address for value.
@@ -455,16 +454,16 @@ Param assetMap: Required. Description of Map:
       [assetGuid, { outputs: [{ value: new BN(1000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
     ])
     Would send 1000 satoshi to address 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' in asset 'assetGuid'
-Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
-  if (this.HDSigner) {
+  if (this.Signer) {
     if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
+      sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   const BN_ZERO = new BN(0)
@@ -488,10 +487,10 @@ Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddre
       assetMap.set(assetGuid, valueAssetObj)
     }
   }
-  if (this.HDSigner) {
+  if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
-        valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+        valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
       }
     }
   }
@@ -515,7 +514,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If Signer is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to send
       Field address. Required. Destination address for value.
@@ -524,21 +523,21 @@ Param assetMap: Required. Description of Map:
       [assetGuid, { outputs: [{ value: new BN(1000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
     ])
     Would send 1000 satoshi to address 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' in asset 'assetGuid'
-Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
-  if (this.HDSigner) {
+  if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
-        valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+        valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
       }
     }
     if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
+      sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
@@ -561,7 +560,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If Signer is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to burn
   Example:
@@ -569,20 +568,20 @@ Param assetMap: Required. Description of Map:
       [assetGuid, { outputs: [{ value: new BN(1000) }] }]
     ])
     Would burn 1000 satoshi in asset 'assetGuid'
-Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
-  if (this.HDSigner) {
+  if (this.Signer) {
     if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
+      sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
-        valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+        valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
       }
     }
   }
@@ -615,7 +614,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Optional. Auto-filled by eth-proof if it is used (pass ethtxid and web3url in assetOpts). Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If Signer is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to mint
   Example:
@@ -623,31 +622,31 @@ Param assetMap: Optional. Auto-filled by eth-proof if it is used (pass ethtxid a
       [assetGuid, { outputs: [{ value: new BN(1000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
     ])
     Would mint 1000 satoshi to address 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' in asset 'assetGuid'
-Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
-  if (this.HDSigner) {
+  if (this.Signer) {
     if (assetMap) {
       for (const valueAssetObj of assetMap.values()) {
         if (!valueAssetObj.changeAddress) {
-          valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+          valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
         }
       }
     }
     if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
+      sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   if (!assetMap) {
     const ethProof = await utils.buildEthProof(assetOpts)
     let changeAddress
-    if (this.HDSigner) {
-      changeAddress = await this.HDSigner.getNewChangeAddress()
-    // if no HDSigner then we use the ethProof.destinationaddress as a funding source as well as change address
+    if (this.Signer) {
+      changeAddress = await this.Signer.getNewChangeAddress()
+    // if no Signer then we use the ethProof.destinationaddress as a funding source as well as change address
     } else {
       changeAddress = ethProof.destinationaddress
       sysChangeAddress = ethProof.destinationaddress
@@ -687,7 +686,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param assetMap: Required. Description of Map:
   Index assetGuid. Required. Numeric Asset GUID you are sending to
   Value is described below:
-    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If HDSigner is not set, it will send asset change outputs to sysChangeAddress
+    Field changeAddress. Optional. Where asset change outputs will be sent to. If it is not there or null a new change address will be created. If Signer is not set, it will send asset change outputs to sysChangeAddress
     Field outputs. Required. Array of objects described below:
       Field value. Required. Big Number representing satoshi's to mint
   Example:
@@ -696,21 +695,21 @@ Param assetMap: Required. Description of Map:
     ])
     Would mint 1000 satoshi to address 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' in asset 'assetGuid'.
     Would also end up burning 1000 SYS satoshi to OP_RETURN output
-Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and HDSigner is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Returns: PSBT if if HDSigner is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos) {
-  if (this.HDSigner) {
+  if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
-        valueAssetObj.changeAddress = await this.HDSigner.getNewChangeAddress()
+        valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
       }
     }
     if (!sysChangeAddress) {
-      sysChangeAddress = await this.HDSigner.getNewChangeAddress()
+      sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
