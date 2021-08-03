@@ -21,8 +21,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -44,8 +44,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -64,8 +64,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -84,8 +84,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -103,8 +103,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -123,8 +123,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
@@ -153,8 +153,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
       t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('test memo')) != null)
@@ -174,8 +174,8 @@ fixtures.forEach(async function (f) {
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.expected.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.receivingIndex, f.expected.receivingIndex)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
       t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('test memo')) != null)
