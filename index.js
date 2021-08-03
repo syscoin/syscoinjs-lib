@@ -47,7 +47,7 @@ Syscoin.prototype.createPSBTFromRes = async function (res) {
       if (prevTx.has(input.txId)) {
         inputObj.nonWitnessUtxo = prevTx.get(input.txId)
       } else {
-        const hexTx = await utils.fetchBackendRawTx(this.backendURL, input.txId)
+        const hexTx = await utils.fetchBackendRawTx(this.blockbookURL, input.txId)
         if (hexTx) {
           const bufferTx = Buffer.from(hexTx.hex, 'hex')
           prevTx.set(input.txId, bufferTx)
