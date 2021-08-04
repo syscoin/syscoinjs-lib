@@ -834,7 +834,7 @@ TrezorSigner.prototype.deriveAccount = function (index) {
     bipNum = 84
   }
   const coin = this.Signer.SLIP44 === syscoinSLIP44? "SYS": "BTC"
-  const keypath = 'm/' + bipNum + "'/" + this.Signer.SLIP44 + "'/" + index + "'" 
+  const keypath = 'm/' + bipNum + "'/" + this.Signer.SLIP44 + "'/" + index + "'"
   if (this.Signer.isTestnet) {
     const message = "Trezor doesn't support SYS testnet";
     chrome.notifications.create(new Date().getTime().toString(), {
@@ -1342,6 +1342,14 @@ class SPSBT extends bjs.Psbt {
   }
 }
 
+function exportPBSTToJson (pbst, assetsMap) {
+  return { psbt: pbst.toBase64(), assets: JSON.stringify([...assetsMap]) }
+}
+
+function importPBSTFromJson (jsonData) {
+  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt), assets: new Map(JSON.parse(jsonData.assets)) }
+}
+
 function createAssetID (NFTID, assetGuid) {
   const BN_ASSET = new BN(NFTID || 0).shln(32).or(new BN(assetGuid))
   return BN_ASSET.toString(10)
@@ -1391,5 +1399,7 @@ module.exports = {
   getBaseAssetID: getBaseAssetID,
   getAssetIDs: getAssetIDs,
   setTransactionMemo: setTransactionMemo,
-  copyPSBT: copyPSBT
+  copyPSBT: copyPSBT,
+  importPBSTFromJson: importPBSTFromJson,
+  exportPBSTToJson: exportPBSTToJson
 }
