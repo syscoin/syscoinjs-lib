@@ -1342,11 +1342,12 @@ class SPSBT extends bjs.Psbt {
   }
 }
 
-function exportPBSTToJson (pbst, assetsMap) {
-  return { psbt: pbst.toBase64(), assets: JSON.stringify([...assetsMap]) }
+function exportPsbtToJson (psbt, assetsMap) {
+  const assetsMapToStringify = assetsMap || new Map()
+  return { psbt: psbt.toBase64(), assets: JSON.stringify([...assetsMapToStringify]) }
 }
 
-function importPBSTFromJson (jsonData) {
+function importPsbtFromJson (jsonData) {
   return { psbt: bjs.Psbt.fromBase64(jsonData.psbt), assets: new Map(JSON.parse(jsonData.assets)) }
 }
 
@@ -1400,6 +1401,6 @@ module.exports = {
   getAssetIDs: getAssetIDs,
   setTransactionMemo: setTransactionMemo,
   copyPSBT: copyPSBT,
-  importPBSTFromJson: importPBSTFromJson,
-  exportPBSTToJson: exportPBSTToJson
+  importPsbtFromJson: importPsbtFromJson,
+  exportPsbtToJson: exportPsbtToJson
 }
