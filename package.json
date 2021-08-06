@@ -47,7 +47,9 @@
     "tape": "^5.0.1"
   },
   "dependencies": {
+    "@trezor/utxo-lib": "^0.1.2",
     "axios": "^0.21.1",
+    "bchaddrjs": "^0.5.2",
     "bip84": "^0.2.5",
     "bitcoin-ops": "^1.4.1",
     "bitcoinjs-lib": "^5.2.0",
@@ -58,6 +60,7 @@
     "node-localstorage": "^2.1.6",
     "rlp": "^2.2.6",
     "syscointx-js": "^1.0.91",
+    "trezor-connect": "^8.1.29",
     "varuint-bitcoin": "^1.1.2",
     "web3": "^1.4.0"
   }
