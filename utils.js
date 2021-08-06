@@ -12,7 +12,6 @@ const rlp = require('rlp')
 const Web3 = require('web3')
 const syscointx = require('syscointx-js')
 const utxo_lib = require('@trezor/utxo-lib') 
-const bchaddrjs = require('bchaddrjs');
 const TrezorConnect = require('trezor-connect').default;
 const web3 = new Web3()
 const bitcoinNetworks = { mainnet: bjs.networks.bitcoin, testnet: bjs.networks.testnet }
@@ -48,6 +47,7 @@ const syscoinXPubTypes = { mainnet: { zprv: syscoinNetworks.mainnet.bip32.privat
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 var trezorInitialized = false
+const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
 
 /* fetchNotarizationFromEndPoint
 Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
@@ -822,13 +822,17 @@ function Signer (password, isTestnet, networks, SLIP44, pubTypes) {
   this.receivingIndex = -1
   this.accountIndex = 0
 }
-function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes) {
+function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes,connectSrc,disableLazyLoad) {
   try{
     if(!trezorInitialized){
+      connectSrc = connectSrc || DEFAULT_TREZOR_DOMAIN
+      lazyLoad = disableLazyLoad ? false : true
       console.log('Initializing trezor')  
+      console.log(connectSrc)
+      console.log(lazyLoad)
       TrezorConnect.init({
-        // connectSrc: 'https://localhost:8088/', // un-comment for testing on your localhost connect server
-        lazyLoad: true, // this param will prevent iframe injection until TrezorConnect.method will be called
+        connectSrc: connectSrc, // un-comment for testing on your localhost connect server
+        lazyLoad: lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
         manifest: {
           email: 'jsidhu@blockchainfoundry.co',
           appUrl: 'https://syscoin.org/',
@@ -902,7 +906,10 @@ Returns: trezor params to signTransaction
 TrezorSigner.prototype.convertToTrezorFormat = function (psbt) {
   const trezortx = {};
 
-  trezortx.coin = 'sys';
+
+
+  const coin = this.Signer.SLIP44 === syscoinSLIP44? "sys": "btc"
+  trezortx.coin =  coin;
   trezortx.version = psbt.version;
   trezortx.inputs = [];
   trezortx.outputs = [];
@@ -1269,17 +1276,7 @@ TrezorSigner.prototype.createAccount = async function () {
     );
   });
 }
-  // this.deriveAccount(this.Signer.accounts.length).then(child => {
-    
-  //   return this.Signer.accountIndex
-    
-  // })
-  // .catch((error) => {
-  //   console.error('TrezorConnectError', error);
-  // });
-  
-  
-// }
+
 HDSigner.prototype.createAccount = function () {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
@@ -1582,8 +1579,8 @@ function exportPsbtToJson (psbt, assetsMap) {
   return { psbt: psbt.toBase64(), assets: JSON.stringify([...assetsMapToStringify]) }
 }
 
-function importPsbtFromJson (jsonData) {
-  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt,{network: this.network || syscoinNetworks.mainnet}), assets: new Map(JSON.parse(jsonData.assets)) }
+function importPsbtFromJson (jsonData,network) {
+  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt,{network: network || syscoinNetworks.mainnet}), assets: new Map(JSON.parse(jsonData.assets)) }
 }
 
 function createAssetID (NFTID, assetGuid) {
