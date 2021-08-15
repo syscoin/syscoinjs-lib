@@ -11,8 +11,8 @@ const { Log } = require('eth-object')
 const rlp = require('rlp')
 const Web3 = require('web3')
 const syscointx = require('syscointx-js')
-const utxo_lib = require('@trezor/utxo-lib') 
-const TrezorConnect = require('trezor-connect').default;
+const utxoLib = require('@trezor/utxo-lib')
+const TrezorConnect = require('trezor-connect').default
 const web3 = new Web3()
 const bitcoinNetworks = { mainnet: bjs.networks.bitcoin, testnet: bjs.networks.testnet }
 /* global localStorage */
@@ -46,7 +46,7 @@ const syscoinZPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, test
 const syscoinXPubTypes = { mainnet: { zprv: syscoinNetworks.mainnet.bip32.private, zpub: syscoinNetworks.mainnet.bip32.public }, testnet: { vprv: syscoinNetworks.testnet.bip32.private, vpub: syscoinNetworks.testnet.bip32.public } }
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
-var trezorInitialized = false
+let trezorInitialized = false
 const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
 
 /* fetchNotarizationFromEndPoint
@@ -648,75 +648,67 @@ function getAllocationsFromTx (tx) {
   return syscointx.getAllocationsFromTx(tx)
 }
 
-
 /* isBech32
 Purpose: Return a boolean if a given sys address is a bech32 address
 Param address: Required. Address to check
 */
-function isBech32 (address){
+function isBech32 (address) {
   try {
-    utxo_lib.address.fromBech32(address);
-      return true;
+    utxoLib.address.fromBech32(address)
+    return true
   } catch (e) {
-      return false;
+    return false
   }
 }
-
-
 
 /* isScriptHash
 Purpose: Return  a boolean if a given sys address is a script hash accordingly to the syscoinNetwork selected
 Param address: Required. Address to check
-Param coinInfo: Required. networkInfo 
+Param coinInfo: Required. networkInfo
 */
 function isScriptHash (address, networkInfo) {
-if (!isBech32(address)) {
-    
-    const decoded = utxo_lib.address.fromBase58Check(address);
+  if (!isBech32(address)) {
+    const decoded = utxoLib.address.fromBase58Check(address)
     if (decoded.version === networkInfo.pubKeyHash) {
-        return false;
+      return false
     }
     if (decoded.version === networkInfo.scriptHash) {
-        return true;
+      return true
     }
-} else {
-    const decoded = utxo_lib.address.fromBech32(address);
+  } else {
+    const decoded = utxoLib.address.fromBech32(address)
     if (decoded.data.length === 20) {
-        return false;
+      return false
     }
     if (decoded.data.length === 32) {
-        return true;
+      return true
     }
-}
-throw ERRORS.TypedError('Runtime', 'isScriptHash: Unknown address type');
+  }
+  throw new Error('isScriptHash: Unknown address type')
 };
 
-
-/* convertToAddress_nFormat
-Purpose: Return path in address_n format 
-Param path: derivation path 
-Param coinInfo: Required. networkInfo 
+/* convertToAddressNFormat
+Purpose: Return path in addressN format
+Param path: derivation path
+Param coinInfo: Required. networkInfo
 */
-function convertToAddress_nFormat (path) {
-  const pathArray = path.replace(/'/g, '').split('/');
-  
-  pathArray.shift();
+function convertToAddressNFormat (path) {
+  const pathArray = path.replace(/'/g, '').split('/')
 
-const address_n = [];
+  pathArray.shift()
 
-for (const index in pathArray) {
-  if (Number(index) <= 2 && Number(index) >= 0) {
-    address_n[Number(index)] = Number(pathArray[index]) | 0x80000000;
+  const addressN = []
+
+  for (const index in pathArray) {
+    if (Number(index) <= 2 && Number(index) >= 0) {
+      addressN[Number(index)] = Number(pathArray[index]) | 0x80000000
+    } else {
+      addressN[Number(index)] = Number(pathArray[index])
+    }
   }
-  else{
-    address_n[Number(index)] = Number(pathArray[index]);
-  }
-}
 
-  return address_n;
+  return addressN
 };
-
-
 
 /* setTransactionMemo
 Purpose: Return transaction with memo appended to the inside of the OP_RETURN output, return null if not found
@@ -822,35 +814,26 @@ function Signer (password, isTestnet, networks, SLIP44, pubTypes) {
   this.receivingIndex = -1
   this.accountIndex = 0
 }
-function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes,connectSrc,disableLazyLoad) {
-  try{
-    if(!trezorInitialized){
+function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectSrc, disableLazyLoad) {
+  try {
+    if (!trezorInitialized) {
       connectSrc = connectSrc || DEFAULT_TREZOR_DOMAIN
-      lazyLoad = disableLazyLoad ? false : true
-      console.log('Initializing trezor')  
-      console.log(connectSrc)
-      console.log(lazyLoad)
+      const lazyLoad = !disableLazyLoad
       TrezorConnect.init({
-        connectSrc: connectSrc, // un-comment for testing on your localhost connect server
+        connectSrc: connectSrc,
         lazyLoad: lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
         manifest: {
           email: 'jsidhu@blockchainfoundry.co',
-          appUrl: 'https://syscoin.org/',
+          appUrl: 'https://syscoin.org/'
         }
-      });
-      trezorInitialized = true; //Trezor should be initialized on first run only
-    } 
-  
-  
-} catch (e) {
-    throw new Error('TrezorSigner should be called only from browser context: ' + e);
-}
+      })
+      trezorInitialized = true // Trezor should be initialized on first run only
+    }
+  } catch (e) {
+    throw new Error('TrezorSigner should be called only from browser context: ' + e)
+  }
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
-
-  // try to restore, if it does not succeed then initialize from scratch
-  // if (!this.Signer.password || !this.restore(this.Signer.password)) {
-  //   this.createAccount()
-  // }
+  this.restore(this.Signer.password)
 }
 function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
@@ -904,100 +887,104 @@ Param psbt: Required. Partially signed transaction object
 Returns: trezor params to signTransaction
 */
 TrezorSigner.prototype.convertToTrezorFormat = function (psbt) {
-  const trezortx = {};
+  const trezortx = {}
 
+  const coin = this.Signer.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc'
+  trezortx.coin = coin
+  trezortx.version = psbt.version
+  trezortx.inputs = []
+  trezortx.outputs = []
 
-
-  const coin = this.Signer.SLIP44 === syscoinSLIP44? "sys": "btc"
-  trezortx.coin =  coin;
-  trezortx.version = psbt.version;
-  trezortx.inputs = [];
-  trezortx.outputs = [];
-  
   for (let i = 0; i < psbt.txInputs.length; i++) {
-      let script_types = psbt.getInputType(i);
-      const input = psbt.txInputs[i];
-      const inputItem = {};
-      inputItem.prev_index = input.index;
-      inputItem.prev_hash = input.hash.reverse().toString('hex')
-      if (input.sequence) inputItem.sequence = input.sequence;
-      const dataInput = psbt.data.inputs[i]
-      let path = ''
-      if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && 
-              dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && 
-                      (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0)) {
-        path = (dataInput.unknownKeyVals[1].value.toString())
-        inputItem.address_n = convertToAddress_nFormat(path)
-      }
-      script_types = (Number(path[2] + path[3]));
-      switch (script_types) {
-        case 48:
-          inputItem.script_type =  'SPENDMULTISIG';
-          break;
-        case 49:
-          inputItem.script_type =  'SPENDP2SHWITNESS';
-          break;
-        case 84:
-          inputItem.script_type =  'SPENDWITNESS';
-          break;
-        default:
-          inputItem.script_type =  'SPENDADDRESS';
-          break;
+    let scriptTypes = psbt.getInputType(i)
+    const input = psbt.txInputs[i]
+    const inputItem = {}
+    inputItem.prev_index = input.index
+    inputItem.prev_hash = input.hash.reverse().toString('hex')
+    if (input.sequence) inputItem.sequence = input.sequence
+    const dataInput = psbt.data.inputs[i]
+    let path = ''
+    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 &&
+      dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) &&
+      (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0)) {
+      path = (dataInput.unknownKeyVals[1].value.toString())
+      inputItem.address_n = convertToAddressNFormat(path)
     }
-    trezortx.inputs.push(inputItem);
+    scriptTypes = psbt.getInputType(i)
+    switch (scriptTypes) {
+      case 'multisig':
+        inputItem.script_type = 'SPENDMULTISIG'
+        break
+      case 'witnesspubkeyhash':
+        inputItem.script_type = isP2WSHScript(psbt.data.inputs[i].witnessUtxo.script) ? 'SPENDP2SHWITNESS' : 'SPENDWITNESS'
+        break
+      default:
+        inputItem.script_type = 'SPENDADDRESS'
+        break
+    }
+    trezortx.inputs.push(inputItem)
   }
-  
-  for(let i = 0; i < psbt.txOutputs.length; i++){
-      const output = psbt.txOutputs[i];
-      const outputItem = {};
-      const chunks = bjs.script.decompile(output.script);
-      outputItem.amount = output.value.toString();
-      if (chunks[0] === bitcoinops.OP_RETURN) {
-        outputItem.script_type = 'PAYTOOPRETURN';
-        outputItem.op_return_data = chunks[1].toString('hex');
-      }
-      else{
-        if(isBech32(output.address)){
+
+  for (let i = 0; i < psbt.txOutputs.length; i++) {
+    const output = psbt.txOutputs[i]
+    const outputItem = {}
+    const chunks = bjs.script.decompile(output.script)
+    outputItem.amount = output.value.toString()
+    if (chunks[0] === bitcoinops.OP_RETURN) {
+      outputItem.script_type = 'PAYTOOPRETURN'
+      outputItem.op_return_data = chunks[1].toString('hex')
+    } else {
+      if (isBech32(output.address)) {
+        if (output.script.length === 34 &&
+          output.script[0] === 0 &&
+          output.script[1] === 0x20) {
+          outputItem.script_type = 'PAYTOP2SHWITNESS'
+        } else {
           outputItem.script_type = 'PAYTOWITNESS'
         }
-        else{
-          outputItem.script_type = isScriptHash(output.address, this.network) ? 'PAYTOSCRIPTHASH' : 'PAYTOADDRESS';
-        }
-        outputItem.address = output.address;
+      } else {
+        outputItem.script_type = isScriptHash(output.address, this.network) ? 'PAYTOSCRIPTHASH' : 'PAYTOADDRESS'
       }
-      trezortx.outputs.push(outputItem);
+      outputItem.address = output.address
     }
-    console.log(trezortx)
-    return trezortx;
+    trezortx.outputs.push(outputItem)
   }
-
-
+  return trezortx
+}
 
 /* sign
 Purpose: Create signing information based on Trezor format
 Param psbt: Required. PSBT object from bitcoinjs-lib
-Param getTezortx: Optional. If true, will return trezor params to signTransaction and wont signAndSend it
 Returns: trezortx or txid
 */
-TrezorSigner.prototype.sign = async function (psbt, getTezortx) {
-  
-  if(psbt.txInputs.length <=0 || psbt.txOutputs.length <=0 || psbt.version === undefined){
+TrezorSigner.prototype.sign = async function (psbt) {
+  if (psbt.txInputs.length <= 0 || psbt.txOutputs.length <= 0 || psbt.version === undefined) {
     throw new Error('PSBT object is lacking information')
   }
-  const sendTrezorTx = getTezortx || false
   const trezorTx = this.convertToTrezorFormat(psbt)
-  if(!sendTrezorTx){
-    const response = await TrezorConnect.signTransaction(trezorTx)  
-    if(response.success === true){
-      txInfo = await sendRawTransaction(this.blockbookURL, response.payload.serializedTx)
-      return txInfo
+  const response = await TrezorConnect.signTransaction(trezorTx)
+  if (response.success === true) {
+    const tx = bjs.Transaction.fromHex(response.payload.serializedTx)
+    for (const i of range(psbt.data.inputs.length)) {
+      const partialSig = [
+        {
+          pubkey: tx.ins[i].witness[1],
+          signature: tx.ins[i].witness[0]
+        }
+      ]
+      psbt.updateInput(i, { partialSig })
     }
-    else{
-      throw new Error('Trezor sign failed: ' + response.payload.error)
+    try {
+      if (psbt.validateSignaturesOfAllInputs()) {
+        psbt.finalizeAllInputs()
+      }
+    } catch (err) {
+      console.log(err)
     }
+    return psbt
+  } else {
+    throw new Error('Trezor sign failed: ' + response.payload.error)
   }
-  
-  return trezorTx
 }
 
 /* sign
@@ -1026,34 +1013,33 @@ TrezorSigner.prototype.deriveAccount = async function (index) {
   let bipNum = 44
   if (this.Signer.pubTypes === syscoinZPubTypes ||
     this.Signer.pubTypes === bitcoinZPubTypes) {
-      bipNum = 84
-    }
-    const coin = this.Signer.SLIP44 === syscoinSLIP44? "sys": "btc"
-    const keypath = "m/" + bipNum + "'/" + this.Signer.SLIP44 + "'/" + index + "'" 
-    if (this.Signer.isTestnet) {
-      throw new Error(
-        'Cant use TrezorSigner on testnet .'
-      )
-    }
+    bipNum = 84
+  }
+  const coin = this.Signer.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc'
+  const keypath = 'm/' + bipNum + "'/" + this.Signer.SLIP44 + "'/" + index + "'"
+  if (this.Signer.isTestnet) {
+    throw new Error(
+      'Cant use TrezorSigner on testnet .'
+    )
+  }
 
-    return new Promise((resolve, reject) => {
-      TrezorConnect.getAccountInfo({
-        path: keypath,
-        coin: coin
-      })
+  return new Promise((resolve, reject) => {
+    TrezorConnect.getAccountInfo({
+      path: keypath,
+      coin: coin
+    })
       .then((response) => {
         if (response.success) {
-          resolve(response.payload);
+          resolve(response.payload)
         }
-        reject(response.payload.error);
+        reject(response.payload.error)
       })
       .catch((error) => {
-        console.error('TrezorConnectError', error);
+        console.error('TrezorConnectError', error)
         reject(error)
-      });
-    })
+      })
+  })
 }
-
 
 HDSigner.prototype.deriveAccount = function (index) {
   let bipNum = 44
@@ -1261,9 +1247,7 @@ Returns: Account index of new account
 TrezorSigner.prototype.createAccount = async function () {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
-  // const child = await this.deriveAccount(this.Signer.accounts.length)
-  //return a promise to get the child
-  return new Promise(async (resolve,reject) => {
+  return new Promise((resolve, reject) => {
     this.deriveAccount(this.Signer.accounts.length).then(child => {
       this.Signer.accountIndex = this.Signer.accounts.length
       this.Signer.accounts.push(new BIP84.fromZPub(child.descriptor, this.Signer.pubTypes, this.Signer.networks))
@@ -1273,8 +1257,8 @@ TrezorSigner.prototype.createAccount = async function () {
       console.error(err)
       reject(err)
     }
-    );
-  });
+    )
+  })
 }
 
 HDSigner.prototype.createAccount = function () {
@@ -1422,6 +1406,10 @@ HDSigner.prototype.getRootNode = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network)
 }
 
+TrezorSigner.prototype.getRootNode = function () {
+  return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].zpub, this.Signer.network)
+}
+
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
 function scriptWitnessToWitnessStack (buffer) {
   let offset = 0
@@ -1480,6 +1468,18 @@ function nonWitnessUtxoTxFromCache (cache, input, inputIndex) {
   return c[inputIndex]
 }
 
+function isPaymentFactory (payment) {
+  return script => {
+    try {
+      payment({ output: script })
+      return true
+    } catch (err) {
+      return false
+    }
+  }
+}
+const isP2WSHScript = isPaymentFactory(bjs.payments.p2wsh)
+
 // override of psbt.js inputFinalizeGetAmts without fee < 0 check
 function inputFinalizeGetAmts (inputs, tx, cache, mustFinalize) {
   let inputAmount = 0
@@ -1522,10 +1522,10 @@ function checkFees (psbt, cache, opts) {
   if (feeRate >= opts.maximumFeeRate) {
     throw new Error(
       `Warning: You are paying around ${(satoshis / 1e8).toFixed(8)} in ` +
-        `fees, which is ${feeRate} satoshi per byte for a transaction ` +
-        `with a VSize of ${vsize} bytes (segwit counted as 0.25 byte per ` +
-        'byte). Use setMaximumFeeRate method to raise your threshold, or ' +
-        'pass true to the first arg of extractTransaction.'
+      `fees, which is ${feeRate} satoshi per byte for a transaction ` +
+      `with a VSize of ${vsize} bytes (segwit counted as 0.25 byte per ` +
+      'byte). Use setMaximumFeeRate method to raise your threshold, or ' +
+      'pass true to the first arg of extractTransaction.'
     )
   }
 }
@@ -1579,8 +1579,8 @@ function exportPsbtToJson (psbt, assetsMap) {
   return { psbt: psbt.toBase64(), assets: JSON.stringify([...assetsMapToStringify]) }
 }
 
-function importPsbtFromJson (jsonData,network) {
-  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt,{network: network || syscoinNetworks.mainnet}), assets: new Map(JSON.parse(jsonData.assets)) }
+function importPsbtFromJson (jsonData, network) {
+  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt, { network: network || syscoinNetworks.mainnet }), assets: new Map(JSON.parse(jsonData.assets)) }
 }
 
 function createAssetID (NFTID, assetGuid) {
@@ -1590,6 +1590,9 @@ function createAssetID (NFTID, assetGuid) {
 
 function getBaseAssetID (assetGuid) {
   return new BN(assetGuid).and(new BN(0xFFFFFFFF)).toString(10)
+}
+function range (n) {
+  return [...Array(n).keys()]
 }
 
 function getAssetIDs (assetGuid) {
