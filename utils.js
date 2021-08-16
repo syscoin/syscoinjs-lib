@@ -663,8 +663,8 @@ function isBech32 (address) {
 
 /* isScriptHash
 Purpose: Return  a boolean if a given sys address is a script hash accordingly to the syscoinNetwork selected
-Param address: Required. Address to check
-Param networkInfo: Required. networkInfo
+Param address: Required. Address to verify
+Param networkInfo: Required. Network information to verify 
 */
 function isScriptHash (address, networkInfo) {
   if (!isBech32(address)) {
