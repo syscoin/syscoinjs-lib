@@ -664,7 +664,7 @@ function isBech32 (address) {
 /* isScriptHash
 Purpose: Return  a boolean if a given sys address is a script hash accordingly to the syscoinNetwork selected
 Param address: Required. Address to check
-Param coinInfo: Required. networkInfo
+Param networkInfo: Required. networkInfo
 */
 function isScriptHash (address, networkInfo) {
   if (!isBech32(address)) {
@@ -689,8 +689,7 @@ function isScriptHash (address, networkInfo) {
 
 /* convertToAddressNFormat
 Purpose: Return path in addressN format
-Param path: derivation path
-Param coinInfo: Required. networkInfo
+Param path: Required derivation path
 */
 function convertToAddressNFormat (path) {
   const pathArray = path.replace(/'/g, '').split('/')
@@ -872,7 +871,6 @@ HDSigner.prototype.signPSBT = async function (psbt) {
     }
   }
   await psbt.signAllInputsHDAsync(this.getRootNode())
-  console.log('break on trough')
   try {
     if (psbt.validateSignaturesOfAllInputs()) {
       psbt.finalizeAllInputs()
@@ -966,6 +964,9 @@ TrezorSigner.prototype.sign = async function (psbt) {
   const response = await TrezorConnect.signTransaction(trezorTx)
   if (response.success === true) {
     const tx = bjs.Transaction.fromHex(response.payload.serializedTx)
+    if(tx.ins[i].witness === (undefined || null)){
+      throw new Error('Please move your funds to a Segwit address: https://wiki.trezor.io/Account')
+    }
     for (const i of range(psbt.data.inputs.length)) {
       const partialSig = [
         {
@@ -1102,6 +1103,9 @@ TrezorSigner.prototype.restore = function (password) {
   this.Signer.accountIndex = decryptedData.numXpubs
   for (let i = 0; i <= this.Signer.accountIndex; i++) {
     this.Signer.accounts.push(new BIP84.fromZPub(decryptedData.xpubArr[i], this.Signer.pubTypes, this.Signer.networks))
+    if(this.Signer.accounts[i].getAccountPublicKey() !== decryptedData.xpubArr[i]){
+      throw new Error('Account public key mismatch,check pubtypes and networks being used');
+    }
   }
   return true
 }
@@ -1407,7 +1411,7 @@ HDSigner.prototype.getRootNode = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network)
 }
 
-TrezorSigner.prototype.getRootNode = function () {
+TrezorSigner.prototype.getAccountNode = function () {
   return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].zpub, this.Signer.network)
 }
 
