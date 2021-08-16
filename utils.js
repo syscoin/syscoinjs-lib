@@ -872,6 +872,7 @@ HDSigner.prototype.signPSBT = async function (psbt) {
     }
   }
   await psbt.signAllInputsHDAsync(this.getRootNode())
+  console.log('break on trough')
   try {
     if (psbt.validateSignaturesOfAllInputs()) {
       psbt.finalizeAllInputs()
@@ -916,10 +917,10 @@ TrezorSigner.prototype.convertToTrezorFormat = function (psbt) {
         inputItem.script_type = 'SPENDMULTISIG'
         break
       case 'witnesspubkeyhash':
-        inputItem.script_type = isP2WSHScript(psbt.data.inputs[i].witnessUtxo.script) ? 'SPENDP2SHWITNESS' : 'SPENDWITNESS'
+        inputItem.script_type = 'SPENDWITNESS'
         break
       default:
-        inputItem.script_type = 'SPENDADDRESS'
+        inputItem.script_type = isP2WSHScript(psbt.data.inputs[i].witnessUtxo.script) ? 'SPENDP2SHWITNESS' : 'SPENDADDRESS'
         break
     }
     trezortx.inputs.push(inputItem)
