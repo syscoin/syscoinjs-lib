@@ -1182,7 +1182,6 @@ Returns: string address used for change outputs
 */
 TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.Signer.changeIndex === -1 && this.blockbookURL) {
-    console.log('fetching blockbook')
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
   }
   const address = this.createAddress(this.Signer.changeIndex + 1, true)
