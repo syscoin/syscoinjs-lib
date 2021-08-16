@@ -1411,7 +1411,7 @@ HDSigner.prototype.getRootNode = function () {
 }
 
 TrezorSigner.prototype.getAccountNode = function () {
-  return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].zpub, this.Signer.network)
+  return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey(), this.Signer.network)
 }
 
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
