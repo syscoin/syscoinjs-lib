@@ -1,6 +1,6 @@
 {
   "name": "syscoinjs-lib",
-  "version": "1.0.166",
+  "version": "1.0.168",
   "description": "A transaction creation library interfacing with coin selection for Syscoin.",
   "keywords": [
     "coinselect",
@@ -58,8 +58,7 @@
     "eth-proof": "^2.1.6",
     "node-localstorage": "^2.1.6",
     "rlp": "^2.2.6",
-    "syscointx-js": "^1.0.91",
-    "trezor-connect": "^8.1.29",
+    "syscointx-js": "^1.0.92",
     "varuint-bitcoin": "^1.1.2",
     "web3": "^1.4.0"
   }

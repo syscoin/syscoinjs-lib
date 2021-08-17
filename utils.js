@@ -1344,6 +1344,28 @@ HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
   return this.Signer.accounts[this.Signer.accountIndex].getKeypair(addressIndex, isChange)
 }
 
+/* getHDPath
+Purpose: Gets current HDPath from signer context
+Param addressIndex: Required. HD path address index
+Param isChange: Required. HD path change marker
+Returns: bip32 path string
+*/
+Signer.prototype.getHDPath = function (addressIndex, isChange) {
+  const changeNum = isChange ? '1' : '0'
+  let bipNum = 44
+  if (this.pubTypes === syscoinZPubTypes ||
+    this.pubTypes === bitcoinZPubTypes) {
+    bipNum = 84
+  }
+  const keypath = 'm/' + bipNum + "'/" + this.SLIP44 + "'/" + this.accountIndex + "'/" + changeNum + '/' + addressIndex
+  return keypath
+}
+HDSigner.prototype.getHDPath = function (addressIndex, isChange) {
+  return this.Signer.getHDPath(addressIndex, isChange)
+}
+TrezorSigner.prototype.getHDPath = function (addressIndex, isChange) {
+  return this.Signer.getHDPath(addressIndex, isChange)
+}
 /* getAddressFromKeypair
 Purpose: Takes keypair and gives back a p2wpkh address
 Param keyPair: Required. bitcoinjs-lib keypair
