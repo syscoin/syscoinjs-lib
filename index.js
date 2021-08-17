@@ -27,10 +27,12 @@ Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn, notary
 /* createPSBTFromRes
 Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: psbt from bitcoinjs-lib
 */
-Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript) {
+Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitness) {
   const psbt = new utils.bitcoinjs.Psbt({ network: this.network })
   const prevTx = new Map()
   psbt.setVersion(res.txVersion)
@@ -56,14 +58,14 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
         } else {
           console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
         }
-        if (redeemOrWitnessScript) {
-          inputObj.redeemScript = redeemOrWitnessScript
+        if (redeemOrWitness) {
+          inputObj.redeemScript = redeemOrWitness.script
         }
       }
     } else {
       inputObj.witnessUtxo = { script: utils.bitcoinjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
-      if (redeemOrWitnessScript) {
-        inputObj.witnessScript = redeemOrWitnessScript
+      if (redeemOrWitness) {
+        inputObj.witnessScript = redeemOrWitness.script
       }
     }
     psbt.addInput(inputObj)
@@ -72,6 +74,8 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
     }
     if (input.path) {
       psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
+    } else if (redeemOrWitness && redeemOrWitness.path) {
+      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(redeemOrWitness.path) })
     }
   }
   res.outputs.forEach(output => {
@@ -161,7 +165,7 @@ Param wif: Required. Private key in WIF format to sign inputs of the transaction
 Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets, SignerIn) {
+Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) {
   // notarize if necessary
   const psbtClone = psbt.clone()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
@@ -291,10 +295,12 @@ Param outputsArr: Required. Output array defining tuples to which addresses to s
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos, redeemOrWitness) {
   if (this.Signer) {
     if (!changeAddress) {
       changeAddress = await this.Signer.getNewChangeAddress()
@@ -302,7 +308,7 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (fromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -345,10 +351,12 @@ Param sysReceivingAddress: Optional. Address which will hold the new asset. If n
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitness) {
   if (this.Signer) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.Signer.getNewChangeAddress()
@@ -364,7 +372,7 @@ Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -416,10 +424,12 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitness) {
   if (!utxos) {
     if (sysFromXpubOrAddress) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
@@ -440,7 +450,7 @@ Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, as
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -468,10 +478,12 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitness) {
   if (this.Signer) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.Signer.getNewChangeAddress()
@@ -508,7 +520,7 @@ Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddre
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -539,10 +551,12 @@ Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per b
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitness) {
   if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
@@ -556,7 +570,7 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -585,10 +599,12 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitness) {
   if (this.Signer) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.Signer.getNewChangeAddress()
@@ -602,7 +618,7 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -640,10 +656,12 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitness) {
   if (this.Signer) {
     if (assetMap) {
       for (const valueAssetObj of assetMap.values()) {
@@ -686,7 +704,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
@@ -714,10 +732,12 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
-Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field script. Required. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+  Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitness) {
   if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
@@ -731,7 +751,7 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitness)
   if (sysFromXpubOrAddress) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
