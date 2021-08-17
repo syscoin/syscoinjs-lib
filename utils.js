@@ -664,7 +664,7 @@ function isBech32 (address) {
 /* isScriptHash
 Purpose: Return  a boolean if a given sys address is a script hash accordingly to the syscoinNetwork selected
 Param address: Required. Address to verify
-Param networkInfo: Required. Network information to verify 
+Param networkInfo: Required. Network information to verify
 */
 function isScriptHash (address, networkInfo) {
   if (!isBech32(address)) {
@@ -895,7 +895,7 @@ TrezorSigner.prototype.convertToTrezorFormat = function (psbt) {
   trezortx.outputs = []
 
   for (let i = 0; i < psbt.txInputs.length; i++) {
-    let scriptTypes = psbt.getInputType(i)
+    const scriptTypes = psbt.getInputType(i)
     const input = psbt.txInputs[i]
     const inputItem = {}
     inputItem.prev_index = input.index
@@ -909,7 +909,6 @@ TrezorSigner.prototype.convertToTrezorFormat = function (psbt) {
       path = (dataInput.unknownKeyVals[1].value.toString())
       inputItem.address_n = convertToAddressNFormat(path)
     }
-    scriptTypes = psbt.getInputType(i)
     switch (scriptTypes) {
       case 'multisig':
         inputItem.script_type = 'SPENDMULTISIG'
@@ -964,10 +963,10 @@ TrezorSigner.prototype.sign = async function (psbt) {
   const response = await TrezorConnect.signTransaction(trezorTx)
   if (response.success === true) {
     const tx = bjs.Transaction.fromHex(response.payload.serializedTx)
-    if(tx.ins[i].witness === (undefined || null)){
-      throw new Error('Please move your funds to a Segwit address: https://wiki.trezor.io/Account')
-    }
     for (const i of range(psbt.data.inputs.length)) {
+      if (tx.ins[i].witness === (undefined || null)) {
+        throw new Error('Please move your funds to a Segwit address: https://wiki.trezor.io/Account')
+      }
       const partialSig = [
         {
           pubkey: tx.ins[i].witness[1],
@@ -1103,8 +1102,8 @@ TrezorSigner.prototype.restore = function (password) {
   this.Signer.accountIndex = decryptedData.numXpubs
   for (let i = 0; i <= this.Signer.accountIndex; i++) {
     this.Signer.accounts.push(new BIP84.fromZPub(decryptedData.xpubArr[i], this.Signer.pubTypes, this.Signer.networks))
-    if(this.Signer.accounts[i].getAccountPublicKey() !== decryptedData.xpubArr[i]){
-      throw new Error('Account public key mismatch,check pubtypes and networks being used');
+    if (this.Signer.accounts[i].getAccountPublicKey() !== decryptedData.xpubArr[i]) {
+      throw new Error('Account public key mismatch,check pubtypes and networks being used')
     }
   }
   return true
@@ -1433,7 +1432,7 @@ HDSigner.prototype.getRootNode = function () {
 }
 
 TrezorSigner.prototype.getAccountNode = function () {
-  return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey(), this.Signer.network)
+  return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].zpub, this.Signer.network)
 }
 
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
