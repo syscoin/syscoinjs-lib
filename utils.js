@@ -11,6 +11,8 @@ const { Log } = require('eth-object')
 const rlp = require('rlp')
 const Web3 = require('web3')
 const syscointx = require('syscointx-js')
+const utxoLib = require('@trezor/utxo-lib')
+const TrezorConnect = require('trezor-connect').default
 const web3 = new Web3()
 const bitcoinNetworks = { mainnet: bjs.networks.bitcoin, testnet: bjs.networks.testnet }
 /* global localStorage */
@@ -44,6 +46,9 @@ const syscoinZPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, test
 const syscoinXPubTypes = { mainnet: { zprv: syscoinNetworks.mainnet.bip32.private, zpub: syscoinNetworks.mainnet.bip32.public }, testnet: { vprv: syscoinNetworks.testnet.bip32.private, vpub: syscoinNetworks.testnet.bip32.public } }
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
+let trezorInitialized = false
+const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
+
 /* fetchNotarizationFromEndPoint
 Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
 Param endPoint: Required. Fully qualified URL which will take transaction information and respond with a signature or error on denial
@@ -643,6 +648,67 @@ function getAllocationsFromTx (tx) {
   return syscointx.getAllocationsFromTx(tx)
 }
 
+/* isBech32
+Purpose: Return a boolean if a given sys address is a bech32 address
+Param address: Required. Address to check
+*/
+function isBech32 (address) {
+  try {
+    utxoLib.address.fromBech32(address)
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+/* isScriptHash
+Purpose: Return  a boolean if a given sys address is a script hash accordingly to the syscoinNetwork selected
+Param address: Required. Address to verify
+Param networkInfo: Required. Network information to verify
+*/
+function isScriptHash (address, networkInfo) {
+  if (!isBech32(address)) {
+    const decoded = utxoLib.address.fromBase58Check(address)
+    if (decoded.version === networkInfo.pubKeyHash) {
+      return false
+    }
+    if (decoded.version === networkInfo.scriptHash) {
+      return true
+    }
+  } else {
+    const decoded = utxoLib.address.fromBech32(address)
+    if (decoded.data.length === 20) {
+      return false
+    }
+    if (decoded.data.length === 32) {
+      return true
+    }
+  }
+  throw new Error('isScriptHash: Unknown address type')
+};
+
+/* convertToAddressNFormat
+Purpose: Return path in addressN format
+Param path: Required derivation path
+*/
+function convertToAddressNFormat (path) {
+  const pathArray = path.replace(/'/g, '').split('/')
+
+  pathArray.shift()
+
+  const addressN = []
+
+  for (const index in pathArray) {
+    if (Number(index) <= 2 && Number(index) >= 0) {
+      addressN[Number(index)] = Number(pathArray[index]) | 0x80000000
+    } else {
+      addressN[Number(index)] = Number(pathArray[index])
+    }
+  }
+
+  return addressN
+};
+
 /* setTransactionMemo
 Purpose: Return transaction with memo appended to the inside of the OP_RETURN output, return null if not found
 Param rawHex: Required. Raw transaction hex
@@ -747,13 +813,26 @@ function Signer (password, isTestnet, networks, SLIP44, pubTypes) {
   this.receivingIndex = -1
   this.accountIndex = 0
 }
-function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes) {
-  this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
-
-  // try to restore, if it does not succeed then initialize from scratch
-  if (!this.Signer.password || !this.restore(this.Signer.password)) {
-    this.createAccount()
+function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectSrc, disableLazyLoad) {
+  try {
+    if (!trezorInitialized) {
+      connectSrc = connectSrc || DEFAULT_TREZOR_DOMAIN
+      const lazyLoad = !disableLazyLoad
+      TrezorConnect.init({
+        connectSrc: connectSrc,
+        lazyLoad: lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
+        manifest: {
+          email: 'jsidhu@blockchainfoundry.co',
+          appUrl: 'https://syscoin.org/'
+        }
+      })
+      trezorInitialized = true // Trezor should be initialized on first run only
+    }
+  } catch (e) {
+    throw new Error('TrezorSigner should be called only from browser context: ' + e)
   }
+  this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
+  this.restore(this.Signer.password)
 }
 function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
@@ -802,14 +881,119 @@ HDSigner.prototype.signPSBT = async function (psbt, pathIn) {
   return psbt
 }
 
+/* convertToTrezorFormat
+Purpose: Convert syscoin PSBT to Trezor format
+Param psbt: Required. Partially signed transaction object
+Returns: trezor params to signTransaction
+*/
+TrezorSigner.prototype.convertToTrezorFormat = function (psbt, pathIn) {
+  const trezortx = {}
+
+  const coin = this.Signer.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc'
+  trezortx.coin = coin
+  trezortx.version = psbt.version
+  trezortx.inputs = []
+  trezortx.outputs = []
+
+  for (let i = 0; i < psbt.txInputs.length; i++) {
+    const scriptTypes = psbt.getInputType(i)
+    const input = psbt.txInputs[i]
+    const inputItem = {}
+    inputItem.prev_index = input.index
+    inputItem.prev_hash = input.hash.reverse().toString('hex')
+    if (input.sequence) inputItem.sequence = input.sequence
+    const dataInput = psbt.data.inputs[i]
+    let path = ''
+    if (pathIn || (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 &&
+      dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) &&
+      (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
+      path = pathIn || (dataInput.unknownKeyVals[1].value.toString())
+      inputItem.address_n = convertToAddressNFormat(path)
+    }
+    switch (scriptTypes) {
+      case 'multisig':
+        inputItem.script_type = 'SPENDMULTISIG'
+        break
+      case 'witnesspubkeyhash':
+        inputItem.script_type = 'SPENDWITNESS'
+        break
+      default:
+        inputItem.script_type = isP2WSHScript(psbt.data.inputs[i].witnessUtxo.script) ? 'SPENDP2SHWITNESS' : 'SPENDADDRESS'
+        break
+    }
+    trezortx.inputs.push(inputItem)
+  }
+
+  for (let i = 0; i < psbt.txOutputs.length; i++) {
+    const output = psbt.txOutputs[i]
+    const outputItem = {}
+    const chunks = bjs.script.decompile(output.script)
+    outputItem.amount = output.value.toString()
+    if (chunks[0] === bitcoinops.OP_RETURN) {
+      outputItem.script_type = 'PAYTOOPRETURN'
+      outputItem.op_return_data = chunks[1].toString('hex')
+    } else {
+      if (isBech32(output.address)) {
+        if (output.script.length === 34 &&
+          output.script[0] === 0 &&
+          output.script[1] === 0x20) {
+          outputItem.script_type = 'PAYTOP2SHWITNESS'
+        } else {
+          outputItem.script_type = 'PAYTOWITNESS'
+        }
+      } else {
+        outputItem.script_type = isScriptHash(output.address, this.network) ? 'PAYTOSCRIPTHASH' : 'PAYTOADDRESS'
+      }
+      outputItem.address = output.address
+    }
+    trezortx.outputs.push(outputItem)
+  }
+  return trezortx
+}
+
+/* sign
+Purpose: Create signing information based on Trezor format
+Param psbt: Required. PSBT object from bitcoinjs-lib
+Returns: trezortx or txid
+*/
+TrezorSigner.prototype.sign = async function (psbt, pathIn) {
+  if (psbt.txInputs.length <= 0 || psbt.txOutputs.length <= 0 || psbt.version === undefined) {
+    throw new Error('PSBT object is lacking information')
+  }
+  const trezorTx = this.convertToTrezorFormat(psbt, pathIn)
+  const response = await TrezorConnect.signTransaction(trezorTx)
+  if (response.success === true) {
+    const tx = bjs.Transaction.fromHex(response.payload.serializedTx)
+    for (const i of range(psbt.data.inputs.length)) {
+      if (tx.ins[i].witness === (undefined || null)) {
+        throw new Error('Please move your funds to a Segwit address: https://wiki.trezor.io/Account')
+      }
+      const partialSig = [
+        {
+          pubkey: tx.ins[i].witness[1],
+          signature: tx.ins[i].witness[0]
+        }
+      ]
+      psbt.updateInput(i, { partialSig })
+    }
+    try {
+      if (psbt.validateSignaturesOfAllInputs()) {
+        psbt.finalizeAllInputs()
+      }
+    } catch (err) {
+      console.log(err)
+    }
+    return psbt
+  } else {
+    throw new Error('Trezor sign failed: ' + response.payload.error)
+  }
+}
+
 /* sign
 Purpose: Create signing information based on HDSigner (if set) and call signPSBT() to actually sign, as well as detect notarization and apply it as required.
 Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
-TrezorSigner.prototype.sign = async function (psbt, pathIn) {
-  // TODO: sign with trezor connect here
-}
 HDSigner.prototype.sign = async function (psbt, pathIn) {
   return await this.signPSBT(psbt, pathIn)
 }
@@ -827,49 +1011,38 @@ Purpose: Derive HD account based on index number passed in
 Param index: Required. Account number to derive
 Returns: bip32 node for derived account
 */
-TrezorSigner.prototype.deriveAccount = function (index) {
-  /* TODO make this work with trezor
+TrezorSigner.prototype.deriveAccount = async function (index) {
   let bipNum = 44
   if (this.Signer.pubTypes === syscoinZPubTypes ||
     this.Signer.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
   }
-  const coin = this.Signer.SLIP44 === syscoinSLIP44? "SYS": "BTC"
+  const coin = this.Signer.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc'
   const keypath = 'm/' + bipNum + "'/" + this.Signer.SLIP44 + "'/" + index + "'"
   if (this.Signer.isTestnet) {
-    const message = "Trezor doesn't support SYS testnet";
-    chrome.notifications.create(new Date().getTime().toString(), {
-      type: 'basic',
-      iconUrl: 'assets/icons/favicon-48.png',
-      title: 'Cant create hardware wallet on testnet',
-      message
-    });
-    return
+    throw new Error(
+      'Cant use TrezorSigner on testnet .'
+    )
   }
-  console.log(window.trezorConnect)
-  window.trezorConnect.getAccountInfo({
-    path,
-    coin
-  })
-    .then((response: any) => {
-      const message = response.success
-        ? `Trezor Wallet Account Created`
-        : `Error: ${response.payload.error}`;
-      chrome.notifications.create(new Date().getTime().toString(), {
-        type: 'basic',
-        iconUrl: 'assets/icons/favicon-48.png',
-        title: 'Hardware Wallet connected',
-        message,
-      });
-      if (response.success) {
-        account.subscribeAccount(true, response.payload);
-      }
+
+  return new Promise((resolve, reject) => {
+    TrezorConnect.getAccountInfo({
+      path: keypath,
+      coin: coin
     })
-    .catch((error: any) => {
-      console.error('TrezorConnectError', error);
-    });
-*/
+      .then((response) => {
+        if (response.success) {
+          resolve(response.payload)
+        }
+        reject(response.payload.error)
+      })
+      .catch((error) => {
+        console.error('TrezorConnectError', error)
+        reject(error)
+      })
+  })
 }
+
 HDSigner.prototype.deriveAccount = function (index) {
   let bipNum = 44
   if (this.Signer.pubTypes === syscoinZPubTypes ||
@@ -924,10 +1097,16 @@ TrezorSigner.prototype.restore = function (password) {
   if (this.Signer.accountIndex > 1000) {
     return false
   }
-  this.Signer.accounts = decryptedData.accounts
+
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
-  this.Signer.accountIndex = 0
+  this.Signer.accountIndex = decryptedData.numXpubs
+  for (let i = 0; i <= this.Signer.accountIndex; i++) {
+    this.Signer.accounts.push(new BIP84.fromZPub(decryptedData.xpubArr[i], this.Signer.pubTypes, this.Signer.networks))
+    if (this.Signer.accounts[i].getAccountPublicKey() !== decryptedData.xpubArr[i]) {
+      throw new Error('Account public key mismatch,check pubtypes and networks being used')
+    }
+  }
   return true
 }
 HDSigner.prototype.restore = function (password) {
@@ -975,7 +1154,11 @@ TrezorSigner.prototype.backup = function () {
     browserStorage = new LocalStorage('./scratch')
   }
   const key = this.Signer.network.bech32 + '_trezorsigner'
-  const obj = { accounts: this.Signer.accounts }
+  const xpubs = []
+  for (let i = 0; i < this.Signer.accounts.length; i++) {
+    xpubs[i] = this.Signer.accounts[i].getAccountPublicKey()
+  }
+  const obj = { xpubArr: xpubs, numXpubs: this.Signer.accounts.length }
   const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.Signer.password).toString()
   browserStorage.setItem(key, ciphertext)
 }
@@ -997,6 +1180,21 @@ Purpose: Get new address for sending change to
 Param skipIncrement: Optional. If we should not count the internal change index counter (if you want to get the same change address in the future)
 Returns: string address used for change outputs
 */
+TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
+  if (this.Signer.changeIndex === -1 && this.blockbookURL) {
+    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+  }
+  const address = this.createAddress(this.Signer.changeIndex + 1, true)
+  if (address) {
+    if (!skipIncrement) {
+      this.Signer.changeIndex++
+    }
+    return address
+  }
+
+  return null
+}
+
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.Signer.changeIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
@@ -1017,6 +1215,20 @@ Purpose: Get new address for sending coins to
 Param skipIncrement: Optional. If we should not count the internal receiving index counter (if you want to get the same address in the future)
 Returns: string address used for receiving outputs
 */
+TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
+  if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
+    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+  }
+  const address = this.createAddress(this.Signer.receivingIndex + 1, false)
+  if (address) {
+    if (!skipIncrement) {
+      this.Signer.receivingIndex++
+    }
+    return address
+  }
+
+  return null
+}
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
@@ -1036,15 +1248,23 @@ HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
 Purpose: Create and derive a new account
 Returns: Account index of new account
 */
-TrezorSigner.prototype.createAccount = function () {
+TrezorSigner.prototype.createAccount = async function () {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
-  const child = this.deriveAccount(this.Signer.accounts.length)
-  this.Signer.accountIndex = this.Signer.accounts.length
-  this.Signer.accounts.push(child)
-  this.backup()
-  return this.Signer.accountIndex
+  return new Promise((resolve, reject) => {
+    this.deriveAccount(this.Signer.accounts.length).then(child => {
+      this.Signer.accountIndex = this.Signer.accounts.length
+      this.Signer.accounts.push(new BIP84.fromZPub(child.descriptor, this.Signer.pubTypes, this.Signer.networks))
+      this.backup()
+      resolve(this.Signer.accountIndex)
+    }).catch(err => {
+      console.error(err)
+      reject(err)
+    }
+    )
+  })
 }
+
 HDSigner.prototype.createAccount = function () {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
@@ -1061,7 +1281,7 @@ Purpose: Get XPUB for account, useful for public provider lookups based on XPUB 
 Returns: string representing hex XPUB
 */
 TrezorSigner.prototype.getAccountXpub = function () {
-  return this.Signer.accounts[this.Signer.accountIndex]
+  return this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey()
 }
 HDSigner.prototype.getAccountXpub = function () {
   return this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey()
@@ -1104,8 +1324,7 @@ TrezorSigner.prototype.createAddress = function (addressIndex, isChange) {
     this.Signer.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
   }
-  const zPub = new BIP84.fromZPub(this.Signer.accounts[this.Signer.accountIndex], this.Signer.pubTypes, this.Signer.networks)
-  return zPub.getAddress(addressIndex, isChange, bipNum)
+  return this.Signer.accounts[this.Signer.accountIndex].getAddress(addressIndex, isChange, bipNum)
 }
 HDSigner.prototype.createAddress = function (addressIndex, isChange) {
   let bipNum = 44
@@ -1213,6 +1432,10 @@ HDSigner.prototype.getRootNode = function () {
   return bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network)
 }
 
+TrezorSigner.prototype.getAccountNode = function () {
+  return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].zpub, this.Signer.network)
+}
+
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
 function scriptWitnessToWitnessStack (buffer) {
   let offset = 0
@@ -1271,6 +1494,18 @@ function nonWitnessUtxoTxFromCache (cache, input, inputIndex) {
   return c[inputIndex]
 }
 
+function isPaymentFactory (payment) {
+  return script => {
+    try {
+      payment({ output: script })
+      return true
+    } catch (err) {
+      return false
+    }
+  }
+}
+const isP2WSHScript = isPaymentFactory(bjs.payments.p2wsh)
+
 // override of psbt.js inputFinalizeGetAmts without fee < 0 check
 function inputFinalizeGetAmts (inputs, tx, cache, mustFinalize) {
   let inputAmount = 0
@@ -1313,10 +1548,10 @@ function checkFees (psbt, cache, opts) {
   if (feeRate >= opts.maximumFeeRate) {
     throw new Error(
       `Warning: You are paying around ${(satoshis / 1e8).toFixed(8)} in ` +
-        `fees, which is ${feeRate} satoshi per byte for a transaction ` +
-        `with a VSize of ${vsize} bytes (segwit counted as 0.25 byte per ` +
-        'byte). Use setMaximumFeeRate method to raise your threshold, or ' +
-        'pass true to the first arg of extractTransaction.'
+      `fees, which is ${feeRate} satoshi per byte for a transaction ` +
+      `with a VSize of ${vsize} bytes (segwit counted as 0.25 byte per ` +
+      'byte). Use setMaximumFeeRate method to raise your threshold, or ' +
+      'pass true to the first arg of extractTransaction.'
     )
   }
 }
@@ -1370,8 +1605,8 @@ function exportPsbtToJson (psbt, assetsMap) {
   return { psbt: psbt.toBase64(), assets: JSON.stringify([...assetsMapToStringify]) }
 }
 
-function importPsbtFromJson (jsonData) {
-  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt), assets: new Map(JSON.parse(jsonData.assets)) }
+function importPsbtFromJson (jsonData, network) {
+  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt, { network: network || syscoinNetworks.mainnet }), assets: new Map(JSON.parse(jsonData.assets)) }
 }
 
 function createAssetID (NFTID, assetGuid) {
@@ -1381,6 +1616,9 @@ function createAssetID (NFTID, assetGuid) {
 
 function getBaseAssetID (assetGuid) {
   return new BN(assetGuid).and(new BN(0xFFFFFFFF)).toString(10)
+}
+function range (n) {
+  return [...Array(n).keys()]
 }
 
 function getAssetIDs (assetGuid) {
@@ -1398,6 +1636,7 @@ module.exports = {
   syscoinSLIP44: syscoinSLIP44,
   bitcoinSLIP44: bitcoinSLIP44,
   HDSigner: HDSigner,
+  TrezorSigner: TrezorSigner,
   fetchBackendUTXOS: fetchBackendUTXOS,
   fetchBackendUTXOs: fetchBackendUTXOS,
   sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,

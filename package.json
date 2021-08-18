@@ -47,6 +47,7 @@
     "tape": "^5.0.1"
   },
   "dependencies": {
+    "@trezor/utxo-lib": "^0.1.2",
     "axios": "^0.21.1",
     "bip84": "^0.2.5",
     "bitcoin-ops": "^1.4.1",
