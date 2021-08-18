@@ -770,18 +770,19 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
 /* signPSBT
 Purpose: Sign PSBT with XPUB information from HDSigner
 Param psbt: Required. Partially signed transaction object
+Param pathIn: Optional. Custom HD Bip32 path useful if signing from a specific address like a multisig
 Returns: psbt from bitcoinjs-lib
 */
-HDSigner.prototype.signPSBT = async function (psbt) {
+HDSigner.prototype.signPSBT = async function (psbt, pathIn) {
   const txInputs = psbt.txInputs
   const fp = this.getMasterFingerprint()
   for (let i = 0; i < txInputs.length; i++) {
     const dataInput = psbt.data.inputs[i]
-    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0)) {
-      const path = dataInput.unknownKeyVals[1].value.toString()
+    if (pathIn || (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
+      const path = pathIn || dataInput.unknownKeyVals[1].value.toString()
       const pubkey = this.derivePubKey(path)
       const address = this.getAddressFromPubKey(pubkey)
-      if (pubkey && dataInput.unknownKeyVals[0].value.toString() === address) {
+      if (pubkey && (pathIn || dataInput.unknownKeyVals[0].value.toString() === address)) {
         dataInput.bip32Derivation = [
           {
             masterFingerprint: fp,
@@ -806,11 +807,11 @@ Purpose: Create signing information based on HDSigner (if set) and call signPSBT
 Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
-TrezorSigner.prototype.sign = async function (psbt) {
+TrezorSigner.prototype.sign = async function (psbt, pathIn) {
   // TODO: sign with trezor connect here
 }
-HDSigner.prototype.sign = async function (psbt) {
-  return await this.signPSBT(psbt)
+HDSigner.prototype.sign = async function (psbt, pathIn) {
+  return await this.signPSBT(psbt, pathIn)
 }
 
 /* getMasterFingerprint

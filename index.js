@@ -21,8 +21,8 @@ function Syscoin (SignerIn, blockbookURL, network) {
 }
 
 // proxy to signAndSend
-Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn, notaryAssets) {
-  return this.signAndSend(psbt, notaryAssets, SignerIn)
+Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn, notaryAssets, pathIn) {
+  return this.signAndSend(psbt, notaryAssets, SignerIn, pathIn)
 }
 /* createPSBTFromRes
 Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
@@ -93,11 +93,11 @@ Param notaryAssets: Optional. Asset objects that are required for notarization, 
 Param SignerIn: Optional. Signer used to sign transaction
 Returns: PSBT signed success or unsigned if failure
 */
-Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn) {
+Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn, pathIn) {
   // notarize if necessary
   const Signer = SignerIn || this.Signer
   const psbtClone = psbt.clone()
-  psbt = await Signer.sign(psbt)
+  psbt = await Signer.sign(psbt, pathIn)
   let tx = null
   // if not complete, we shouldn't notarize or try to send to network must get more signatures so return it to client
   try {
@@ -124,7 +124,7 @@ Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn) {
       const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
       if (notarizedDetails && notarizedDetails.output) {
         psbt = utils.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
-        psbt = await Signer.sign(psbt)
+        psbt = await Signer.sign(psbt, pathIn)
         try {
           // will fail if not complete
           psbt.extractTransaction()
