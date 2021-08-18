@@ -849,18 +849,19 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
 /* signPSBT
 Purpose: Sign PSBT with XPUB information from HDSigner
 Param psbt: Required. Partially signed transaction object
+Param pathIn: Optional. Custom HD Bip32 path useful if signing from a specific address like a multisig
 Returns: psbt from bitcoinjs-lib
 */
-HDSigner.prototype.signPSBT = async function (psbt) {
+HDSigner.prototype.signPSBT = async function (psbt, pathIn) {
   const txInputs = psbt.txInputs
   const fp = this.getMasterFingerprint()
   for (let i = 0; i < txInputs.length; i++) {
     const dataInput = psbt.data.inputs[i]
-    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0)) {
-      const path = dataInput.unknownKeyVals[1].value.toString()
+    if (pathIn || (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
+      const path = pathIn || dataInput.unknownKeyVals[1].value.toString()
       const pubkey = this.derivePubKey(path)
       const address = this.getAddressFromPubKey(pubkey)
-      if (pubkey && dataInput.unknownKeyVals[0].value.toString() === address) {
+      if (pubkey && (pathIn || dataInput.unknownKeyVals[0].value.toString() === address)) {
         dataInput.bip32Derivation = [
           {
             masterFingerprint: fp,
@@ -885,7 +886,7 @@ Purpose: Convert syscoin PSBT to Trezor format
 Param psbt: Required. Partially signed transaction object
 Returns: trezor params to signTransaction
 */
-TrezorSigner.prototype.convertToTrezorFormat = function (psbt) {
+TrezorSigner.prototype.convertToTrezorFormat = function (psbt, pathIn) {
   const trezortx = {}
 
   const coin = this.Signer.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc'
@@ -903,10 +904,10 @@ TrezorSigner.prototype.convertToTrezorFormat = function (psbt) {
     if (input.sequence) inputItem.sequence = input.sequence
     const dataInput = psbt.data.inputs[i]
     let path = ''
-    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 &&
+    if (pathIn || (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 &&
       dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) &&
-      (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0)) {
-      path = (dataInput.unknownKeyVals[1].value.toString())
+      (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
+      path = pathIn || (dataInput.unknownKeyVals[1].value.toString())
       inputItem.address_n = convertToAddressNFormat(path)
     }
     switch (scriptTypes) {
@@ -955,11 +956,11 @@ Purpose: Create signing information based on Trezor format
 Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: trezortx or txid
 */
-TrezorSigner.prototype.sign = async function (psbt) {
+TrezorSigner.prototype.sign = async function (psbt, pathIn) {
   if (psbt.txInputs.length <= 0 || psbt.txOutputs.length <= 0 || psbt.version === undefined) {
     throw new Error('PSBT object is lacking information')
   }
-  const trezorTx = this.convertToTrezorFormat(psbt)
+  const trezorTx = this.convertToTrezorFormat(psbt, pathIn)
   const response = await TrezorConnect.signTransaction(trezorTx)
   if (response.success === true) {
     const tx = bjs.Transaction.fromHex(response.payload.serializedTx)
@@ -993,8 +994,8 @@ Purpose: Create signing information based on HDSigner (if set) and call signPSBT
 Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
-HDSigner.prototype.sign = async function (psbt) {
-  return await this.signPSBT(psbt)
+HDSigner.prototype.sign = async function (psbt, pathIn) {
+  return await this.signPSBT(psbt, pathIn)
 }
 
 /* getMasterFingerprint
