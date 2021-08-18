@@ -1336,18 +1336,22 @@ HDSigner.prototype.createAddress = function (addressIndex, isChange) {
 }
 /* createKeypair
 Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from a backend provider response
-Param addressIndex: Required. HD path address index
-Param isChange: Required. HD path change marker
+Param addressIndex: Optional. HD path address index. If not provided uses the stored change/recv indexes for the last path prefix
+Param isChange: Optional. HD path change marker
 Returns: bitcoinjs-lib keypair derived from address index and change market
 */
 HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
-  return this.Signer.accounts[this.Signer.accountIndex].getKeypair(addressIndex, isChange)
+  let recvIndex = isChange ? this.changeIndex : this.receivingIndex
+  if (addressIndex) {
+    recvIndex = addressIndex
+  }
+  return this.Signer.accounts[this.Signer.accountIndex].getKeypair(recvIndex, isChange)
 }
 
 /* getHDPath
 Purpose: Gets current HDPath from signer context
-Param addressIndex: Required. HD path address index
-Param isChange: Required. HD path change marker
+Param addressIndex: Optional. HD path address index. If not provided uses the stored change/recv indexes for the last path prefix
+Param isChange: Optional. HD path change marker
 Returns: bip32 path string
 */
 Signer.prototype.getHDPath = function (addressIndex, isChange) {
@@ -1357,7 +1361,11 @@ Signer.prototype.getHDPath = function (addressIndex, isChange) {
     this.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
   }
-  const keypath = 'm/' + bipNum + "'/" + this.SLIP44 + "'/" + this.accountIndex + "'/" + changeNum + '/' + addressIndex
+  let recvIndex = isChange ? this.changeIndex : this.receivingIndex
+  if (addressIndex) {
+    recvIndex = addressIndex
+  }
+  const keypath = 'm/' + bipNum + "'/" + this.SLIP44 + "'/" + this.accountIndex + "'/" + changeNum + '/' + recvIndex
   return keypath
 }
 HDSigner.prototype.getHDPath = function (addressIndex, isChange) {
