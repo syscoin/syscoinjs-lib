@@ -111,6 +111,30 @@ async function fetchBackendListAssets (backendURL, filter) {
   }
 }
 
+/* fetchBackendSPVProof
+Purpose: Fetch SPV Proof from backend Blockbook provider. To be used to create a proof for the NEVM bridge.
+Param backendURL: Required. Fully qualified URL for blockbook
+Param addressOrXpub: Required. An address or XPUB to fetch UTXO's for
+Param options: Optional. Optional queries based on https://github.com/syscoin/blockbook/blob/master/docs/api.md#get-utxo
+Returns: Returns JSON object in response, UTXO object array in JSON
+*/
+async function fetchBackendSPVProof (backendURL, txid) {
+  try {
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
+    }
+    let url = blockbookURL + '/api/v2/getspvproof/' + txid
+    const request = await axios.get(url)
+    if (request && request.data) {
+      return request.data
+    }
+    return null
+  } catch (e) {
+    return e
+  }
+}
+
 /* fetchBackendUTXOS
 Purpose: Fetch UTXO's for an address or XPUB from backend Blockbook provider
 Param backendURL: Required. Fully qualified URL for blockbook
@@ -1647,6 +1671,7 @@ module.exports = {
   TrezorSigner: TrezorSigner,
   fetchBackendUTXOS: fetchBackendUTXOS,
   fetchBackendUTXOs: fetchBackendUTXOS,
+  fetchBackendSPVProof: fetchBackendSPVProof,
   sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,
   fetchBackendAccount: fetchBackendAccount,
   fetchBackendAsset: fetchBackendAsset,
