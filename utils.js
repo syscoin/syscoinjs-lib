@@ -124,7 +124,7 @@ async function fetchBackendSPVProof (backendURL, txid) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    let url = blockbookURL + '/api/v2/getspvproof/' + txid
+    const url = blockbookURL + '/api/v2/getspvproof/' + txid
     const request = await axios.get(url)
     if (request && request.data) {
       return request.data
@@ -384,19 +384,19 @@ Param assets: Required. Asset objects that are evaluated for notarization, and i
 Returns: Asset map of objects requiring notarization or null if no notarization is required
 */
 function getAssetsRequiringNotarization (psbt, assets) {
-  if (!syscointx.utils.isAssetAllocationTx(psbt.version)) {
-    return null
+  if (!assets || !syscointx.utils.isAssetAllocationTx(psbt.version)) {
+    return new Map()
   }
   const assetsInTx = syscointx.getAssetsFromOutputs(psbt.txOutputs)
   let foundNotary = false
   const assetsUsedInTxNeedingNotarization = new Map()
   assetsInTx.forEach((value, baseAssetID) => {
     if (assetsUsedInTxNeedingNotarization.has(baseAssetID)) {
-      return
+      return new Map()
     }
     if (!assets.has(baseAssetID)) {
       console.log('Asset input not found in the UTXO assets map!')
-      return null
+      return new Map()
     }
     const valueAssetObj = assets.get(baseAssetID)
     if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
@@ -404,7 +404,7 @@ function getAssetsRequiringNotarization (psbt, assets) {
       foundNotary = true
     }
   })
-  return foundNotary ? assetsUsedInTxNeedingNotarization : null
+  return foundNotary ? assetsUsedInTxNeedingNotarization : new Map()
 }
 
 /* signPSBTWithWIF
@@ -669,7 +669,7 @@ Purpose: Return allocation information for an asset transaction. Pass through to
 Param tx: Required. bitcoinjs transaction
 */
 function getAllocationsFromTx (tx) {
-  return syscointx.getAllocationsFromTx(tx)
+  return syscointx.getAllocationsFromTx(tx) || []
 }
 
 /* isBech32
