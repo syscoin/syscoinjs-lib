@@ -556,8 +556,8 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
       sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
   }
-  // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
+  // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress) {
@@ -603,7 +603,7 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
+  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress) {
@@ -686,8 +686,8 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
     }
   }
 
-  // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
+  // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress) {
@@ -731,8 +731,8 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
       sysChangeAddress = await this.Signer.getNewChangeAddress()
     }
   }
-  // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
+  // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress) {
