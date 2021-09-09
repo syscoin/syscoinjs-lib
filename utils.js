@@ -48,7 +48,9 @@ const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 let trezorInitialized = false
 const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
-
+const ERC20ManagerTestnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
+const ERC20ManagerMainnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
+const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
 /* fetchNotarizationFromEndPoint
 Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
 Param endPoint: Required. Fully qualified URL which will take transaction information and respond with a signature or error on denial
@@ -447,9 +449,7 @@ Returns: Returns JSON object in response, SPV proof object in JSON
 */
 async function buildEthProof (assetOpts) {
   const ethProof = new GetProof(assetOpts.web3url)
-  const ERC20ManagerTestnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
-  const ERC20ManagerMainnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
-  const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
+  const web3Provider = new Web3(assetOpts.web3url)
   try {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
@@ -471,13 +471,15 @@ async function buildEthProof (assetOpts) {
     const txparentnodes = rlp.encode(result.txProof).toString('hex')
     const txpath = rlp.encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
-    const blockhash = VerifyProof.getBlockHashFromHeader(result.header)
+    const block = await web3Provider.eth.getBlock(blocknumber)
+    const blockhash = block.hash.substring(2) // remove hex prefix
     const receiptroot = rlp.encode(result.header[5]).toString('hex')
     result = await ethProof.receiptProof(assetOpts.ethtxid)
+    const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
     const testnet = assetOpts.web3url.indexOf('mainnet') === -1
     const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
-    const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
+    
     const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
     let amount = 0
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
