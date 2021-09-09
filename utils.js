@@ -479,7 +479,7 @@ async function buildEthProof (assetOpts) {
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
     const testnet = assetOpts.web3url.indexOf('mainnet') === -1
     const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
-    
+
     const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
     let amount = 0
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
