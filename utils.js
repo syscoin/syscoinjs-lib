@@ -469,7 +469,13 @@ async function buildEthProof (assetOpts) {
     const destinationaddress = paramTxResults.syscoinAddress
     const txroot = result.header[4].toString('hex')
     const txparentnodes = rlp.encode(result.txProof).toString('hex')
-    const txpath = rlp.encode(result.txIndex).toString('hex')
+    let txpath
+    // special case for 0x0 which should encode to 80
+    if (result.txIndex === '0x0') {
+      txpath = '80'
+    } else {
+      txpath = rlp.encode(result.txIndex).toString('hex')
+    }
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
     const block = await web3Provider.eth.getBlock(blocknumber)
     const blockhash = block.hash.substring(2) // remove hex prefix
@@ -521,7 +527,7 @@ async function buildEthProof (assetOpts) {
         break
       }
     }
-    ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
+    const ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
     return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
     return e
