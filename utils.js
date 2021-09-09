@@ -521,7 +521,7 @@ async function buildEthProof (assetOpts) {
         break
       }
     }
-    ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
+    ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
     return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
     return e
