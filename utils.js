@@ -454,7 +454,6 @@ async function buildEthProof (assetOpts) {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex.substring(2) // remove hex prefix
-    const txhash = web3.utils.sha3(txvalue) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
     const inputData = txObj.data.slice(4).toString('hex') // get only data without function selector
     const paramTxResults = web3.eth.abi.decodeParameters([{
       type: 'uint',
@@ -522,7 +521,8 @@ async function buildEthProof (assetOpts) {
         break
       }
     }
-    return { txhash, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
+    ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
+    return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
     return e
   }
