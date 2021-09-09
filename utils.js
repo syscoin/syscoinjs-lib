@@ -467,13 +467,13 @@ async function buildEthProof (assetOpts) {
     }], inputData)
     const assetguid = paramTxResults.assetGUID
     const destinationaddress = paramTxResults.syscoinAddress
-    const txroot = rlp.encode(result.header[4]).toString('hex')
+    const txroot = result.header[4].toString('hex')
     const txparentnodes = rlp.encode(result.txProof).toString('hex')
     const txpath = rlp.encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
     const block = await web3Provider.eth.getBlock(blocknumber)
     const blockhash = block.hash.substring(2) // remove hex prefix
-    const receiptroot = rlp.encode(result.header[5]).toString('hex')
+    const receiptroot = result.header[5].toString('hex')
     result = await ethProof.receiptProof(assetOpts.ethtxid)
     const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
     const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
