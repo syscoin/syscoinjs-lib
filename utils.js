@@ -468,8 +468,8 @@ async function buildEthProof (assetOpts) {
     const assetguid = paramTxResults.assetGUID
     const destinationaddress = paramTxResults.syscoinAddress
     const txroot = result.header[4].toString('hex')
-    const txRootFromProof = VerifyProof.getRootFromProof(result.txProof);
-    if(txroot !== txRootFromProof.toString('hex')) {
+    const txRootFromProof = VerifyProof.getRootFromProof(result.txProof)
+    if (txroot !== txRootFromProof.toString('hex')) {
       throw new Error('TxRoot mismatch')
     }
     const txparentnodes = encode(result.txProof).toString('hex')
@@ -480,15 +480,15 @@ async function buildEthProof (assetOpts) {
     const receiptroot = result.header[5].toString('hex')
     result = await ethProof.receiptProof(assetOpts.ethtxid)
     const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
-    const receiptRootFromProof = VerifyProof.getRootFromProof(result.receiptProof);
-    if(receiptroot !== receiptRootFromProof.toString('hex')) {
+    const receiptRootFromProof = VerifyProof.getRootFromProof(result.receiptProof)
+    if (receiptroot !== receiptRootFromProof.toString('hex')) {
       throw new Error('ReceiptRoot mismatch')
     }
     const receiptparentnodes = encode(result.receiptProof).toString('hex')
     const testnet = assetOpts.web3url.indexOf('mainnet') === -1
     const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
-    const blockHashFromHeader = VerifyProof.getBlockHashFromHeader(result.header);
-    if(blockhash !== blockHashFromHeader.toString('hex')) {
+    const blockHashFromHeader = VerifyProof.getBlockHashFromHeader(result.header)
+    if (blockhash !== blockHashFromHeader.toString('hex')) {
       throw new Error('BlockHash mismatch')
     }
     const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
@@ -535,7 +535,7 @@ async function buildEthProof (assetOpts) {
     const ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
     return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
-    console.log("Exception: " + e.message)
+    console.log('Exception: ' + e.message)
     return e
   }
 }
