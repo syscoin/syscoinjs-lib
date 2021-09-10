@@ -7,8 +7,8 @@ const bjs = require('bitcoinjs-lib')
 const bitcoinops = require('bitcoin-ops')
 const varuint = require('varuint-bitcoin')
 const { VerifyProof, GetProof } = require('eth-proof')
+const { encode } = require('eth-util-lite')
 const { Log } = require('eth-object')
-const rlp = require('rlp')
 const Web3 = require('web3')
 const syscointx = require('syscointx-js')
 const utxoLib = require('@trezor/utxo-lib')
@@ -468,24 +468,29 @@ async function buildEthProof (assetOpts) {
     const assetguid = paramTxResults.assetGUID
     const destinationaddress = paramTxResults.syscoinAddress
     const txroot = result.header[4].toString('hex')
-    const txparentnodes = rlp.encode(result.txProof).toString('hex')
-    let txpath
-    // special case for 0x0 which should encode to 80
-    if (result.txIndex === '0x0') {
-      txpath = '80'
-    } else {
-      txpath = rlp.encode(result.txIndex).toString('hex')
+    const txRootFromProof = VerifyProof.getRootFromProof(result.txProof);
+    if(txroot !== txRootFromProof.toString('hex')) {
+      throw new Error('TxRoot mismatch')
     }
+    const txparentnodes = encode(result.txProof).toString('hex')
+    const txpath = encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
     const block = await web3Provider.eth.getBlock(blocknumber)
     const blockhash = block.hash.substring(2) // remove hex prefix
     const receiptroot = result.header[5].toString('hex')
     result = await ethProof.receiptProof(assetOpts.ethtxid)
     const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
-    const receiptparentnodes = rlp.encode(result.receiptProof).toString('hex')
+    const receiptRootFromProof = VerifyProof.getRootFromProof(result.receiptProof);
+    if(receiptroot !== receiptRootFromProof.toString('hex')) {
+      throw new Error('ReceiptRoot mismatch')
+    }
+    const receiptparentnodes = encode(result.receiptProof).toString('hex')
     const testnet = assetOpts.web3url.indexOf('mainnet') === -1
     const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
-
+    const blockHashFromHeader = VerifyProof.getBlockHashFromHeader(result.header);
+    if(blockhash !== blockHashFromHeader.toString('hex')) {
+      throw new Error('BlockHash mismatch')
+    }
     const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
     let amount = 0
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
@@ -530,6 +535,7 @@ async function buildEthProof (assetOpts) {
     const ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
     return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
+    console.log("Exception: " + e.message)
     return e
   }
 }
