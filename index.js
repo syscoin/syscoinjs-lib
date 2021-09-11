@@ -648,11 +648,9 @@ Returns: PSBT if if Signer is set or result object which is used to create PSBT 
 */
 Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
   if (this.Signer) {
-    if (assetMap) {
-      for (const valueAssetObj of assetMap.values()) {
-        if (!valueAssetObj.changeAddress) {
-          valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
-        }
+    for (const valueAssetObj of assetMap.values()) {
+      if (!valueAssetObj.changeAddress) {
+        valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
       }
     }
     if (!sysChangeAddress) {
@@ -664,11 +662,8 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
     let changeAddress
     if (this.Signer) {
       changeAddress = await this.Signer.getNewChangeAddress()
-    // if no Signer then we use the ethProof.destinationaddress as a funding source as well as change address
-    } else {
-      changeAddress = ethProof.destinationaddress
-      sysChangeAddress = ethProof.destinationaddress
-      sysFromXpubOrAddress = ethProof.destinationaddress
+    } else if (sysChangeAddress) {
+      changeAddress = sysChangeAddress
     }
     assetMap = new Map([
       [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: ethProof.amount, address: ethProof.destinationaddress }] }]
