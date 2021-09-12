@@ -1645,6 +1645,15 @@ class SPSBT extends bjs.Psbt {
     inputFinalizeGetAmts(this.data.inputs, tx, c, true)
     return tx
   }
+  
+  static fromBase64(data, opts = {}) {
+    const buffer = Buffer.from(data, 'base64')
+    const psbt = this.fromBuffer(buffer, opts)
+    psbt.getFeeRate = SPSBT.prototype.getFeeRate
+    psbt.getFee = SPSBT.prototype.getFee
+    psbt.extractTransaction = SPSBT.prototype.extractTransaction
+    return psbt
+  }
 }
 
 function exportPsbtToJson (psbt, assetsMap) {
