@@ -1653,7 +1653,7 @@ function exportPsbtToJson (psbt, assetsMap) {
 }
 
 function importPsbtFromJson (jsonData, network) {
-  return { psbt: bjs.Psbt.fromBase64(jsonData.psbt, { network: network || syscoinNetworks.mainnet }), assets: new Map(JSON.parse(jsonData.assets)) }
+  return { psbt: SPSBT.fromBase64(jsonData.psbt, { network: network || syscoinNetworks.mainnet }), assets: new Map(JSON.parse(jsonData.assets)) }
 }
 
 function createAssetID (NFTID, assetGuid) {
