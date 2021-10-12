@@ -878,7 +878,7 @@ function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
   this.mnemonic = mnemonic // serialized
 
   /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.fromSeed = new BIP84.fromSeed(mnemonic, this.Signer.password, this.Signer.isTestnet, this.Signer.SLIP44, this.Signer.pubTypes, this.Signer.network)
+  this.fromMnemonic = new BIP84.fromMnemonic(mnemonic, this.Signer.password, this.Signer.isTestnet, this.Signer.SLIP44, this.Signer.pubTypes, this.Signer.network)
   // try to restore, if it does not succeed then initialize from scratch
   if (!this.Signer.password || !this.restore(this.Signer.password)) {
     this.createAccount()
@@ -1042,7 +1042,7 @@ Purpose: Get master seed fingerprint used for signing with bitcoinjs-lib PSBT's
 Returns: bip32 root master fingerprint
 */
 HDSigner.prototype.getMasterFingerprint = function () {
-  return bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network).fingerprint
+  return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network).fingerprint
 }
 
 /* deriveAccount
@@ -1088,7 +1088,7 @@ HDSigner.prototype.deriveAccount = function (index) {
     this.Signer.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
   }
-  return this.fromSeed.deriveAccount(index, bipNum)
+  return this.fromMnemonic.deriveAccount(index, bipNum)
 }
 
 /* setAccountIndex
@@ -1451,7 +1451,7 @@ Param keypath: Required. HD BIP32 path of key desired based on internal seed and
 Returns: bitcoinjs-lib keypair
 */
 HDSigner.prototype.deriveKeypair = function (keypath) {
-  const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network).derivePath(keypath)
+  const keyPair = bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network).derivePath(keypath)
   if (!keyPair) {
     return null
   }
@@ -1464,7 +1464,7 @@ Param keypath: Required. HD BIP32 path of key desired based on internal seed and
 Returns: bitcoinjs-lib pubkey
 */
 HDSigner.prototype.derivePubKey = function (keypath) {
-  const keyPair = bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network).derivePath(keypath)
+  const keyPair = bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network).derivePath(keypath)
   if (!keyPair) {
     return null
   }
@@ -1476,7 +1476,7 @@ Purpose: Returns HDSigner's BIP32 root node
 Returns: BIP32 root node representing the seed
 */
 HDSigner.prototype.getRootNode = function () {
-  return bjs.bip32.fromSeed(this.fromSeed.seed, this.Signer.network)
+  return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network)
 }
 
 TrezorSigner.prototype.getAccountNode = function () {
