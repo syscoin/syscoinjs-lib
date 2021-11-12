@@ -1222,6 +1222,13 @@ Returns: string address used for change outputs
 TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.Signer.changeIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (this.Signer.changeIndex === -1) {
+      // try once more in case it fails for some reason
+      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (this.Signer.changeIndex === -1) {
+        throw new Error('Could not update XPUB change index')
+      }
+    }
   }
   const address = this.createAddress(this.Signer.changeIndex + 1, true)
   if (address) {
@@ -1237,6 +1244,12 @@ TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.Signer.changeIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (this.Signer.changeIndex === -1) {
+      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (this.Signer.changeIndex === -1) {
+        throw new Error('Could not update XPUB change index')
+      }
+    }
   }
   const address = this.createAddress(this.Signer.changeIndex + 1, true)
   if (address) {
@@ -1257,6 +1270,12 @@ Returns: string address used for receiving outputs
 TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (this.Signer.receivingIndex === -1) {
+      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (this.Signer.receivingIndex === -1) {
+        throw new Error('Could not update XPUB receiving index')
+      }
+    }
   }
   const address = this.createAddress(this.Signer.receivingIndex + 1, false)
   if (address) {
@@ -1271,6 +1290,12 @@ TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
     await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (this.Signer.receivingIndex === -1) {
+      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (this.Signer.receivingIndex === -1) {
+        throw new Error('Could not update XPUB receiving index')
+      }
+    }
   }
   const address = this.createAddress(this.Signer.receivingIndex + 1, false)
   if (address) {
