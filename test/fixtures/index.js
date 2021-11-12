@@ -1400,7 +1400,7 @@ module.exports = [{
   },
   sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
   assetMap: new Map([
-    ['2615707979', { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
+    ['2615707979', { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(900000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
   ]),
   xpubTokens: [
     { path: "m/84'/1'/0'/0/0" },
@@ -1417,13 +1417,13 @@ module.exports = [{
     { path: "m/84'/1'/0'/0/11" }
   ],
   expected: {
-    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff02a8020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b00e40b54020000000c6a0a0188dea1914b010064000247304402206ad4082b43b92bd8b22f9f751364daeeef1a8b96aa27f35e4a1926c0e2245a34022025435e92d810d7ecd05a433d9cf962d9a53e867a62de2ab0cbd0d7042e8471e2012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
+    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff03a8020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4ba0bb0d00000000000c6a0a0188dea1914b010056005e7d0100000000001600140f8137adebd136ebb5d3c9796e79916ddcff77cb024730440220398e1b0a6508e8fbb44bdd64045a40ef5561f10199e39fdeb81a44a937e6a409022058d1ebc215edc6b855bf3788061051c43f689ad8a3126c059bab8381b3cdff69012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
     rbf: true,
     version: syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION,
-    numOutputs: 2,
-    script: Buffer.from('6a0a0188dea1914b01006400', 'hex'),
+    numOutputs: 3,
+    script: Buffer.from('6a0a0188dea1914b01005600', 'hex'),
     asset: {
-      allocation: [{ assetGuid: '2615707979', values: [{ n: 0, value: new BN(10000000000) }], notarysig: Buffer.from('') }]
+      allocation: [{ assetGuid: '2615707979', values: [{ n: 0, value: new BN(900000) }], notarysig: Buffer.from('') }]
     },
     receivingIndex: 11,
     changeIndex: 3
@@ -1465,7 +1465,7 @@ module.exports = [{
   },
   sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
   assetMap: new Map([
-    ['2615707979', { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
+    ['2615707979', { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(900000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
   ]),
   xpubTokens: [
     { path: "m/84'/1'/0'/0/0" },
@@ -1482,13 +1482,13 @@ module.exports = [{
     { path: "m/84'/1'/0'/0/11" }
   ],
   expected: {
-    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff03a8020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b00e40b5402000000156a130288dea1914b0100640087cabdbd5b01025800a8020000000000001600140f8137adebd136ebb5d3c9796e79916ddcff77cb02483045022100b24e975b7efb2e46d25b0d7ddb38f3a5aecaf8fe622d55c32eccf363f9c7a8270220350a3bf0caec9e6d7841e7be8575c938dcdd4fe15f6af8a39612ea1e822efa1b012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
+    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff03a8020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4ba0bb0d0000000000156a130288dea1914b0100560087cabdbd5b01025800047d0100000000001600140f8137adebd136ebb5d3c9796e79916ddcff77cb0247304402202366faaf152d38f777e92edd124a3caa737fa38a7d4cc9709ddb1af41bfa141c02204d1809c6dc358d8bfc422c997c7cb0cbab01f5b54af18f20edb183310fad4e1b012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
     rbf: true,
     version: syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION,
     numOutputs: 3,
-    script: Buffer.from('6a130288dea1914b0100640087cabdbd5b01025800', 'hex'),
+    script: Buffer.from('6a130288dea1914b0100560087cabdbd5b01025800', 'hex'),
     asset: {
-      allocation: [{ assetGuid: '2615707979', values: [{ n: 0, value: new BN(10000000000) }], notarysig: Buffer.from('') }, { assetGuid: '2305793883', values: [{ n: 2, value: new BN(90000000) }], notarysig: Buffer.from('') }]
+      allocation: [{ assetGuid: '2615707979', values: [{ n: 0, value: new BN(900000) }], notarysig: Buffer.from('') }, { assetGuid: '2305793883', values: [{ n: 2, value: new BN(90000000) }], notarysig: Buffer.from('') }]
     },
     receivingIndex: 11,
     changeIndex: 3
@@ -1530,7 +1530,7 @@ module.exports = [{
   },
   sysChangeAddress: 'tsys1qp7qn0t0t6ymwhdwne9uku7v3dhw07a7tra8hzl',
   assetMap: new Map([
-    ['2615707979', { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(10000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
+    ['2615707979', { changeAddress: 'tsys1qjfcltq5yljfzkljxdnlc0ffmhqudz8ltq0z695', outputs: [{ value: new BN(9000000000), address: 'tsys1qdflre2yd37qtpqe2ykuhwandlhq04r2td2t9ae' }] }]
   ]),
   xpubTokens: [
     { path: "m/84'/1'/0'/0/0" },
@@ -1547,13 +1547,13 @@ module.exports = [{
     { path: "m/84'/1'/0'/0/11" }
   ],
   expected: {
-    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff03a8020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b00e40b54020000000e6a0c0188dea1914b020064025800a8020000000000001600149271f58284fc922b7e466cff87a53bb838d11feb02483045022100fe9e35b4054a6ee39feb6255628831f403c14d228885c61166242525c654eeb70220699756829841ac67b4fe560832b2f6973b9dc25e7bc540c4e095fe67bd3f0424012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
+    hex: '81000000000101684c965ed8b542a614743b91faa18989dd4ad5bd66a2326a2f648b2602fbdb640000000000fdffffff03a8020000000000001600146a7e3ca88d8f80b0832a25b977766dfdc0fa8d4b001a7118020000000e6a0c0188dea1914b02005a025800aac09a3b000000001600149271f58284fc922b7e466cff87a53bb838d11feb02473044022019442852cb6e8874b225f15b781354e984c9a8d1bcf77eaed8c8f6a1ca4e074f02201e5cd2114da920c8d6f2af44259f50e701c7ee16f09ad5339ae5d7e8c25cd5ee012103b7eeb47fdd1c2084ef795fac22bf24185e7295d2efa3178b69b6eca409810fba00000000',
     rbf: true,
     version: syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION,
     numOutputs: 3,
-    script: Buffer.from('6a0c0188dea1914b020064025800', 'hex'),
+    script: Buffer.from('6a0c0188dea1914b02005a025800', 'hex'),
     asset: {
-      allocation: [{ assetGuid: '2615707979', values: [{ n: 0, value: new BN(10000000000) }, { n: 2, value: new BN(90000000) }], notarysig: Buffer.from('') }]
+      allocation: [{ assetGuid: '2615707979', values: [{ n: 0, value: new BN(9000000000) }, { n: 2, value: new BN(90000000) }], notarysig: Buffer.from('') }]
     },
     receivingIndex: 11,
     changeIndex: 3
