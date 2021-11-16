@@ -1,6 +1,6 @@
 {
   "name": "syscoinjs-lib",
-  "version": "1.0.191",
+  "version": "1.0.192",
   "description": "A transaction creation library interfacing with coin selection for Syscoin.",
   "keywords": [
     "coinselect",
@@ -49,7 +49,7 @@
   "dependencies": {
     "@trezor/utxo-lib": "^0.1.2",
     "axios": "^0.21.1",
-    "bip84": "^0.2.6",
+    "bip84": "^0.2.7",
     "bitcoin-ops": "^1.4.1",
     "bitcoinjs-lib": "^5.2.0",
     "bn.js": "^5.1.3",
