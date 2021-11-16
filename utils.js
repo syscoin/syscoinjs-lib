@@ -200,7 +200,8 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     }
     return null
   } catch (e) {
-    return e
+    console.log('Exception: ' + e.message)
+    return null
   }
 }
 
@@ -1221,11 +1222,11 @@ Returns: string address used for change outputs
 */
 TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.Signer.changeIndex === -1 && this.blockbookURL) {
-    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-    if (this.Signer.changeIndex === -1) {
+    let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (res === null) {
       // try once more in case it fails for some reason
-      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-      if (this.Signer.changeIndex === -1) {
+      res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (res === null) {
         throw new Error('Could not update XPUB change index')
       }
     }
@@ -1243,10 +1244,11 @@ TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
 
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
   if (this.Signer.changeIndex === -1 && this.blockbookURL) {
-    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-    if (this.Signer.changeIndex === -1) {
-      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-      if (this.Signer.changeIndex === -1) {
+    let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (res === null) {
+      // try once more in case it fails for some reason
+      res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (res === null) {
         throw new Error('Could not update XPUB change index')
       }
     }
@@ -1269,10 +1271,11 @@ Returns: string address used for receiving outputs
 */
 TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
-    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-    if (this.Signer.receivingIndex === -1) {
-      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-      if (this.Signer.receivingIndex === -1) {
+    let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (res === null) {
+      // try once more in case it fails for some reason
+      res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (res === null) {
         throw new Error('Could not update XPUB receiving index')
       }
     }
@@ -1289,10 +1292,11 @@ TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
 }
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
   if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
-    await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-    if (this.Signer.receivingIndex === -1) {
-      await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-      if (this.Signer.receivingIndex === -1) {
+    let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+    if (res === null) {
+      // try once more in case it fails for some reason
+      res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
+      if (res === null) {
         throw new Error('Could not update XPUB receiving index')
       }
     }
