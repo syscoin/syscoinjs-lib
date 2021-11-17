@@ -1220,8 +1220,8 @@ Purpose: Get new address for sending change to
 Param skipIncrement: Optional. If we should not count the internal change index counter (if you want to get the same change address in the future)
 Returns: string address used for change outputs
 */
-TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
-  if (this.Signer.changeIndex === -1 && this.blockbookURL) {
+Signer.prototype.getNewChangeAddress = async function (skipIncrement) {
+  if (this.changeIndex === -1 && this.blockbookURL) {
     let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
     if (res === null) {
       // try once more in case it fails for some reason
@@ -1231,37 +1231,22 @@ TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
       }
     }
   }
-  const address = this.createAddress(this.Signer.changeIndex + 1, true)
+  const address = this.createAddress(this.changeIndex + 1, true)
   if (address) {
     if (!skipIncrement) {
-      this.Signer.changeIndex++
+      this.changeIndex++
     }
     return address
   }
 
   return null
 }
+TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
+  return this.Signer.getNewChangeAddress(skipIncrement)
+}
 
 HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
-  if (this.Signer.changeIndex === -1 && this.blockbookURL) {
-    let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-    if (res === null) {
-      // try once more in case it fails for some reason
-      res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-      if (res === null) {
-        throw new Error('Could not update XPUB change index')
-      }
-    }
-  }
-  const address = this.createAddress(this.Signer.changeIndex + 1, true)
-  if (address) {
-    if (!skipIncrement) {
-      this.Signer.changeIndex++
-    }
-    return address
-  }
-
-  return null
+  return this.Signer.getNewChangeAddress(skipIncrement)
 }
 
 /* getNewReceivingAddress
@@ -1269,8 +1254,8 @@ Purpose: Get new address for sending coins to
 Param skipIncrement: Optional. If we should not count the internal receiving index counter (if you want to get the same address in the future)
 Returns: string address used for receiving outputs
 */
-TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
-  if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
+Signer.prototype.getNewReceivingAddress = async function (skipIncrement) {
+  if (this.receivingIndex === -1 && this.blockbookURL) {
     let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
     if (res === null) {
       // try once more in case it fails for some reason
@@ -1280,36 +1265,21 @@ TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
       }
     }
   }
-  const address = this.createAddress(this.Signer.receivingIndex + 1, false)
+  const address = this.createAddress(this.receivingIndex + 1, false)
   if (address) {
     if (!skipIncrement) {
-      this.Signer.receivingIndex++
+      this.receivingIndex++
     }
     return address
   }
 
   return null
 }
+TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
+  return this.Signer.getNewReceivingAddress(skipIncrement)
+}
 HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
-  if (this.Signer.receivingIndex === -1 && this.blockbookURL) {
-    let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-    if (res === null) {
-      // try once more in case it fails for some reason
-      res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
-      if (res === null) {
-        throw new Error('Could not update XPUB receiving index')
-      }
-    }
-  }
-  const address = this.createAddress(this.Signer.receivingIndex + 1, false)
-  if (address) {
-    if (!skipIncrement) {
-      this.Signer.receivingIndex++
-    }
-    return address
-  }
-
-  return null
+  return this.Signer.getNewReceivingAddress(skipIncrement)
 }
 
 /* createAccount
@@ -1385,22 +1355,19 @@ TrezorSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
 HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   this.Signer.setLatestIndexesFromXPubTokens(tokens)
 }
-
-TrezorSigner.prototype.createAddress = function (addressIndex, isChange) {
+Signer.prototype.createAddress = function (addressIndex, isChange) {
   let bipNum = 44
-  if (this.Signer.pubTypes === syscoinZPubTypes ||
-    this.Signer.pubTypes === bitcoinZPubTypes) {
+  if (this.pubTypes === syscoinZPubTypes ||
+    this.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
   }
-  return this.Signer.accounts[this.Signer.accountIndex].getAddress(addressIndex, isChange, bipNum)
+  return this.accounts[this.accountIndex].getAddress(addressIndex, isChange, bipNum)
+}
+TrezorSigner.prototype.createAddress = function (addressIndex, isChange) {
+  return this.Signer.createAddress(addressIndex, isChange)
 }
 HDSigner.prototype.createAddress = function (addressIndex, isChange) {
-  let bipNum = 44
-  if (this.Signer.pubTypes === syscoinZPubTypes ||
-    this.Signer.pubTypes === bitcoinZPubTypes) {
-    bipNum = 84
-  }
-  return this.Signer.accounts[this.Signer.accountIndex].getAddress(addressIndex, isChange, bipNum)
+  return this.Signer.createAddress(addressIndex, isChange)
 }
 /* createKeypair
 Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from a backend provider response
