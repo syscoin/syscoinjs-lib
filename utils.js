@@ -1318,11 +1318,14 @@ HDSigner.prototype.createAccount = function () {
 Purpose: Get XPUB for account, useful for public provider lookups based on XPUB accounts
 Returns: string representing hex XPUB
 */
-TrezorSigner.prototype.getAccountXpub = function () {
+Signer.prototype.getAccountXpub = function () {
   return this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey()
 }
+TrezorSigner.prototype.getAccountXpub = function () {
+  return this.Signer.getAccountXpub()
+}
 HDSigner.prototype.getAccountXpub = function () {
-  return this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey()
+  return this.Signer.getAccountXpub()
 }
 
 /* setLatestIndexesFromXPubTokens
