@@ -1319,7 +1319,7 @@ Purpose: Get XPUB for account, useful for public provider lookups based on XPUB 
 Returns: string representing hex XPUB
 */
 Signer.prototype.getAccountXpub = function () {
-  return this.Signer.accounts[this.Signer.accountIndex].getAccountPublicKey()
+  return this.accounts[this.accountIndex].getAccountPublicKey()
 }
 TrezorSigner.prototype.getAccountXpub = function () {
   return this.Signer.getAccountXpub()
@@ -1424,7 +1424,6 @@ HDSigner.prototype.getAddressFromKeypair = function (keyPair) {
   })
   return payment.address
 }
-
 /* getAddressFromPubKey
 Purpose: Takes pubkey and gives back a p2wpkh address
 Param pubkey: Required. bitcoinjs-lib public key
