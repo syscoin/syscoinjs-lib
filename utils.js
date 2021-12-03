@@ -1133,6 +1133,7 @@ TrezorSigner.prototype.restore = function (password) {
     return false
   }
   const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
+  const numAccounts = decryptedData.numAccounts
   // sanity checks
   if (this.Signer.accountIndex > 1000) {
     return false
@@ -1140,8 +1141,8 @@ TrezorSigner.prototype.restore = function (password) {
 
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
-  this.Signer.accountIndex = decryptedData.numXpubs
-  for (let i = 0; i <= this.Signer.accountIndex; i++) {
+  this.Signer.accountIndex = 0
+  for (let i = 0; i < numAccounts; i++) {
     this.Signer.accounts.push(new BIP84.fromZPub(decryptedData.xpubArr[i], this.Signer.pubTypes, this.Signer.networks))
     if (this.Signer.accounts[i].getAccountPublicKey() !== decryptedData.xpubArr[i]) {
       throw new Error('Account public key mismatch,check pubtypes and networks being used')
@@ -1175,7 +1176,7 @@ HDSigner.prototype.restore = function (password) {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
   this.Signer.accountIndex = 0
-  for (let i = 0; i <= numAccounts; i++) {
+  for (let i = 0; i < numAccounts; i++) {
     const child = this.deriveAccount(i)
     /* eslint new-cap: ["error", { "newIsCap": false }] */
     this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
@@ -1198,7 +1199,7 @@ TrezorSigner.prototype.backup = function () {
   for (let i = 0; i < this.Signer.accounts.length; i++) {
     xpubs[i] = this.Signer.accounts[i].getAccountPublicKey()
   }
-  const obj = { xpubArr: xpubs, numXpubs: this.Signer.accounts.length }
+  const obj = { xpubArr: xpubs, numAccounts: this.Signer.accounts.length }
   const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.Signer.password).toString()
   browserStorage.setItem(key, ciphertext)
 }
@@ -1335,7 +1336,11 @@ Param tokens: Required. XPUB tokens from provider response to XPUB account detai
 Signer.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   if (tokens) {
     tokens.forEach(token => {
-      if (token.path) {
+      if (!token.transfers || !token.path) {
+        return
+      }
+      const transfers = parseInt(token.transfers, 10)
+      if (token.path && transfers > 0) {
         const splitPath = token.path.split('/')
         if (splitPath.length >= 6) {
           const change = parseInt(splitPath[4], 10)
