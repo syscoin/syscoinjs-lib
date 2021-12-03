@@ -1101,9 +1101,11 @@ Signer.prototype.setAccountIndex = function (accountIndex) {
     console.log('Account does not exist, use createAccount to create it first...')
     return
   }
-  this.accountIndex = accountIndex
-  this.changeIndex = -1
-  this.receivingIndex = -1
+  if(this.accountIndex !== accountIndex) {
+    this.changeIndex = -1
+    this.receivingIndex = -1
+    this.accountIndex = accountIndex
+  }
 }
 TrezorSigner.prototype.setAccountIndex = function (accountIndex) {
   this.Signer.setAccountIndex(accountIndex)
