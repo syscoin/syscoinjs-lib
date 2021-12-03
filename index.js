@@ -13,6 +13,7 @@ function Syscoin (SignerIn, blockbookURL, network) {
   if (SignerIn) {
     this.Signer = SignerIn
     this.Signer.blockbookURL = blockbookURL
+    this.Signer.Signer.blockbookURL = blockbookURL
     this.network = network || this.Signer.Signer.network
   } else {
     this.Signer = null
