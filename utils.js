@@ -852,6 +852,7 @@ function Signer (password, isTestnet, networks, SLIP44, pubTypes) {
   this.changeIndex = -1
   this.receivingIndex = -1
   this.accountIndex = 0
+  this.setIndexFlag = 0
 }
 function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectSrc, disableLazyLoad) {
   try {
@@ -1101,7 +1102,7 @@ Signer.prototype.setAccountIndex = function (accountIndex) {
     console.log('Account does not exist, use createAccount to create it first...')
     return
   }
-  if(this.accountIndex !== accountIndex) {
+  if (this.accountIndex !== accountIndex) {
     this.changeIndex = -1
     this.receivingIndex = -1
     this.accountIndex = accountIndex
@@ -1336,6 +1337,13 @@ Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from 
 Param tokens: Required. XPUB tokens from provider response to XPUB account details.
 */
 Signer.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
+  this.setIndexFlag++
+  // concurrency check make sure you don't execute this logic while it is already running as signer state is updated here
+  // also in case there is some bug in the code that prevents it ever from being called because this.setIndexFlag = 0 doesn't happen we
+  // stop worrying about the flag after it reached 100 attempts
+  if (this.setIndexFlag > 1 && this.setIndexFlag < 100) {
+    return
+  }
   if (tokens) {
     tokens.forEach(token => {
       if (!token.transfers || !token.path) {
@@ -1358,6 +1366,7 @@ Signer.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
       }
     })
   }
+  this.setIndexFlag = 0
 }
 TrezorSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   this.Signer.setLatestIndexesFromXPubTokens(tokens)
