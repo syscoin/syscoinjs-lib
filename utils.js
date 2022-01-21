@@ -65,7 +65,7 @@ async function fetchNotarizationFromEndPoint (endPoint, txHex) {
     }
     return null
   } catch (e) {
-    return e
+    return e.response.data
   }
 }
 
@@ -361,7 +361,8 @@ async function getNotarizationSignatures (notaryAssets, txHex) {
         }
       }
     } else {
-      console.log('Unrecognized response from notary backend: ' + responseNotary)
+      console.log('Unrecognized response from notary backend: ', responseNotary)
+      throw responseNotary // if we return false on notary validations theres no way to catch notary error from upper level
     }
   }
   return notarizationDone
