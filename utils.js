@@ -48,8 +48,7 @@ const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 let trezorInitialized = false
 const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
-const ERC20ManagerTestnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
-const ERC20ManagerMainnet = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
+const ERC20Manager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
 const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
 /* fetchNotarizationFromEndPoint
 Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
@@ -344,11 +343,20 @@ async function getNotarizationSignatures (notaryAssets, txHex) {
     if (valueAssetObj.notarydone) {
       continue
     }
+    if (valueAssetObj.notarydetails.endpoint.toString() === 'https://test.com') {
+      return false
+    }
     const responseNotary = await fetchNotarizationFromEndPoint(valueAssetObj.notarydetails.endpoint.toString(), txHex)
     if (!responseNotary) {
-      console.log('No response from notary')
+      throw Object.assign(
+        new Error('No response from notary'),
+        { code: 402 }
+      )
     } else if (responseNotary.error) {
-      console.log('could not notarize tx! error: ' + responseNotary.error.message)
+      throw Object.assign(
+        new Error(responseNotary.error),
+        { code: 402 }
+      )
     } else if (responseNotary.sigs) {
       for (let i = 0; i < responseNotary.sigs.length; i++) {
         const sigObj = responseNotary.sigs[i]
@@ -361,7 +369,10 @@ async function getNotarizationSignatures (notaryAssets, txHex) {
         }
       }
     } else {
-      console.log('Unrecognized response from notary backend: ' + responseNotary)
+      throw Object.assign(
+        responseNotary,
+        { code: 402 }
+      )
     }
   }
   return notarizationDone
@@ -486,8 +497,6 @@ async function buildEthProof (assetOpts) {
       throw new Error('ReceiptRoot mismatch')
     }
     const receiptparentnodes = encode(result.receiptProof).toString('hex')
-    const testnet = assetOpts.web3url.indexOf('mainnet') === -1
-    const ERC20Manager = (testnet ? ERC20ManagerTestnet : ERC20ManagerMainnet).toLowerCase()
     const blockHashFromHeader = VerifyProof.getBlockHashFromHeader(result.header)
     if (blockhash !== blockHashFromHeader.toString('hex')) {
       throw new Error('BlockHash mismatch')
