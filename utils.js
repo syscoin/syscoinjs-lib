@@ -674,9 +674,9 @@ Param memoHeader: Optional. Memo prefix, application specific. If not passed in 
 function getMemoFromOpReturn (outputs, memoHeader) {
   for (let i = 0; i < outputs.length; i++) {
     const output = outputs[i]
-    if (output.script) {
+    if (output.script || output.hex) {
       // find opreturn
-      const chunks = bjs.script.decompile(output.script)
+      const chunks = bjs.script.decompile(output.script || output.hex)
       if (chunks[0] === bitcoinops.OP_RETURN) {
         if (memoHeader) {
           return getMemoFromScript(chunks[1], memoHeader)
