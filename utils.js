@@ -676,7 +676,7 @@ function getMemoFromOpReturn (outputs, memoHeader) {
     const output = outputs[i]
     if (output.script || output.hex) {
       // find opreturn
-      const chunks = bjs.script.decompile(output.script || output.hex)
+      const chunks = bjs.script.decompile(output.script || Buffer.from(output.hex))
       if (chunks[0] === bitcoinops.OP_RETURN) {
         if (memoHeader) {
           return getMemoFromScript(chunks[1], memoHeader)
