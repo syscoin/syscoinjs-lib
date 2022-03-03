@@ -663,8 +663,12 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
     let changeAddress
     if (this.Signer) {
       changeAddress = await this.Signer.getNewChangeAddress()
-    } else if (sysChangeAddress) {
-      changeAddress = sysChangeAddress
+    }
+    if (sysChangeAddress === changeAddress) {
+      throw Object.assign(
+        new Error('Syscoin and asset change address cannot be the same for assetAllocationMint!'),
+        { code: 402 }
+      )
     }
     assetMap = new Map([
       [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: ethProof.amount, address: ethProof.destinationaddress }] }]
