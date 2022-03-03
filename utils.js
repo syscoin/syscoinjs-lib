@@ -509,7 +509,7 @@ async function buildEthProof (assetOpts) {
         continue
       }
       // event TokenFreeze(address freezer, uint value, uint precisions);
-      if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction && log.address.toLowerCase() === ERC20Manager) {
+      if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() && log.address.toLowerCase() === ERC20Manager.toLowerCase()) {
         const paramResults = web3.eth.abi.decodeParameters([{
           type: 'uint32',
           name: 'assetGUID'
