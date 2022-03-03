@@ -502,7 +502,7 @@ async function buildEthProof (assetOpts) {
       throw new Error('BlockHash mismatch')
     }
     const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
-    let amount = new web3.utils.BN(0)
+    let amount = 0
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
       const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject()
       if (log.topics && log.topics.length !== 1) {
