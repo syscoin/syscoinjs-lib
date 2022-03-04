@@ -649,9 +649,11 @@ Returns: PSBT if if Signer is set or result object which is used to create PSBT 
 */
 Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
   if (this.Signer) {
-    for (const valueAssetObj of assetMap.values()) {
-      if (!valueAssetObj.changeAddress) {
-        valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
+    if (assetMap) {
+      for (const valueAssetObj of assetMap.values()) {
+        if (!valueAssetObj.changeAddress) {
+          valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
+        }
       }
     }
     if (!sysChangeAddress) {
