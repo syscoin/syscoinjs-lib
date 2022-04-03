@@ -447,12 +447,20 @@ async function signPSBTWithWIF (psbt, wif, network) {
 /* signWithWIF
 Purpose: Sign Result object with WiF
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param wif: Required. Private key in WIF format to sign inputs with
+Param wif: Required. Private key in WIF format to sign inputs with, can be array of keys
 Param network: Required. bitcoinjs-lib Network object
 Returns: psbt from bitcoinjs-lib
 */
 async function signWithWIF (psbt, wif, network) {
-  return await signPSBTWithWIF(psbt, wif, network)
+  if (Array.isArray(wif)) {
+    let psbt
+    for (const wifKey of wif) {
+      psbt = await signPSBTWithWIF(psbt, wifKey, network)
+    }
+    return psbt
+  } else {
+    return await signPSBTWithWIF(psbt, wif, network)
+  }
 }
 /* buildEthProof
 Purpose: Build Ethereum SPV proof using eth-proof library
