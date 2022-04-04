@@ -307,7 +307,7 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (fromXpubOrAddress) {
+  if (fromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
@@ -369,7 +369,7 @@ Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress) {
+  if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
@@ -425,7 +425,7 @@ Returns: PSBT if if Signer is set or result object which is used to create PSBT 
 */
 Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
   if (!utxos) {
-    if (sysFromXpubOrAddress) {
+    if (sysFromXpubOrAddress || !this.Signer) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
     } else if (this.Signer) {
       utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.Signer.getAccountXpub())
@@ -445,7 +445,7 @@ Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, as
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress) {
+  if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
@@ -513,7 +513,7 @@ Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddre
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
   const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress) {
+  if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
@@ -561,7 +561,7 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress) {
+  if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
@@ -607,7 +607,7 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress) {
+  if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
@@ -692,7 +692,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress) {
+  if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
@@ -737,7 +737,7 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress) {
+  if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
   }
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
