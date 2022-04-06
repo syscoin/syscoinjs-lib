@@ -453,7 +453,6 @@ Returns: psbt from bitcoinjs-lib
 */
 async function signWithWIF (psbt, wif, network) {
   if (Array.isArray(wif)) {
-    let psbt
     for (const wifKey of wif) {
       psbt = await signPSBTWithWIF(psbt, wifKey, network)
     }
