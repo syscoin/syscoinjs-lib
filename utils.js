@@ -1200,7 +1200,8 @@ HDSigner.prototype.restore = function (password) {
     /* eslint new-cap: ["error", { "newIsCap": false }] */
     this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
   }
-  return true
+
+  return this;
 }
 
 /* backup
