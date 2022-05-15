@@ -228,7 +228,7 @@ Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) 
 
 /* fetchAndSanitizeUTXOs
 Purpose: Fetch UTXO's for an address or XPUB from backend Blockbook provider and sanitize them for use by upstream libraries
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param fromXpubOrAddress: Optional. If wanting to fund from specific XPUB's or addresses specify this field should be set. Can be an array of XPUB or addresses in combination.
 Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
@@ -294,18 +294,22 @@ Param changeAddress: Optional. Change address if defined is where change outputs
 Param outputsArr: Required. Output array defining tuples to which addresses to send coins to and how much
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param inputsArr: Optional. Force these inputs to be included in the transaction, not to be confused with 'utxos' which is optional inputs that *may* be included as part of the funding process.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos, redeemOrWitnessScript, inputsArr) {
   if (this.Signer) {
     if (!changeAddress) {
       changeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
-  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network)
+  if (inputsArr) {
+    inputsArr = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, inputsArr, this.network, txOpts).utxos
+  }
+  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network, inputsArr)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (fromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
@@ -348,7 +352,7 @@ Param sysChangeAddress: Optional. Change address if defined is where Syscoin onl
 Param sysReceivingAddress: Optional. Address which will hold the new asset. If not defined and Signer is defined then a new receiving address will be automatically created using the next available receiving address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
@@ -419,7 +423,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
@@ -471,7 +475,7 @@ Param assetMap: Required. Description of Map:
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
@@ -541,7 +545,7 @@ Param assetMap: Required. Description of Map:
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
@@ -588,7 +592,7 @@ Param assetMap: Required. Description of Map:
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
@@ -643,7 +647,7 @@ Param assetMap: Optional. Auto-filled by eth-proof if it is used (pass ethtxid a
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
@@ -718,7 +722,7 @@ Param assetMap: Required. Description of Map:
 Param sysChangeAddress: Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param sysFromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
-Param utxos: Optional. Pass in specific utxos to fund a transaction, should be sanitized using utils.sanitizeBlockbookUTXOs()
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */

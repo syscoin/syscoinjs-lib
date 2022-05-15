@@ -1201,7 +1201,7 @@ HDSigner.prototype.restore = function (password) {
     this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
   }
 
-  return this;
+  return this
 }
 
 /* backup
