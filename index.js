@@ -309,7 +309,7 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
   if (inputsArr) {
     inputsArr = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, inputsArr, this.network, txOpts).utxos
   }
-  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network, inputsArr)
+  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, inputsArr)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (fromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
