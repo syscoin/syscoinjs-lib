@@ -50,6 +50,12 @@ let trezorInitialized = false
 const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
 const ERC20Manager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
 const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
+const axiosConfig = {
+  headers: {
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+  }
+}
 /* fetchNotarizationFromEndPoint
 Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
 Param endPoint: Required. Fully qualified URL which will take transaction information and respond with a signature or error on denial
@@ -58,7 +64,7 @@ Returns: Returns JSON object in response, signature on success and error on deni
 */
 async function fetchNotarizationFromEndPoint (endPoint, txHex) {
   try {
-    const request = await axios.post(endPoint, { tx: txHex })
+    const request = await axios.post(endPoint, { tx: txHex }, axiosConfig)
     if (request && request.data) {
       return request.data
     }
@@ -80,7 +86,7 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/asset/' + assetGuid + '?details=basic')
+    const request = await axios.get(blockbookURL + '/api/v2/asset/' + assetGuid + '?details=basic', axiosConfig)
     if (request && request.data && request.data.asset) {
       return request.data.asset
     }
@@ -102,7 +108,7 @@ async function fetchBackendListAssets (backendURL, filter) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/assets/' + filter)
+    const request = await axios.get(blockbookURL + '/api/v2/assets/' + filter, axiosConfig)
     if (request && request.data && request.data.asset) {
       return request.data.asset
     }
@@ -126,7 +132,7 @@ async function fetchBackendSPVProof (backendURL, txid) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     const url = blockbookURL + '/api/v2/getspvproof/' + txid
-    const request = await axios.get(url)
+    const request = await axios.get(url, axiosConfig)
     if (request && request.data) {
       return request.data
     }
@@ -153,7 +159,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     if (options) {
       url += '?' + options
     }
-    const request = await axios.get(url)
+    const request = await axios.get(url, axiosConfig)
     if (request && request.data) {
       request.data.addressOrXpub = addressOrXpub
       return request.data
@@ -189,7 +195,7 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     if (options) {
       url += '?' + options
     }
-    const request = await axios.get(url)
+    const request = await axios.get(url, axiosConfig)
     if (request && request.data) {
       // if fetching xpub data
       if (xpub && request.data.tokens && mySignerObj) {
@@ -217,7 +223,7 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex)
+    const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex, axiosConfig)
     if (request && request.data) {
       if (mySignerObj) {
         await fetchBackendAccount(blockbookURL, mySignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, mySignerObj)
@@ -242,7 +248,7 @@ async function fetchBackendRawTx (backendURL, txid) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/tx/' + txid)
+    const request = await axios.get(blockbookURL + '/api/v2/tx/' + txid, axiosConfig)
     if (request && request.data) {
       return request.data
     }
@@ -262,7 +268,7 @@ async function fetchProviderInfo (backendURL) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2')
+    const request = await axios.get(blockbookURL + '/api/v2', axiosConfig)
     if (request && request.data) {
       return request.data
     }
@@ -282,7 +288,7 @@ async function fetchBackendBlock (backendURL, blockhash) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/block/' + blockhash)
+    const request = await axios.get(blockbookURL + '/api/v2/block/' + blockhash, axiosConfig)
     if (request && request.data) {
       return request.data
     }
@@ -309,7 +315,7 @@ async function fetchEstimateFee (backendURL, blocks, options) {
     if (options) {
       url += '?' + options
     }
-    const request = await axios.get(url)
+    const request = await axios.get(url, axiosConfig)
     if (request && request.data && request.data.result) {
       let feeInt = parseInt(request.data.result)
       // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
