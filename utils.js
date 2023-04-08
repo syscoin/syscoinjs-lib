@@ -51,10 +51,7 @@ const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
 const ERC20Manager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
 const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
 const axiosConfig = {
-  headers: {
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-  }
+  withCredentials: true
 }
 /* fetchNotarizationFromEndPoint
 Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
@@ -64,9 +61,28 @@ Returns: Returns JSON object in response, signature on success and error on deni
 */
 async function fetchNotarizationFromEndPoint (endPoint, txHex) {
   try {
-    const request = await axios.post(endPoint, { tx: txHex }, axiosConfig)
-    if (request && request.data) {
-      return request.data
+    // Use fetch if on browser environment
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(endPoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tx: txHex })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data) {
+          return data
+        }
+      }
+    } else {
+      const request = await axios.post(endPoint, { tx: txHex }, axiosConfig)
+      if (request && request.data) {
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -86,9 +102,21 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/asset/' + assetGuid + '?details=basic', axiosConfig)
-    if (request && request.data && request.data.asset) {
-      return request.data.asset
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(`${blockbookURL}/api/v2/asset/${assetGuid}?details=basic`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.asset) {
+          return data.asset
+        }
+      }
+    } else {
+      const request = await axios.get(blockbookURL + '/api/v2/asset/' + assetGuid + '?details=basic', axiosConfig)
+      if (request && request.data && request.data.asset) {
+        return request.data.asset
+      }
     }
     return null
   } catch (e) {
@@ -108,9 +136,19 @@ async function fetchBackendListAssets (backendURL, filter) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/assets/' + filter, axiosConfig)
-    if (request && request.data && request.data.asset) {
-      return request.data.asset
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const request = await fetch(blockbookURL + '/api/v2/assets/' + filter)
+      const data = await request.json()
+      if (data && data.asset) {
+        return data.asset
+      }
+    } else {
+      const request = await axios.get(blockbookURL + '/api/v2/assets/' + filter, axiosConfig)
+      if (request && request.data && request.data.asset) {
+        return request.data.asset
+      }
     }
     return null
   } catch (e) {
@@ -132,9 +170,19 @@ async function fetchBackendSPVProof (backendURL, txid) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     const url = blockbookURL + '/api/v2/getspvproof/' + txid
-    const request = await axios.get(url, axiosConfig)
-    if (request && request.data) {
-      return request.data
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        return data
+      }
+    } else {
+      const request = await axios.get(url, axiosConfig)
+      if (request && request.data) {
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -159,10 +207,23 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     if (options) {
       url += '?' + options
     }
-    const request = await axios.get(url, axiosConfig)
-    if (request && request.data) {
-      request.data.addressOrXpub = addressOrXpub
-      return request.data
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        if (data) {
+          data.addressOrXpub = addressOrXpub
+          return data
+        }
+      }
+    } else {
+      const request = await axios.get(url, axiosConfig)
+      if (request && request.data) {
+        request.data.addressOrXpub = addressOrXpub
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -195,13 +256,27 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     if (options) {
       url += '?' + options
     }
-    const request = await axios.get(url, axiosConfig)
-    if (request && request.data) {
-      // if fetching xpub data
-      if (xpub && request.data.tokens && mySignerObj) {
-        mySignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        if (xpub && data.tokens && mySignerObj) {
+          mySignerObj.setLatestIndexesFromXPubTokens(data.tokens)
+        }
+        data.addressOrXpub = addressOrXpub
+        return data
       }
-      return request.data
+    } else {
+      const request = await axios.get(url, axiosConfig)
+      if (request && request.data) {
+      // if fetching xpub data
+        if (xpub && request.data.tokens && mySignerObj) {
+          mySignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
+        }
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -223,12 +298,30 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex, axiosConfig)
-    if (request && request.data) {
-      if (mySignerObj) {
-        await fetchBackendAccount(blockbookURL, mySignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, mySignerObj)
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      const requestOptions = {
+        method: 'POST',
+        body: txHex
       }
-      return request.data
+      // eslint-disable-next-line no-undef
+      const response = await fetch(blockbookURL + '/api/v2/sendtx/', requestOptions)
+
+      if (response.ok) {
+        const data = await response.json()
+        if (mySignerObj) {
+          await fetchBackendAccount(blockbookURL, mySignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, mySignerObj)
+        }
+        return data
+      }
+    } else {
+      const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex, axiosConfig)
+      if (request && request.data) {
+        if (mySignerObj) {
+          await fetchBackendAccount(blockbookURL, mySignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, mySignerObj)
+        }
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -248,9 +341,21 @@ async function fetchBackendRawTx (backendURL, txid) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/tx/' + txid, axiosConfig)
-    if (request && request.data) {
-      return request.data
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(blockbookURL + '/api/v2/tx/' + txid)
+      if (response.ok) {
+        const data = await response.json()
+        if (data) {
+          return data
+        }
+      }
+    } else {
+      const request = await axios.get(blockbookURL + '/api/v2/tx/' + txid, axiosConfig)
+      if (request && request.data) {
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -268,9 +373,21 @@ async function fetchProviderInfo (backendURL) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2', axiosConfig)
-    if (request && request.data) {
-      return request.data
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(blockbookURL + '/api/v2')
+      if (response.ok) {
+        const data = await response.json()
+        if (data) {
+          return data
+        }
+      }
+    } else {
+      const request = await axios.get(blockbookURL + '/api/v2', axiosConfig)
+      if (request && request.data) {
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -288,9 +405,21 @@ async function fetchBackendBlock (backendURL, blockhash) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const request = await axios.get(blockbookURL + '/api/v2/block/' + blockhash, axiosConfig)
-    if (request && request.data) {
-      return request.data
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(blockbookURL + '/api/v2/block/' + blockhash)
+      if (response.ok) {
+        const data = await response.json()
+        if (data) {
+          return data
+        }
+      }
+    } else {
+      const request = await axios.get(blockbookURL + '/api/v2/block/' + blockhash, axiosConfig)
+      if (request && request.data) {
+        return request.data
+      }
     }
     return null
   } catch (e) {
@@ -315,14 +444,31 @@ async function fetchEstimateFee (backendURL, blocks, options) {
     if (options) {
       url += '?' + options
     }
-    const request = await axios.get(url, axiosConfig)
-    if (request && request.data && request.data.result) {
-      let feeInt = parseInt(request.data.result)
-      // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
-      if (feeInt <= 0) {
-        feeInt = 1000
+    // eslint-disable-next-line no-undef
+    if (fetch) {
+      // eslint-disable-next-line no-undef
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        if (data && data.result) {
+          let feeInt = parseInt(data.result)
+          // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
+          if (feeInt <= 0) {
+            feeInt = 1000
+          }
+          return feeInt
+        }
       }
-      return feeInt
+    } else {
+      const request = await axios.get(url, axiosConfig)
+      if (request && request.data && request.data.result) {
+        let feeInt = parseInt(request.data.result)
+        // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
+        if (feeInt <= 0) {
+          feeInt = 1000
+        }
+        return feeInt
+      }
     }
     return null
   } catch (e) {
@@ -897,15 +1043,15 @@ function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectS
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
   this.restore(this.Signer.password)
 }
-function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes) {
+function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes, bipNum) {
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
   this.mnemonic = mnemonic // serialized
 
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.fromMnemonic = new BIP84.fromMnemonic(mnemonic, this.Signer.password, this.Signer.isTestnet, this.Signer.SLIP44, this.Signer.pubTypes, this.Signer.network)
   // try to restore, if it does not succeed then initialize from scratch
-  if (!this.Signer.password || !this.restore(this.Signer.password)) {
-    this.createAccount()
+  if (!this.Signer.password || !this.restore(this.Signer.password, bipNum)) {
+    this.createAccount(bipNum)
   }
 }
 
@@ -1072,10 +1218,13 @@ HDSigner.prototype.getMasterFingerprint = function () {
 /* deriveAccount
 Purpose: Derive HD account based on index number passed in
 Param index: Required. Account number to derive
+Param bipNum: Optional. BIP number to use for derivation
 Returns: bip32 node for derived account
 */
-TrezorSigner.prototype.deriveAccount = async function (index) {
-  let bipNum = 44
+TrezorSigner.prototype.deriveAccount = async function (index, bipNum) {
+  if (bipNum === undefined) {
+    bipNum = 44
+  }
   if (this.Signer.pubTypes === syscoinZPubTypes ||
     this.Signer.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
@@ -1106,8 +1255,10 @@ TrezorSigner.prototype.deriveAccount = async function (index) {
   })
 }
 
-HDSigner.prototype.deriveAccount = function (index) {
-  let bipNum = 44
+HDSigner.prototype.deriveAccount = function (index, bipNum) {
+  if (bipNum === undefined) {
+    bipNum = 44
+  }
   if (this.Signer.pubTypes === syscoinZPubTypes ||
     this.Signer.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
@@ -1175,7 +1326,7 @@ TrezorSigner.prototype.restore = function (password) {
   }
   return true
 }
-HDSigner.prototype.restore = function (password) {
+HDSigner.prototype.restore = function (password, bipNum) {
   let browserStorage = (typeof localStorage === 'undefined' || localStorage === null) ? null : localStorage
   if (!browserStorage) {
     const LocalStorage = require('node-localstorage').LocalStorage
@@ -1202,7 +1353,7 @@ HDSigner.prototype.restore = function (password) {
   this.Signer.receivingIndex = -1
   this.Signer.accountIndex = 0
   for (let i = 0; i < numAccounts; i++) {
-    const child = this.deriveAccount(i)
+    const child = this.deriveAccount(i, bipNum)
     /* eslint new-cap: ["error", { "newIsCap": false }] */
     this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
   }
@@ -1245,9 +1396,10 @@ HDSigner.prototype.backup = function () {
 /* getNewChangeAddress
 Purpose: Get new address for sending change to
 Param skipIncrement: Optional. If we should not count the internal change index counter (if you want to get the same change address in the future)
+Param bipNum: Optional. If you want the address derivated in regard of an specific bip number
 Returns: string address used for change outputs
 */
-Signer.prototype.getNewChangeAddress = async function (skipIncrement) {
+Signer.prototype.getNewChangeAddress = async function (skipIncrement, bipNum) {
   if (this.changeIndex === -1 && this.blockbookURL) {
     let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
     if (res === null) {
@@ -1258,7 +1410,7 @@ Signer.prototype.getNewChangeAddress = async function (skipIncrement) {
       }
     }
   }
-  const address = this.createAddress(this.changeIndex + 1, true)
+  const address = this.createAddress(this.changeIndex + 1, true, bipNum)
   if (address) {
     if (!skipIncrement) {
       this.changeIndex++
@@ -1268,20 +1420,21 @@ Signer.prototype.getNewChangeAddress = async function (skipIncrement) {
 
   return null
 }
-TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
-  return this.Signer.getNewChangeAddress(skipIncrement)
+TrezorSigner.prototype.getNewChangeAddress = async function (skipIncrement, bipNum) {
+  return this.Signer.getNewChangeAddress(skipIncrement, bipNum)
 }
 
-HDSigner.prototype.getNewChangeAddress = async function (skipIncrement) {
-  return this.Signer.getNewChangeAddress(skipIncrement)
+HDSigner.prototype.getNewChangeAddress = async function (skipIncrement, bipNum) {
+  return this.Signer.getNewChangeAddress(skipIncrement, bipNum)
 }
 
 /* getNewReceivingAddress
 Purpose: Get new address for sending coins to
 Param skipIncrement: Optional. If we should not count the internal receiving index counter (if you want to get the same address in the future)
+Param bipNum: Optional. If you want the address derivated in regard of an specific bip number
 Returns: string address used for receiving outputs
 */
-Signer.prototype.getNewReceivingAddress = async function (skipIncrement) {
+Signer.prototype.getNewReceivingAddress = async function (skipIncrement, bipNum) {
   if (this.receivingIndex === -1 && this.blockbookURL) {
     let res = await fetchBackendAccount(this.blockbookURL, this.getAccountXpub(), 'tokens=used&details=tokens', true, this)
     if (res === null) {
@@ -1292,7 +1445,7 @@ Signer.prototype.getNewReceivingAddress = async function (skipIncrement) {
       }
     }
   }
-  const address = this.createAddress(this.receivingIndex + 1, false)
+  const address = this.createAddress(this.receivingIndex + 1, false, bipNum)
   if (address) {
     if (!skipIncrement) {
       this.receivingIndex++
@@ -1302,22 +1455,23 @@ Signer.prototype.getNewReceivingAddress = async function (skipIncrement) {
 
   return null
 }
-TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
-  return this.Signer.getNewReceivingAddress(skipIncrement)
+TrezorSigner.prototype.getNewReceivingAddress = async function (skipIncrement, bipNum) {
+  return this.Signer.getNewReceivingAddress(skipIncrement, bipNum)
 }
-HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement) {
-  return this.Signer.getNewReceivingAddress(skipIncrement)
+HDSigner.prototype.getNewReceivingAddress = async function (skipIncrement, bipNum) {
+  return this.Signer.getNewReceivingAddress(skipIncrement, bipNum)
 }
 
 /* createAccount
 Purpose: Create and derive a new account
+Param bipNum: Optional. If you want the address derivated in regard of an specific bip number
 Returns: Account index of new account
 */
-TrezorSigner.prototype.createAccount = async function () {
+TrezorSigner.prototype.createAccount = async function (bipNum) {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
   return new Promise((resolve, reject) => {
-    this.deriveAccount(this.Signer.accounts.length).then(child => {
+    this.deriveAccount(this.Signer.accounts.length, bipNum).then(child => {
       this.Signer.accountIndex = this.Signer.accounts.length
       this.Signer.accounts.push(new BIP84.fromZPub(child.descriptor, this.Signer.pubTypes, this.Signer.networks))
       this.backup()
@@ -1330,10 +1484,10 @@ TrezorSigner.prototype.createAccount = async function () {
   })
 }
 
-HDSigner.prototype.createAccount = function () {
+HDSigner.prototype.createAccount = function (bipNum) {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
-  const child = this.deriveAccount(this.Signer.accounts.length)
+  const child = this.deriveAccount(this.Signer.accounts.length, bipNum)
   this.Signer.accountIndex = this.Signer.accounts.length
   /* eslint new-cap: ["error", { "newIsCap": false }] */
   this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
@@ -1397,19 +1551,21 @@ TrezorSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
 HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   this.Signer.setLatestIndexesFromXPubTokens(tokens)
 }
-Signer.prototype.createAddress = function (addressIndex, isChange) {
-  let bipNum = 44
+Signer.prototype.createAddress = function (addressIndex, isChange, bipNum) {
+  if (bipNum === undefined) {
+    bipNum = 44
+  }
   if (this.pubTypes === syscoinZPubTypes ||
     this.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
   }
   return this.accounts[this.accountIndex].getAddress(addressIndex, isChange, bipNum)
 }
-TrezorSigner.prototype.createAddress = function (addressIndex, isChange) {
-  return this.Signer.createAddress(addressIndex, isChange)
+TrezorSigner.prototype.createAddress = function (addressIndex, isChange, bipNum) {
+  return this.Signer.createAddress(addressIndex, isChange, bipNum)
 }
-HDSigner.prototype.createAddress = function (addressIndex, isChange) {
-  return this.Signer.createAddress(addressIndex, isChange)
+HDSigner.prototype.createAddress = function (addressIndex, isChange, bipNum) {
+  return this.Signer.createAddress(addressIndex, isChange, bipNum)
 }
 /* createKeypair
 Purpose: Sets the change and receiving indexes from XPUB tokens passed in, from a backend provider response
@@ -1429,11 +1585,14 @@ HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
 Purpose: Gets current HDPath from signer context
 Param addressIndex: Optional. HD path address index. If not provided uses the stored change/recv indexes for the last path prefix
 Param isChange: Optional. HD path change marker
+Param bipNum: Optional. BIP number to use for HD path. Defaults to 44
 Returns: bip32 path string
 */
-Signer.prototype.getHDPath = function (addressIndex, isChange) {
+Signer.prototype.getHDPath = function (addressIndex, isChange, bipNum) {
   const changeNum = isChange ? '1' : '0'
-  let bipNum = 44
+  if (bipNum === undefined) {
+    bipNum = 44
+  }
   if (this.pubTypes === syscoinZPubTypes ||
     this.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
@@ -1445,11 +1604,11 @@ Signer.prototype.getHDPath = function (addressIndex, isChange) {
   const keypath = 'm/' + bipNum + "'/" + this.SLIP44 + "'/" + this.accountIndex + "'/" + changeNum + '/' + recvIndex
   return keypath
 }
-HDSigner.prototype.getHDPath = function (addressIndex, isChange) {
-  return this.Signer.getHDPath(addressIndex, isChange)
+HDSigner.prototype.getHDPath = function (addressIndex, isChange, bipNum) {
+  return this.Signer.getHDPath(addressIndex, isChange, bipNum)
 }
-TrezorSigner.prototype.getHDPath = function (addressIndex, isChange) {
-  return this.Signer.getHDPath(addressIndex, isChange)
+TrezorSigner.prototype.getHDPath = function (addressIndex, isChange, bipNum) {
+  return this.Signer.getHDPath(addressIndex, isChange, bipNum)
 }
 /* getAddressFromKeypair
 Purpose: Takes keypair and gives back a p2wpkh address
