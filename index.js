@@ -139,7 +139,9 @@ Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn, pa
     }
   }
   if (this.blockbookURL) {
-    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), Signer)
+    const bjstx = psbt.extractTransaction()
+    utils.setPoDA(bjstx, psbt.blobData)
+    const resSend = await utils.sendRawTransaction(this.blockbookURL, bjstx.toHex(), Signer)
     if (resSend.error) {
       throw Object.assign(
         new Error('could not send tx! error: ' + resSend.error.message),
@@ -207,7 +209,9 @@ Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) 
     }
   }
   if (this.blockbookURL) {
-    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex())
+    const bjstx = psbt.extractTransaction()
+    utils.setPoDA(bjstx, psbt.blobData)
+    const resSend = await utils.sendRawTransaction(this.blockbookURL, bjstx.toHex())
     if (resSend.error) {
       throw Object.assign(
         new Error('could not send tx! error: ' + resSend.error.message),
@@ -740,6 +744,73 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  if (sysFromXpubOrAddress || !this.Signer) {
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+  }
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+}
+/* createPoDA
+Purpose: Send Blob to Syscoin
+Param txOpts: Required. Transaction options. Fields are described below:
+  Field blobData. Required. String representing data
+  Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
+Param changeAddress: Optional. Change address if defined is where change outputs are sent to. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
+Param outputsArr: Required. Output array defining tuples to which addresses to send coins to and how much
+Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
+Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
+Param utxos: Optional. Pass in specific utxos to fund a transaction.
+Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+Param inputsArr: Optional. Force these inputs to be included in the transaction, not to be confused with 'utxos' which is optional inputs that *may* be included as part of the funding process.
+Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+*/
+Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos, redeemOrWitnessScript, inputsArr) {
+  if (this.Signer) {
+    if (!changeAddress) {
+      changeAddress = await this.Signer.getNewChangeAddress()
+    }
+  }
+  utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
+  if (inputsArr) {
+    inputsArr = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, inputsArr, this.network, txOpts).utxos
+  }
+  const strData = '0x' + txOpts.blobData
+  txOpts.blobData = Buffer.from(txOpts.blobData, 'hex')
+  txOpts.blobHash = Buffer.from(utils.web3.utils.sha3(strData), 'hex')
+  const res = syscointx.createPoDA(txOpts, utxos, changeAddress, outputsArr, feeRate, inputsArr)
+  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+  psbt.blobData = txOpts.blobData
+  if (fromXpubOrAddress || !this.Signer) {
+    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+  }
+  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+}
+
+Syscoin.prototype.sysMintFromNEVM = async function (txOpts, changeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+  if (this.Signer) {
+    if (!changeAddress) {
+      changeAddress = await this.Signer.getNewChangeAddress()
+    }
+  }
+  const ethProof = await utils.buildEthProof(txOpts)
+  const outputsArr = [
+    { address: ethProof.destinationaddress, value: ethProof.amount }
+  ]
+  txOpts.extend({
+    address: ethProof.destinationaddress,
+    value: ethProof.amount,
+    ethtxid: Buffer.from(ethProof.ethtxid, 'hex'),
+    blockhash: Buffer.from(ethProof.blockhash, 'hex'),
+    txvalue: Buffer.from(ethProof.txvalue, 'hex'),
+    txroot: Buffer.from(ethProof.txroot, 'hex'),
+    txparentnodes: Buffer.from(ethProof.txparentnodes, 'hex'),
+    txpath: Buffer.from(ethProof.txpath, 'hex'),
+    receiptvalue: Buffer.from(ethProof.receiptvalue, 'hex'),
+    receiptroot: Buffer.from(ethProof.receiptroot, 'hex'),
+    receiptparentnodes: Buffer.from(ethProof.receiptparentnodes, 'hex')
+  })
+  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts)
+  const res = syscointx.sysMintFromNEVM(txOpts, utxos, changeAddress, outputsArr, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
     return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
