@@ -786,38 +786,6 @@ Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, outputsArr
   return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
 }
 
-Syscoin.prototype.sysMintFromNEVM = async function (txOpts, changeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
-  if (this.Signer) {
-    if (!changeAddress) {
-      changeAddress = await this.Signer.getNewChangeAddress()
-    }
-  }
-  const ethProof = await utils.buildEthProof(txOpts)
-  const outputsArr = [
-    { address: ethProof.destinationaddress, value: ethProof.amount }
-  ]
-  txOpts.extend({
-    address: ethProof.destinationaddress,
-    value: ethProof.amount,
-    ethtxid: Buffer.from(ethProof.ethtxid, 'hex'),
-    blockhash: Buffer.from(ethProof.blockhash, 'hex'),
-    txvalue: Buffer.from(ethProof.txvalue, 'hex'),
-    txroot: Buffer.from(ethProof.txroot, 'hex'),
-    txparentnodes: Buffer.from(ethProof.txparentnodes, 'hex'),
-    txpath: Buffer.from(ethProof.txpath, 'hex'),
-    receiptvalue: Buffer.from(ethProof.receiptvalue, 'hex'),
-    receiptroot: Buffer.from(ethProof.receiptroot, 'hex'),
-    receiptparentnodes: Buffer.from(ethProof.receiptparentnodes, 'hex')
-  })
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts)
-  const res = syscointx.sysMintFromNEVM(txOpts, utxos, changeAddress, outputsArr, feeRate)
-  const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
-  if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
-  }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
-}
-
 module.exports = {
   SyscoinJSLib: Syscoin, // Left to be backwards compatible
   syscoin: Syscoin,

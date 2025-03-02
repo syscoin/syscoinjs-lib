@@ -615,14 +615,14 @@ async function signWithWIF (psbt, wif, network) {
 }
 /* buildEthProof
 Purpose: Build Ethereum SPV proof using eth-proof library
-Param txOpts: Required. Object containing web3url and ethtxid fields populated
+Param assetOpts: Required. Object containing web3url and ethtxid fields populated
 Returns: Returns JSON object in response, SPV proof object in JSON
 */
-async function buildEthProof (txOpts) {
-  const ethProof = new GetProof(txOpts.web3url)
-  const web3Provider = new Web3(txOpts.web3url)
+async function buildEthProof (assetOpts) {
+  const ethProof = new GetProof(assetOpts.web3url)
+  const web3Provider = new Web3(assetOpts.web3url)
   try {
-    let result = await ethProof.transactionProof(txOpts.ethtxid)
+    let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex.substring(2) // remove hex prefix
     const inputData = txObj.data.slice(4).toString('hex') // get only data without function selector
@@ -630,9 +630,13 @@ async function buildEthProof (txOpts) {
       type: 'uint',
       name: 'value'
     }, {
+      type: 'uint32',
+      name: 'assetGUID'
+    }, {
       type: 'string',
       name: 'syscoinAddress'
     }], inputData)
+    const assetguid = paramTxResults.assetGUID
     const destinationaddress = paramTxResults.syscoinAddress
     const txroot = result.header[4].toString('hex')
     const txRootFromProof = VerifyProof.getRootFromProof(result.txProof)
@@ -645,7 +649,7 @@ async function buildEthProof (txOpts) {
     const block = await web3Provider.eth.getBlock(blocknumber)
     const blockhash = block.hash.substring(2) // remove hex prefix
     const receiptroot = result.header[5].toString('hex')
-    result = await ethProof.receiptProof(txOpts.ethtxid)
+    result = await ethProof.receiptProof(assetOpts.ethtxid)
     const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
     const receiptRootFromProof = VerifyProof.getRootFromProof(result.receiptProof)
     if (receiptroot !== receiptRootFromProof.toString('hex')) {
@@ -663,26 +667,41 @@ async function buildEthProof (txOpts) {
       if (log.topics && log.topics.length !== 1) {
         continue
       }
-      // event TokenFreeze(address freezer, uint value);
+      // event TokenFreeze(address freezer, uint value, uint precisions);
       if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() && log.address.toLowerCase() === ERC20Manager.toLowerCase()) {
         const paramResults = web3.eth.abi.decodeParameters([{
+          type: 'uint32',
+          name: 'assetGUID'
+        },{
           type: 'address',
           name: 'freezer'
         }, {
           type: 'uint',
           name: 'value'
+        }, {
+          type: 'uint',
+          name: 'precisions'
         }], log.data)
+        const precisions = new web3.utils.BN(paramResults.precisions)
         const value = new web3.utils.BN(paramResults.value)
 
-        // get precision
-        const nevmprecision = 16
-        const sysprecision = 8
-        amount = value.div(new web3.utils.BN(10).pow(nevmprecision.sub(sysprecision)))
+        const erc20precision = precisions.maskn(32)
+        const sptprecision = precisions.shrn(32).maskn(8)
+        // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
+        // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
+        if (sptprecision.gt(erc20precision)) {
+          amount = value.mul(new web3.utils.BN(10).pow(sptprecision.sub(erc20precision)))
+          // ensure we truncate decimals to fit within int64 if erc20's precision is more than our asset precision
+        } else if (sptprecision.lt(erc20precision)) {
+          amount = value.div(new web3.utils.BN(10).pow(erc20precision.sub(sptprecision)))
+        } else {
+          amount = value
+        }
         break
       }
     }
     const ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
-    return { ethtxid, blockhash, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
+    return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
     console.log('Exception: ' + e.message)
     return e
