@@ -624,9 +624,9 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
 /* assetAllocationMint
 Purpose: Minting new asset using proof-of-lock on Ethereum as a proof to mint tokens on Syscoin.
 Param assetOpts: Optional. If you have the Ethereum TXID and want to use eth-proof you can just specify the ethtxid and web3url fields. Fields described below:
-  Field ethtxid. Required. The trasaction that calls freezeBurnERC20() on ERC20Manager contract
+  Field ethtxid. Required. The trasaction that calls freezeBurn() on VaultManager contract
   Field web3url. Optional. If using eth-proof fully qualified Web3 HTTP-RPC URL that eth-proof needs to obtain the tx proof and receipt proof information needed by Syscoin to valdiate the mint
-  Field blocknumber. Optional if ethtxid/web3url not provided. Block number of transaction including freezeBurnERC20() call
+  Field blocknumber. Optional if ethtxid/web3url not provided. Block number of transaction including freezeBurn() call
   Field txvalue. Optional if ethtxid/web3url not provided. Buffer value of the transaction hex encoded in RLP format
   Field txroot. Optional if ethtxid/web3url not provided. Buffer value of the transaction merkle root encoded in RLP format
   Field txparentnodes. Optional if ethtxid/web3url not provided. Buffer value of the transaction merkle proof encoded in RLP format

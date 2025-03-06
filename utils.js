@@ -48,8 +48,8 @@ const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 let trezorInitialized = false
 const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
-const ERC20Manager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
-const tokenFreezeFunction = '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature
+const VaultManager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
+const tokenFreezeFunction = '8f3b257b2cea086a69bcfbefab36555c9e6275fc56ada0f1d8796222f6874fec' // token freeze function signature
 const axiosConfig = {
   withCredentials: true
 }
@@ -630,13 +630,16 @@ async function buildEthProof (assetOpts) {
       type: 'uint',
       name: 'value'
     }, {
-      type: 'uint32',
-      name: 'assetGUID'
+      type: 'address',
+      name: 'assetAddr'
+    }, {
+      type: 'uint',
+      name: 'tokenId'
     }, {
       type: 'string',
       name: 'syscoinAddress'
     }], inputData)
-    const assetguid = paramTxResults.assetGUID
+
     const destinationaddress = paramTxResults.syscoinAddress
     const txroot = result.header[4].toString('hex')
     const txRootFromProof = VerifyProof.getRootFromProof(result.txProof)
@@ -667,10 +670,10 @@ async function buildEthProof (assetOpts) {
       if (log.topics && log.topics.length !== 1) {
         continue
       }
-      // event TokenFreeze(address freezer, uint value, uint precisions);
-      if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() && log.address.toLowerCase() === ERC20Manager.toLowerCase()) {
+      // event TokenFreeze(uint64 indexed assetGuid, address indexed freezer, uint value);
+      if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() && log.address.toLowerCase() === VaultManager.toLowerCase()) {
         const paramResults = web3.eth.abi.decodeParameters([{
-          type: 'uint32',
+          type: 'uint64',
           name: 'assetGUID'
         },{
           type: 'address',
@@ -678,25 +681,9 @@ async function buildEthProof (assetOpts) {
         }, {
           type: 'uint',
           name: 'value'
-        }, {
-          type: 'uint',
-          name: 'precisions'
         }], log.data)
-        const precisions = new web3.utils.BN(paramResults.precisions)
-        const value = new web3.utils.BN(paramResults.value)
-
-        const erc20precision = precisions.maskn(32)
-        const sptprecision = precisions.shrn(32).maskn(8)
-        // local precision can range between 0 and 8 decimal places, so it should fit within a CAmount
-        // we pad zero's if erc20's precision is less than ours so we can accurately get the whole value of the amount transferred
-        if (sptprecision.gt(erc20precision)) {
-          amount = value.mul(new web3.utils.BN(10).pow(sptprecision.sub(erc20precision)))
-          // ensure we truncate decimals to fit within int64 if erc20's precision is more than our asset precision
-        } else if (sptprecision.lt(erc20precision)) {
-          amount = value.div(new web3.utils.BN(10).pow(erc20precision.sub(sptprecision)))
-        } else {
-          amount = value
-        }
+        assetguid = paramResults.assetGUID
+        amount = new web3.utils.BN(paramResults.value)
         break
       }
     }
