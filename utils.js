@@ -625,22 +625,7 @@ async function buildEthProof (assetOpts) {
     let result = await ethProof.transactionProof(assetOpts.ethtxid)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex.substring(2) // remove hex prefix
-    const inputData = txObj.data.slice(4).toString('hex') // get only data without function selector
-    const paramTxResults = web3.eth.abi.decodeParameters([{
-      type: 'uint',
-      name: 'value'
-    }, {
-      type: 'address',
-      name: 'assetAddr'
-    }, {
-      type: 'uint',
-      name: 'tokenId'
-    }, {
-      type: 'string',
-      name: 'syscoinAddress'
-    }], inputData)
-
-    const destinationaddress = paramTxResults.syscoinAddress
+    var destinationaddress
     const txroot = result.header[4].toString('hex')
     const txRootFromProof = VerifyProof.getRootFromProof(result.txProof)
     if (txroot !== txRootFromProof.toString('hex')) {
@@ -670,7 +655,7 @@ async function buildEthProof (assetOpts) {
       if (log.topics && log.topics.length !== 1) {
         continue
       }
-      // event TokenFreeze(uint64 indexed assetGuid, address indexed freezer, uint value);
+      // event TokenFreeze(uint64 indexed assetGuid, address indexed freezer, uint satoshiValue, string syscoinAddr);
       if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() && log.address.toLowerCase() === VaultManager.toLowerCase()) {
         const paramResults = web3.eth.abi.decodeParameters([{
           type: 'uint64',
@@ -680,10 +665,14 @@ async function buildEthProof (assetOpts) {
           name: 'freezer'
         }, {
           type: 'uint',
-          name: 'value'
+          name: 'satoshiValue'
+        }, {
+          type: 'string',
+          name: 'syscoinAddr'
         }], log.data)
         assetguid = paramResults.assetGUID
-        amount = new web3.utils.BN(paramResults.value)
+        amount = new web3.utils.BN(paramResults.satoshiValue)
+        destinationaddress = paramResults.syscoinAddr
         break
       }
     }
