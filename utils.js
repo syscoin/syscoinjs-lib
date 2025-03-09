@@ -48,8 +48,8 @@ const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 let trezorInitialized = false
 const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
-const VaultManager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
-const tokenFreezeFunction = '8f3b257b2cea086a69bcfbefab36555c9e6275fc56ada0f1d8796222f6874fec' // token freeze function signature
+const VaultManager = '0xAc58EE0585ED36B1529AB59393a575102bF8b5f7'
+const tokenFreezeFunction = '0b8914e27c9a6c88836bc5547f82ccf331142c761f84e9f1d36934a6a31eefad' // token freeze function signature
 const axiosConfig = {
   withCredentials: true
 }
@@ -651,31 +651,29 @@ async function buildEthProof (assetOpts) {
     const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
     let amount = new web3.utils.BN(0)
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
-      const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject()
-      if (log.topics && log.topics.length !== 1) {
-        continue
+      const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject();
+    
+      if (!log.topics || log.topics.length !== 3) {
+        continue;
       }
-      // event TokenFreeze(uint64 indexed assetGuid, address indexed freezer, uint satoshiValue, string syscoinAddr);
-      if (log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() && log.address.toLowerCase() === VaultManager.toLowerCase()) {
-        const paramResults = web3.eth.abi.decodeParameters([{
-          type: 'uint64',
-          name: 'assetGUID'
-        },{
-          type: 'address',
-          name: 'freezer'
-        }, {
-          type: 'uint',
-          name: 'satoshiValue'
-        }, {
-          type: 'string',
-          name: 'syscoinAddr'
-        }], log.data)
-        assetguid = paramResults.assetGUID
-        amount = new web3.utils.BN(paramResults.satoshiValue)
-        destinationaddress = paramResults.syscoinAddr
-        break
+    
+      if (
+        log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() &&
+        log.address.toLowerCase() === VaultManager.toLowerCase()
+      ) {
+        // Decode indexed parameters from topics
+        assetguid = web3.utils.hexToNumberString('0x' + log.topics[1].toString('hex'));
+        // Decode non-indexed parameters from data
+        const paramResults = web3.eth.abi.decodeParameters(
+          ['uint', 'string'],
+          log.data
+        );
+        amount = web3.utils.toBN(paramResults[0]).toString();
+        destinationaddress = paramResults[1].trim();   
+        break;
       }
     }
+    
     const ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
     return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
