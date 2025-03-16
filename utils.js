@@ -48,7 +48,7 @@ const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 let trezorInitialized = false
 const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
-const VaultManager = '0xAc58EE0585ED36B1529AB59393a575102bF8b5f7'
+const VaultManager = '0x7904299b3D3dC1b03d1DdEb45E9fDF3576aCBd5f'
 const tokenFreezeFunction = '0b8914e27c9a6c88836bc5547f82ccf331142c761f84e9f1d36934a6a31eefad' // token freeze function signature
 const axiosConfig = {
   withCredentials: true
