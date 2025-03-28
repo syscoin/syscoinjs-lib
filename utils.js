@@ -622,7 +622,8 @@ async function buildEthProof (assetOpts) {
   const ethProof = new GetProof(assetOpts.web3url)
   const web3Provider = new Web3(assetOpts.web3url)
   try {
-    let result = await ethProof.transactionProof(assetOpts.ethtxid)
+    const txHash = assetOpts.ethtxid.startsWith('0x') ? assetOpts.ethtxid : `0x${assetOpts.ethtxid}`
+    let result = await ethProof.transactionProof(txHash)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex.substring(2) // remove hex prefix
     var destinationaddress
@@ -637,7 +638,7 @@ async function buildEthProof (assetOpts) {
     const block = await web3Provider.eth.getBlock(blocknumber)
     const blockhash = block.hash.substring(2) // remove hex prefix
     const receiptroot = result.header[5].toString('hex')
-    result = await ethProof.receiptProof(assetOpts.ethtxid)
+    result = await ethProof.receiptProof(txHash)
     const txReceipt = await VerifyProof.getReceiptFromReceiptProofAt(result.receiptProof, result.txIndex)
     const receiptRootFromProof = VerifyProof.getRootFromProof(result.receiptProof)
     if (receiptroot !== receiptRootFromProof.toString('hex')) {
