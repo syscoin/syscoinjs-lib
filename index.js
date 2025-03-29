@@ -87,7 +87,7 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
   })
   return psbt
 }
-async function send (psbt, SignerIn) {
+Syscoin.prototype.send = async function (psbt, SignerIn) {
   let bjstx = null
   try {
     // will fail if not complete
@@ -169,7 +169,7 @@ Returns: PSBT signed success or unsigned if failure
 Syscoin.prototype.signAndSend = async function (psbt, SignerIn, pathIn) {
   const Signer = SignerIn || this.Signer
   psbt = await Signer.sign(psbt, pathIn)
-  return send(psbt, Signer)
+  return this.send(psbt, Signer)
 }
 
 /* signAndSendWithWIF
@@ -180,7 +180,7 @@ Returns: PSBT signed success or unsigned if failure
 */
 Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif) {
   psbt = await utils.signWithWIF(psbt, wif, this.network)
-  return send(psbt)
+  return this.send(psbt)
 }
 
 /* fetchAndSanitizeUTXOs
