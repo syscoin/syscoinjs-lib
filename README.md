@@ -80,7 +80,6 @@ If you're familiar with how to use browserify, ignore this and carry on, otherwi
 These are the functions available on SyscoinJS library with links to the code which has commenting on the function itself:
 
 - [SyscoinJSLib()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L11)
-- [getNotarizationSignatures()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L31)
 - [createAndSignPSBTFromRes()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L62)
 - [sign()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L86)
 - [createTransaction()](https://github.com/syscoin/syscoinjs-lib/blob/master/index.js#L181)
@@ -94,7 +93,6 @@ These are the functions available on SyscoinJS library with links to the code wh
 
 These are some supporting functions used to support the library like working with backend providers (Blockbook) and sanitizing data from the providers:
 
-- [fetchNotarizationFromEndPoint()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L51)
 - [fetchBackendAsset()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L70)
 - [fetchBackendUTXOS()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L90)
 - [fetchBackendAccount()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L116)
@@ -166,7 +164,7 @@ This library consumes [syscointx-js](https://github.com/syscoin/syscointx-js) fo
 - [varuint-bitcoin](https://github.com/bitcoinjs/varuint-bitcoin) - encode/decode number as bitcoin variable length integer
 - [BIP84](https://github.com/Anderson-Juhasc/bip84) - P2WPKH/P2WSH HD wallet derivation library for BECH32 addresses
 - [crypto-js](https://github.com/brix/crypto-js) - JavaScript library of crypto standards. Used for AES Encrypt/Decrypt of sensitive HD wallet info to local storage.
-- [axios](https://github.com/axios/axios) - Promise based HTTP client for the browser and node.js. Used for backend communication with a Blockbook API as well as notary endpoints where applicable.
+- [axios](https://github.com/axios/axios) - Promise based HTTP client for the browser and node.js. Used for backend communication with a Blockbook API
 - [eth-object](https://github.com/zmitton/eth-object) - Ethereum Trie / LevelDB data from hex, buffers and rpc.
 - [eth-proof](https://github.com/zmitton/eth-proof) - Generalized merkle-patricia-proof module that supports ethereum state proofs. Used for Eth SPV proofs.
 - [rlp](https://github.com/ethereumjs/rlp) - Recursive Length Prefix Encoding for node.js.

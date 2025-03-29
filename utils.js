@@ -1,4 +1,3 @@
-
 const axios = require('axios')
 const BN = require('bn.js')
 const BIP84 = require('bip84')
@@ -52,42 +51,6 @@ const VaultManager = '0x7904299b3D3dC1b03d1DdEb45E9fDF3576aCBd5f'
 const tokenFreezeFunction = '0b8914e27c9a6c88836bc5547f82ccf331142c761f84e9f1d36934a6a31eefad' // token freeze function signature
 const axiosConfig = {
   withCredentials: true
-}
-/* fetchNotarizationFromEndPoint
-Purpose: Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
-Param endPoint: Required. Fully qualified URL which will take transaction information and respond with a signature or error on denial
-Param txHex: Required. Raw transaction hex
-Returns: Returns JSON object in response, signature on success and error on denial of notarization
-*/
-async function fetchNotarizationFromEndPoint (endPoint, txHex) {
-  try {
-    // Use fetch if on browser environment
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
-      const response = await fetch(endPoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ tx: txHex })
-      })
-      if (response.ok) {
-        const data = await response.json()
-        if (data) {
-          return data
-        }
-      }
-    } else {
-      const request = await axios.post(endPoint, { tx: txHex }, axiosConfig)
-      if (request && request.data) {
-        return request.data
-      }
-    }
-    return null
-  } catch (e) {
-    return e
-  }
 }
 
 /* fetchBackendAsset
@@ -476,103 +439,6 @@ async function fetchEstimateFee (backendURL, blocks, options) {
   }
 }
 
-/* getNotarizationSignatures
-Purpose: Get notarization signatures from a notary endpoint defined in the asset object, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
-Param notaryAssets: Required. Asset objects that require notarization, fetch signatures via fetchNotarizationFromEndPoint()
-Param txHex: Required. Signed transaction hex created from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Returns: boolean representing if notarization was done by acquiring a witness signature from notary.
-*/
-async function getNotarizationSignatures (notaryAssets, txHex) {
-  let notarizationDone = false
-  if (!notaryAssets) {
-    return notarizationDone
-  }
-  for (const valueAssetObj of notaryAssets.values()) {
-    if (!valueAssetObj.notarydetails || !valueAssetObj.notarydetails.endpoint) {
-      console.log('getNotarizationSignatures: Invalid notary details: ' + JSON.stringify(valueAssetObj))
-      continue
-    }
-    if (valueAssetObj.notarydone) {
-      continue
-    }
-    if (valueAssetObj.notarydetails.endpoint.toString() === 'https://test.com') {
-      return false
-    }
-    const responseNotary = await fetchNotarizationFromEndPoint(valueAssetObj.notarydetails.endpoint.toString(), txHex)
-    if (!responseNotary) {
-      throw Object.assign(
-        new Error('No response from notary'),
-        { code: 402 }
-      )
-    } else if (responseNotary.error) {
-      throw Object.assign(
-        new Error(responseNotary.error),
-        { code: 402 }
-      )
-    } else if (responseNotary.sigs) {
-      for (let i = 0; i < responseNotary.sigs.length; i++) {
-        const sigObj = responseNotary.sigs[i]
-        const notarysig = Buffer.from(sigObj.sig, 'base64')
-        const notaryAssetObj = notaryAssets.get(sigObj.asset)
-        if (notaryAssetObj && notarysig.length === 65) {
-          notaryAssetObj.notarysig = notarysig
-          notaryAssetObj.notarydone = true
-          notarizationDone = true
-        }
-      }
-    } else {
-      throw Object.assign(
-        responseNotary,
-        { code: 402 }
-      )
-    }
-  }
-  return notarizationDone
-}
-
-/* notarizePSBT
-Purpose: Notarize Result object from syscointx.createTransaction()/syscointx.createAssetTransaction() if required by the assets in the inputs of the transaction
-Param psbt: Required. The resulting PSBT object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
-Param notaryAssets: Required. Asset objects require notarization, fetch signatures via fetchNotarizationFromEndPoint()
-Returns: new result PSBT output notarized along with index
-*/
-async function notarizePSBT (psbt, notaryAssets, rawTx) {
-  const notarizationDone = await getNotarizationSignatures(notaryAssets, rawTx)
-  if (notarizationDone) {
-    return syscointx.addNotarizationSignatures(psbt.version, notaryAssets, psbt.txOutputs)
-  }
-  return false
-}
-
-/* getAssetsRequiringNotarization
-Purpose: Get assets from Result object assigned from syscointx.createTransaction()/syscointx.createAssetTransaction() that require notarization
-Param assets: Required. Asset objects that are evaluated for notarization, and if they do require notarization then fetch signatures via fetchNotarizationFromEndPoint()
-Returns: Asset map of objects requiring notarization or null if no notarization is required
-*/
-function getAssetsRequiringNotarization (psbt, assets) {
-  if (!assets || !syscointx.utils.isAssetAllocationTx(psbt.version)) {
-    return new Map()
-  }
-  const assetsInTx = syscointx.getAssetsFromOutputs(psbt.txOutputs)
-  let foundNotary = false
-  const assetsUsedInTxNeedingNotarization = new Map()
-  assetsInTx.forEach((value, baseAssetID) => {
-    if (assetsUsedInTxNeedingNotarization.has(baseAssetID)) {
-      return new Map()
-    }
-    if (!assets.has(baseAssetID)) {
-      console.log('Asset input not found in the UTXO assets map!')
-      return new Map()
-    }
-    const valueAssetObj = assets.get(baseAssetID)
-    if (valueAssetObj.notarydetails && valueAssetObj.notarydetails.endpoint && valueAssetObj.notarydetails.endpoint.length > 0) {
-      assetsUsedInTxNeedingNotarization.set(baseAssetID, valueAssetObj)
-      foundNotary = true
-    }
-  })
-  return foundNotary ? assetsUsedInTxNeedingNotarization : new Map()
-}
-
 /* signPSBTWithWIF
 Purpose: Sign PSBT with WiF
 Param psbt: Required. Partially signed transaction object
@@ -626,7 +492,7 @@ async function buildEthProof (assetOpts) {
     let result = await ethProof.transactionProof(txHash)
     const txObj = await VerifyProof.getTxFromTxProofAt(result.txProof, result.txIndex)
     const txvalue = txObj.hex.substring(2) // remove hex prefix
-    var destinationaddress
+    let destinationaddress
     const txroot = result.header[4].toString('hex')
     const txRootFromProof = VerifyProof.getRootFromProof(result.txProof)
     if (txroot !== txRootFromProof.toString('hex')) {
@@ -651,30 +517,31 @@ async function buildEthProof (assetOpts) {
     }
     const receiptvalue = txReceipt.hex.substring(2) // remove hex prefix
     let amount = new web3.utils.BN(0)
+    let assetguid
     for (let i = 0; i < txReceipt.setOfLogs.length; i++) {
-      const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject();
-    
+      const log = Log.fromRaw(txReceipt.setOfLogs[i]).toObject()
+
       if (!log.topics || log.topics.length !== 3) {
-        continue;
+        continue
       }
-    
+
       if (
         log.topics[0].toString('hex').toLowerCase() === tokenFreezeFunction.toLowerCase() &&
         log.address.toLowerCase() === VaultManager.toLowerCase()
       ) {
         // Decode indexed parameters from topics
-        assetguid = web3.utils.hexToNumberString('0x' + log.topics[1].toString('hex'));
+        assetguid = web3.utils.hexToNumberString('0x' + log.topics[1].toString('hex'))
         // Decode non-indexed parameters from data
         const paramResults = web3.eth.abi.decodeParameters(
           ['uint', 'string'],
           log.data
-        );
-        amount = web3.utils.toBN(paramResults[0]).toString();
-        destinationaddress = paramResults[1].trim();   
-        break;
+        )
+        amount = web3.utils.toBN(paramResults[0]).toString()
+        destinationaddress = paramResults[1].trim()
+        break
       }
     }
-    
+
     const ethtxid = web3.utils.sha3(Buffer.from(txvalue, 'hex')).substring(2) // not txid but txhash of the tx object used for calculating tx commitment without requiring transaction deserialization
     return { ethtxid, blockhash, assetguid, destinationaddress, amount, txvalue, txroot, txparentnodes, txpath, blocknumber, receiptvalue, receiptroot, receiptparentnodes }
   } catch (e) {
@@ -687,8 +554,8 @@ async function buildEthProof (assetOpts) {
 Purpose: Sanitize backend provider UTXO objects to be useful for this library
 Param sysFromXpubOrAddress: Required. The XPUB or address that was called to fetch UTXOs
 Param utxoObj: Required. Backend provider UTXO JSON object to be sanitized
-Param network: Optional. Defaults to Syscoin Mainnet. Network to be used to create address for notary and auxfee payout address if those features exist for the asset
-Param txOpts: Optional. If its passed in we use assetWhiteList field of options to skip over (if assetWhiteList is null) UTXO's if they use notarization for an asset that is not a part of assetMap
+Param network: Optional. Defaults to Syscoin Mainnet.
+Param txOpts: Optional. If its passed in we use assetWhiteList field of options to skip over (if assetWhiteList is null) UTXO's
 Param assetMap: Optional. Destination outputs for transaction requiring UTXO sanitizing, used in assetWhiteList check described above
 Param excludeZeroConf: Optional. False by default. Filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
 Returns: Returns sanitized UTXO object for use internally in this library
@@ -709,45 +576,6 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         asset.contract = asset.contract.replace(/^0x/, '')
         assetObj.contract = Buffer.from(asset.contract, 'hex')
       }
-      if (asset.pubData) {
-        assetObj.pubdata = Buffer.from(JSON.stringify(asset.pubData))
-      }
-      if (asset.notaryKeyID) {
-        assetObj.notarykeyid = Buffer.from(asset.notaryKeyID, 'base64')
-        network = network || syscoinNetworks.mainnet
-        assetObj.notaryaddress = bjs.payments.p2wpkh({ hash: assetObj.notarykeyid, network: network }).address
-        // in unit tests notarySig may be provided
-        if (asset.notarySig) {
-          assetObj.notarysig = Buffer.from(asset.notarySig, 'base64')
-        } else {
-          // prefill in this likely case where notarySig isn't provided
-          assetObj.notarysig = Buffer.alloc(65, 0)
-        }
-      }
-      if (asset.notaryDetails) {
-        assetObj.notarydetails = {}
-        if (asset.notaryDetails.endPoint) {
-          assetObj.notarydetails.endpoint = Buffer.from(asset.notaryDetails.endPoint, 'base64')
-        } else {
-          assetObj.notarydetails.endpoint = Buffer.from('')
-        }
-        assetObj.notarydetails.instanttransfers = asset.notaryDetails.instantTransfers
-        assetObj.notarydetails.hdrequired = asset.notaryDetails.HDRequired
-      }
-      if (asset.auxFeeDetails) {
-        assetObj.auxfeedetails = {}
-        if (asset.auxFeeDetails.auxFeeKeyID) {
-          assetObj.auxfeedetails.auxfeekeyid = Buffer.from(asset.auxFeeDetails.auxFeeKeyID, 'base64')
-          assetObj.auxfeedetails.auxfeeaddress = bjs.payments.p2wpkh({ hash: assetObj.auxfeedetails.auxfeekeyid, network: syscoinNetworks.testnet }).address
-        } else {
-          assetObj.auxfeedetails.auxfeekeyid = Buffer.from('')
-        }
-        assetObj.auxfeedetails.auxfees = asset.auxFeeDetails.auxFees
-      }
-      if (asset.updateCapabilityFlags) {
-        assetObj.updatecapabilityflags = asset.updateCapabilityFlags
-      }
-
       assetObj.maxsupply = new BN(asset.maxSupply)
       assetObj.precision = asset.decimals
 
@@ -766,15 +594,14 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         newUtxo.type = 'BECH32'
       }
       if (utxo.assetInfo) {
-        const baseAssetID = getBaseAssetID(utxo.assetInfo.assetGuid)
         newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
-        const assetObj = sanitizedUtxos.assets.get(baseAssetID)
+        const assetObj = sanitizedUtxos.assets.get(utxo.assetInfo.assetGuid)
         // sanity check to ensure sanitizedUtxos.assets has all of the assets being added to UTXO that are assets
         if (!assetObj) {
           return
         }
-        // not sending this asset (assetMap) and assetWhiteList option if set with this asset will skip this check, by default this check is done and inputs will be skipped if they are notary asset inputs and user is not sending those assets (used as gas to fulfill requested output amount of SYS)
-        if ((!assetMap || !assetMap.has(utxo.assetInfo.assetGuid)) && (txOpts.assetWhiteList && !txOpts.assetWhiteList.has(utxo.assetInfo.assetGuid) && !txOpts.assetWhiteList.has(getBaseAssetID(utxo.assetInfo.assetGuid)))) {
+        // not sending this asset (assetMap) and assetWhiteList option if set with this asset will skip this check, by default this check is done and inputs will be skipped
+        if ((!assetMap || !assetMap.has(utxo.assetInfo.assetGuid)) && (txOpts.assetWhiteList && !txOpts.assetWhiteList.has(utxo.assetInfo.assetGuid))) {
           console.log('SKIPPING utxo')
           return
         }
@@ -1020,7 +847,7 @@ function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectS
         connectSrc: connectSrc,
         lazyLoad: lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
         manifest: {
-          email: 'jsidhu@blockchainfoundry.co',
+          email: 'sidhujag@syscoin.org',
           appUrl: 'https://syscoin.org/'
         }
       })
@@ -1162,7 +989,7 @@ TrezorSigner.prototype.sign = async function (psbt, pathIn) {
   const response = await TrezorConnect.signTransaction(trezorTx)
   if (response.success === true) {
     const tx = bjs.Transaction.fromHex(response.payload.serializedTx)
-    for (const i of range(psbt.data.inputs.length)) {
+    for (let i = 0; i < psbt.data.inputs.length; i++) {
       if (tx.ins[i].witness === (undefined || null)) {
         throw new Error('Please move your funds to a Segwit address: https://wiki.trezor.io/Account')
       }
@@ -1188,7 +1015,7 @@ TrezorSigner.prototype.sign = async function (psbt, pathIn) {
 }
 
 /* sign
-Purpose: Create signing information based on HDSigner (if set) and call signPSBT() to actually sign, as well as detect notarization and apply it as required.
+Purpose: Create signing information based on HDSigner (if set) and call signPSBT() to actually sign
 Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
@@ -1850,22 +1677,6 @@ function importPsbtFromJson (jsonData, network) {
   return { psbt: SPSBT.fromBase64(jsonData.psbt, { network: network || syscoinNetworks.mainnet }), assets: new Map(JSON.parse(jsonData.assets)) }
 }
 
-function createAssetID (NFTID, assetGuid) {
-  const BN_ASSET = new BN(NFTID || 0).shln(32).or(new BN(assetGuid))
-  return BN_ASSET.toString(10)
-}
-
-function getBaseAssetID (assetGuid) {
-  return new BN(assetGuid).and(new BN(0xFFFFFFFF)).toString(10)
-}
-function range (n) {
-  return [...Array(n).keys()]
-}
-
-function getAssetIDs (assetGuid) {
-  const BN_NFT = new BN(assetGuid).shrn(32)
-  return { baseAssetID: getBaseAssetID(assetGuid), NFTID: BN_NFT.toString(10) }
-}
 bjs.Psbt = SPSBT
 module.exports = {
   bitcoinXPubTypes: bitcoinXPubTypes,
@@ -1887,23 +1698,17 @@ module.exports = {
   fetchBackendAsset: fetchBackendAsset,
   fetchBackendListAssets: fetchBackendListAssets,
   fetchBackendRawTx: fetchBackendRawTx,
-  fetchNotarizationFromEndPoint: fetchNotarizationFromEndPoint,
   fetchProviderInfo: fetchProviderInfo,
   fetchBackendBlock: fetchBackendBlock,
   fetchEstimateFee: fetchEstimateFee,
   sendRawTransaction: sendRawTransaction,
   buildEthProof: buildEthProof,
-  getAssetsRequiringNotarization: getAssetsRequiringNotarization,
-  notarizePSBT: notarizePSBT,
   signWithWIF: signWithWIF,
   getMemoFromScript: getMemoFromScript,
   getMemoFromOpReturn: getMemoFromOpReturn,
   getAllocationsFromTx: getAllocationsFromTx,
   bitcoinjs: bjs,
   BN: BN,
-  createAssetID: createAssetID,
-  getBaseAssetID: getBaseAssetID,
-  getAssetIDs: getAssetIDs,
   setTransactionMemo: setTransactionMemo,
   setPoDA: setPoDA,
   copyPSBT: copyPSBT,
