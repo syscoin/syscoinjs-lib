@@ -37,7 +37,6 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
             t.same(assetAllocations, f.expected.asset.allocation)
@@ -61,7 +60,6 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const asset = syscointx.bufferUtils.deserializeAsset(chunks[1])
             t.same(asset, f.expected.asset)
@@ -82,7 +80,6 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const asset = syscointx.bufferUtils.deserializeAsset(chunks[1])
             t.same(asset, f.expected.asset)
@@ -122,7 +119,6 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const asset = syscointx.bufferUtils.deserializeMintSyscoin(chunks[1])
             t.same(asset, f.expected.asset)
@@ -143,7 +139,6 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const asset = syscointx.bufferUtils.deserializeAllocationBurn(chunks[1])
             t.same(asset, f.expected.asset)
@@ -176,7 +171,6 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
             t.same(assetAllocations, f.expected.asset.allocation)
@@ -198,7 +192,6 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            console.log('output.script ' + output.script.toString('hex'))
             t.same(output.script, f.expected.script)
             const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
             t.same(assetAllocations, f.expected.asset.allocation)
