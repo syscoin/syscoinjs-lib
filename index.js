@@ -122,6 +122,7 @@ Syscoin.prototype.send = async function (psbt, SignerIn) {
     // Fallback to direct fetch with proper headers
     console.log('Broadcasting transaction via direct fetch...')
     console.log(bjstx.toHex())
+    // eslint-disable-next-line no-undef
     const response = await fetch(`${this.blockbookURL}/api/v2/sendtx/`, {
       method: 'POST',
       headers: {
@@ -269,7 +270,7 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, inputsArr)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (fromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt }
+    return { psbt, res: psbt }
   }
   return await this.signAndSend(psbt)
 }
@@ -317,7 +318,7 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt }
+    return { psbt, res: psbt }
   }
   return await this.signAndSend(psbt)
 }
@@ -363,7 +364,7 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt }
+    return { psbt, res: psbt }
   }
   return await this.signAndSend(psbt)
 }
@@ -428,7 +429,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
       )
     }
     assetMap = new Map([
-      [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: new BN(ethProof.amount), address: ethProof.destinationaddress }] }]
+      [ethProof.assetguid, { changeAddress, outputs: [{ value: new BN(ethProof.amount), address: ethProof.destinationaddress }] }]
     ])
     assetOpts = {
       ethtxid: Buffer.from(ethProof.ethtxid, 'hex'),
@@ -448,7 +449,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt }
+    return { psbt, res: psbt }
   }
   return await this.signAndSend(psbt)
 }
@@ -493,7 +494,7 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt }
+    return { psbt, res: psbt }
   }
   return await this.signAndSend(psbt)
 }
@@ -528,7 +529,7 @@ Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, outputsArr
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   psbt.blobData = txOpts.blobData
   if (fromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt }
+    return { psbt, res: psbt }
   }
   return await this.signAndSend(psbt)
 }
@@ -536,5 +537,5 @@ Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, outputsArr
 module.exports = {
   SyscoinJSLib: Syscoin, // Left to be backwards compatible
   syscoin: Syscoin,
-  utils: utils
+  utils
 }

@@ -844,8 +844,8 @@ function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectS
       connectSrc = connectSrc || DEFAULT_TREZOR_DOMAIN
       const lazyLoad = !disableLazyLoad
       TrezorConnect.init({
-        connectSrc: connectSrc,
-        lazyLoad: lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
+        connectSrc,
+        lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
         manifest: {
           email: 'sidhujag@syscoin.org',
           appUrl: 'https://syscoin.org/'
@@ -859,15 +859,33 @@ function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectS
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
   this.restore(this.Signer.password)
 }
-function HDSigner (mnemonic, password, isTestnet, networks, SLIP44, pubTypes, bipNum) {
+function HDSigner (mnemonicOrZprv, password, isTestnet, networks, SLIP44, pubTypes, bipNum) {
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
-  this.mnemonic = mnemonic // serialized
+  this.mnemonicOrZprv = mnemonicOrZprv // can be mnemonic or zprv
+  this.changeIndex = -1
+  this.receivingIndex = -1
+  this.importMethod = 'fromSeed'
 
-  /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.fromMnemonic = new BIP84.fromMnemonic(mnemonic, this.Signer.password, this.Signer.isTestnet, this.Signer.SLIP44, this.Signer.pubTypes, this.Signer.network)
+  // Check if input is an extended private key (zprv/tprv/vprv/xprv)
+  const isZprv = mnemonicOrZprv.startsWith('zprv') || mnemonicOrZprv.startsWith('tprv') ||
+                 mnemonicOrZprv.startsWith('vprv') || mnemonicOrZprv.startsWith('xprv')
+
+  if (isZprv) {
+    this.importMethod = 'fromBase58'
+    /* eslint new-cap: ["error", { "newIsCap": false }] */
+    this.fromMnemonic = new BIP84.fromZPrv(
+      mnemonicOrZprv,
+      this.Signer.pubTypes,
+      this.Signer.networks || syscoinNetworks
+    )
+  } else {
+    /* eslint new-cap: ["error", { "newIsCap": false }] */
+    this.fromMnemonic = new BIP84.fromMnemonic(mnemonicOrZprv, this.Signer.password, this.Signer.isTestnet, this.Signer.SLIP44, this.Signer.pubTypes, this.Signer.network)
+  }
+
   // try to restore, if it does not succeed then initialize from scratch
   if (!this.Signer.password || !this.restore(this.Signer.password, bipNum)) {
-    this.createAccount(bipNum)
+    this.createAccount(bipNum, isZprv ? mnemonicOrZprv : undefined)
   }
 }
 
@@ -879,29 +897,34 @@ Returns: psbt from bitcoinjs-lib
 */
 HDSigner.prototype.signPSBT = async function (psbt, pathIn) {
   const txInputs = psbt.txInputs
-  const fp = this.getMasterFingerprint()
+  const rootNode = this.getRootNode()
+
   for (let i = 0; i < txInputs.length; i++) {
     const dataInput = psbt.data.inputs[i]
     if (pathIn || (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
-      const path = pathIn || dataInput.unknownKeyVals[1].value.toString()
+      const keyPath = pathIn || dataInput.unknownKeyVals[1].value.toString()
+      // For zprv imports, we need to adjust the path by removing the account-level prefix
+      const path = this.importMethod === 'fromBase58' ? keyPath.slice(13) : keyPath
+
       const pubkey = this.derivePubKey(path)
       const address = this.getAddressFromPubKey(pubkey)
       if (pubkey && (pathIn || dataInput.unknownKeyVals[0].value.toString() === address)) {
         dataInput.bip32Derivation = [
           {
-            masterFingerprint: fp,
-            path: path,
-            pubkey: pubkey
+            masterFingerprint: rootNode.fingerprint,
+            path,
+            pubkey
           }]
       }
     }
   }
-  await psbt.signAllInputsHDAsync(this.getRootNode())
+  await psbt.signAllInputsHDAsync(rootNode)
   try {
     if (psbt.validateSignaturesOfAllInputs()) {
       psbt.finalizeAllInputs()
     }
   } catch (err) {
+    console.log({ err })
   }
   return psbt
 }
@@ -1028,7 +1051,7 @@ Purpose: Get master seed fingerprint used for signing with bitcoinjs-lib PSBT's
 Returns: bip32 root master fingerprint
 */
 HDSigner.prototype.getMasterFingerprint = function () {
-  return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network).fingerprint
+  return this.getRootNode().fingerprint
 }
 
 /* deriveAccount
@@ -1056,7 +1079,7 @@ TrezorSigner.prototype.deriveAccount = async function (index, bipNum) {
   return new Promise((resolve, reject) => {
     TrezorConnect.getAccountInfo({
       path: keypath,
-      coin: coin
+      coin
     })
       .then((response) => {
         if (response.success) {
@@ -1158,7 +1181,7 @@ HDSigner.prototype.restore = function (password, bipNum) {
     return false
   }
   const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
-  this.mnemonic = decryptedData.mnemonic
+  this.mnemonicOrZprv = decryptedData.mnemonic || decryptedData.mnemonicOrZprv
   const numAccounts = decryptedData.numAccounts
   // sanity checks
   if (this.Signer.accountIndex > 1000) {
@@ -1204,7 +1227,7 @@ HDSigner.prototype.backup = function () {
     browserStorage = new LocalStorage('./scratch')
   }
   const key = this.Signer.network.bech32 + '_hdsigner'
-  const obj = { mnemonic: this.mnemonic, numAccounts: this.Signer.accounts.length }
+  const obj = { mnemonic: this.mnemonicOrZprv, numAccounts: this.Signer.accounts.length }
   const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.Signer.password).toString()
   browserStorage.setItem(key, ciphertext)
 }
@@ -1300,13 +1323,20 @@ TrezorSigner.prototype.createAccount = async function (bipNum) {
   })
 }
 
-HDSigner.prototype.createAccount = function (bipNum) {
+HDSigner.prototype.createAccount = function (bipNum, zprv) {
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
-  const child = this.deriveAccount(this.Signer.accounts.length, bipNum)
-  this.Signer.accountIndex = this.Signer.accounts.length
+
+  const zPrivate = zprv || (this.mnemonicOrZprv.startsWith('zprv') || this.mnemonicOrZprv.startsWith('tprv') ||
+                           this.mnemonicOrZprv.startsWith('vprv') || this.mnemonicOrZprv.startsWith('xprv'))
+    ? this.mnemonicOrZprv
+    : null
+
+  const accountIndex = this.Signer.accounts.length
+  const child = zPrivate || this.deriveAccount(accountIndex, bipNum)
+  this.Signer.accountIndex = accountIndex
   /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
+  this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks || syscoinNetworks))
   this.backup()
   return this.Signer.accountIndex
 }
@@ -1445,7 +1475,7 @@ Returns: string p2wpkh address
 */
 Signer.prototype.getAddressFromPubKey = function (pubkey) {
   const payment = bjs.payments.p2wpkh({
-    pubkey: pubkey,
+    pubkey,
     network: this.network
   })
   return payment.address
@@ -1463,11 +1493,9 @@ Param keypath: Required. HD BIP32 path of key desired based on internal seed and
 Returns: bitcoinjs-lib keypair
 */
 HDSigner.prototype.deriveKeypair = function (keypath) {
-  const keyPair = bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network).derivePath(keypath)
-  if (!keyPair) {
-    return null
-  }
-  return keyPair
+  const rootNode = this.getRootNode()
+  const keyPair = rootNode.derivePath(keypath)
+  return !keyPair ? null : keyPair
 }
 
 /* derivePubKey
@@ -1476,11 +1504,9 @@ Param keypath: Required. HD BIP32 path of key desired based on internal seed and
 Returns: bitcoinjs-lib pubkey
 */
 HDSigner.prototype.derivePubKey = function (keypath) {
-  const keyPair = bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network).derivePath(keypath)
-  if (!keyPair) {
-    return null
-  }
-  return keyPair.publicKey
+  const rootNode = this.getRootNode()
+  const keyPair = rootNode.derivePath(keypath)
+  return !keyPair ? null : keyPair.publicKey
 }
 
 /* getRootNode
@@ -1488,7 +1514,28 @@ Purpose: Returns HDSigner's BIP32 root node
 Returns: BIP32 root node representing the seed
 */
 HDSigner.prototype.getRootNode = function () {
-  return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.Signer.network)
+  // For fromBase58 (extended private keys), create network with appropriate version bytes
+  let network = this.Signer.network
+
+  if (this.importMethod === 'fromBase58') {
+    // Create a custom network with the zprv/zpub version bytes for parsing
+    const baseNetwork = this.Signer.isTestnet ? bitcoinNetworks.testnet : bitcoinNetworks.mainnet
+    const pubTypesAll = this.Signer.pubTypes || bitcoinZPubTypes
+    const pubTypes = this.Signer.isTestnet ? pubTypesAll.testnet : pubTypesAll.mainnet
+
+    network = {
+      ...baseNetwork,
+      bip32: {
+        public: parseInt(pubTypes.vpub || pubTypes.zpub, 16),
+        private: parseInt(pubTypes.vprv || pubTypes.zprv, 16)
+      }
+    }
+  }
+
+  return bjs.bip32[this.importMethod](
+    this.fromMnemonic.seed || this.mnemonicOrZprv,
+    network
+  )
 }
 
 TrezorSigner.prototype.getAccountNode = function () {
@@ -1679,39 +1726,39 @@ function importPsbtFromJson (jsonData, network) {
 
 bjs.Psbt = SPSBT
 module.exports = {
-  bitcoinXPubTypes: bitcoinXPubTypes,
-  bitcoinZPubTypes: bitcoinZPubTypes,
-  bitcoinNetworks: bitcoinNetworks,
-  syscoinXPubTypes: syscoinXPubTypes,
-  syscoinZPubTypes: syscoinZPubTypes,
-  syscoinNetworks: syscoinNetworks,
-  syscoinSLIP44: syscoinSLIP44,
-  bitcoinSLIP44: bitcoinSLIP44,
-  web3: web3,
-  HDSigner: HDSigner,
-  TrezorSigner: TrezorSigner,
-  fetchBackendUTXOS: fetchBackendUTXOS,
+  bitcoinXPubTypes,
+  bitcoinZPubTypes,
+  bitcoinNetworks,
+  syscoinXPubTypes,
+  syscoinZPubTypes,
+  syscoinNetworks,
+  syscoinSLIP44,
+  bitcoinSLIP44,
+  web3,
+  HDSigner,
+  TrezorSigner,
+  fetchBackendUTXOS,
   fetchBackendUTXOs: fetchBackendUTXOS,
-  fetchBackendSPVProof: fetchBackendSPVProof,
-  sanitizeBlockbookUTXOs: sanitizeBlockbookUTXOs,
-  fetchBackendAccount: fetchBackendAccount,
-  fetchBackendAsset: fetchBackendAsset,
-  fetchBackendListAssets: fetchBackendListAssets,
-  fetchBackendRawTx: fetchBackendRawTx,
-  fetchProviderInfo: fetchProviderInfo,
-  fetchBackendBlock: fetchBackendBlock,
-  fetchEstimateFee: fetchEstimateFee,
-  sendRawTransaction: sendRawTransaction,
-  buildEthProof: buildEthProof,
-  signWithWIF: signWithWIF,
-  getMemoFromScript: getMemoFromScript,
-  getMemoFromOpReturn: getMemoFromOpReturn,
-  getAllocationsFromTx: getAllocationsFromTx,
+  fetchBackendSPVProof,
+  sanitizeBlockbookUTXOs,
+  fetchBackendAccount,
+  fetchBackendAsset,
+  fetchBackendListAssets,
+  fetchBackendRawTx,
+  fetchProviderInfo,
+  fetchBackendBlock,
+  fetchEstimateFee,
+  sendRawTransaction,
+  buildEthProof,
+  signWithWIF,
+  getMemoFromScript,
+  getMemoFromOpReturn,
+  getAllocationsFromTx,
   bitcoinjs: bjs,
-  BN: BN,
-  setTransactionMemo: setTransactionMemo,
-  setPoDA: setPoDA,
-  copyPSBT: copyPSBT,
-  importPsbtFromJson: importPsbtFromJson,
-  exportPsbtToJson: exportPsbtToJson
+  BN,
+  setTransactionMemo,
+  setPoDA,
+  copyPSBT,
+  importPsbtFromJson,
+  exportPsbtToJson
 }
