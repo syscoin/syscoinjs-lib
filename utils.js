@@ -824,7 +824,7 @@ function Signer (password, isTestnet, networks, SLIP44, pubTypes) {
   this.isTestnet = isTestnet || false
   this.networks = networks || syscoinNetworks
   this.password = password
-  this.SLIP44 = this.isTestnet ? 1 : SLIP44 || syscoinSLIP44 // 1 is testnet for all coins,
+  this.SLIP44 = this.isTestnet ? 1 : (SLIP44 !== undefined ? SLIP44 : syscoinSLIP44)
   if (!this.isTestnet) {
     this.network = this.networks.mainnet || syscoinNetworks.mainnet
   } else {
