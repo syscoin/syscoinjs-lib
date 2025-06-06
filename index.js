@@ -504,34 +504,83 @@ Param txOpts: Required. Transaction options. Fields are described below:
   Field blobData. Required. String representing data
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
 Param changeAddress: Optional. Change address if defined is where change outputs are sent to. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
-Param outputsArr: Required. Output array defining tuples to which addresses to send coins to and how much
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
-Param inputsArr: Optional. Force these inputs to be included in the transaction, not to be confused with 'utxos' which is optional inputs that *may* be included as part of the funding process.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos, redeemOrWitnessScript, inputsArr) {
+Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, feeRate, fromXpubOrAddress, utxos, redeemOrWitnessScript) {
   if (this.Signer) {
     if (!changeAddress) {
       changeAddress = await this.Signer.getNewChangeAddress()
     }
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
-  if (inputsArr) {
-    inputsArr = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, inputsArr, this.network, txOpts).utxos
-  }
   const strData = '0x' + txOpts.blobData
   txOpts.blobData = Buffer.from(txOpts.blobData, 'hex')
-  txOpts.blobHash = Buffer.from(utils.web3.utils.sha3(strData), 'hex')
-  const res = syscointx.createPoDA(txOpts, utxos, changeAddress, outputsArr, feeRate, inputsArr)
+  txOpts.blobHash = Buffer.from(utils.web3.utils.sha3(strData).slice(2), 'hex')
+  const res = syscointx.createPoDA(txOpts, utxos, changeAddress, feeRate)
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   psbt.blobData = txOpts.blobData
   if (fromXpubOrAddress || !this.Signer) {
     return { psbt, res: psbt }
   }
   return await this.signAndSend(psbt)
+}
+
+/* decodeRawTransaction
+Purpose: Decode a raw transaction or PSBT to extract both Bitcoin and Syscoin-specific information
+Param psbtOrTx: Required. Either a PSBT object from bitcoinjs-lib or a raw transaction object
+Returns: Comprehensive JSON object with Bitcoin transaction details and Syscoin-specific data
+*/
+Syscoin.prototype.decodeRawTransaction = function (psbtOrTx) {
+  let tx = null
+
+  // Handle PSBT input - check for PSBT properties instead of constructor name
+  if (psbtOrTx && psbtOrTx.data && psbtOrTx.data.inputs && psbtOrTx.data.outputs) {
+    try {
+      // Try to extract complete transaction
+      tx = psbtOrTx.extractTransaction(true, true)
+    } catch (err) {
+      // If we can't extract a complete transaction, use TransactionBuilder to create one
+      if (psbtOrTx.data.globalMap && psbtOrTx.data.globalMap.unsignedTx) {
+        const bitcoinjs = utils.bitcoinjs
+        const txBuilder = new bitcoinjs.TransactionBuilder(this.network)
+
+        // Set version
+        txBuilder.setVersion(psbtOrTx.version || 2)
+
+        // Add inputs from PSBT data
+        psbtOrTx.data.inputs.forEach((input, index) => {
+          const txInput = psbtOrTx.txInputs[index]
+          txBuilder.addInput(txInput.hash, txInput.index, txInput.sequence)
+        })
+
+        // Add outputs from PSBT data
+        psbtOrTx.txOutputs.forEach(output => {
+          txBuilder.addOutput(output.script || output.address, output.value)
+        })
+
+        // Set locktime if available
+        if (psbtOrTx.locktime !== undefined) {
+          txBuilder.setLockTime(psbtOrTx.locktime)
+        }
+
+        tx = txBuilder.buildIncomplete()
+      } else {
+        throw new Error('Unable to extract transaction data from PSBT: ' + err.message)
+      }
+    }
+  } else if (psbtOrTx && psbtOrTx.ins && psbtOrTx.outs) {
+    // Already a transaction object
+    tx = psbtOrTx
+  } else {
+    throw new Error('Input must be a PSBT or transaction object')
+  }
+
+  // Use syscointx to decode the transaction
+  return syscointx.decodeRawTransaction(tx, this.network)
 }
 
 module.exports = {

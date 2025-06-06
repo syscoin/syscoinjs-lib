@@ -1693,8 +1693,8 @@ class SPSBT extends bjs.Psbt {
     return getTxCacheValue('__FEE', 'fee', this.data.inputs, this.__CACHE)
   }
 
-  extractTransaction (disableFeeCheck) {
-    if (!this.data.inputs.every(isFinalized)) throw new Error('Not finalized')
+  extractTransaction (disableFeeCheck, disableFinalize) {
+    if (!disableFinalize && !this.data.inputs.every(isFinalized)) throw new Error('Not finalized')
     const c = this.__CACHE
     if (!disableFeeCheck) {
       checkFees(this, c, this.opts)

@@ -6,12 +6,12 @@ const bitcoin = sjs.utils.bitcoinjs
 const bitcoinops = require('bitcoin-ops')
 const memoHeader = Buffer.from([0xff, 0xff, 0xaf, 0xaf, 0xaa, 0xaa])
 tape.test('test deserialize PoDA.', (assert) => {
-  // transaction hex that has PoDA
-  const txHex = '890000000001013e4be09e5658508929f9242181ca73d57f49945adad7b8cd75e54e3969ef344c0000000000fdffffff020000000000000000236a2120f991f396a7ff769af02e0bd4cefe5c61e952eab289254348d49723da1fe420c95453f802000000001600144e2ac4bb6d15560b59fb70cf11ff7181abd1389702473044022001b011c2b186af6fd271bfa79f5030e36b2a884937f533018ff782f36d2095940220064d9893a0651ed94440434262371a7411a2c85f657b4cda54b7b19742ff8d45012102ed51ac306fccf740f5b108afd569df35a8d380313370d8df851ba0a057b4f72123ec0f00'
+  // Real PoDA transaction from the network
+  const txHex = '8900000000010148b3487329df6f15632f5b2f6966f6b16eec156cda4a515e3b4124ab36fbb5970100000000fdffffff020000000000000000236a212083115464e443b7e50ad72ce74c2f19e8994142f486a6f04f0b4e9f4ca9c7fd496ae2cc7801000000160014e5f8326f905653d56d0bea68fc709ab6bb59539802473044022005768e9a2bc6b5d10fc4eded2ed63903848121537a373ee105a56ac51096c7f30220555745425714cab87eb30ed6764beafedafd36efc37b519ae67547b2ddaad54e012102bf95c9f320f617b44abdc84c25d57fcb3a413e124097d7eae2c9c16f31059bc02d311f00'
   const tx = bitcoin.Transaction.fromHex(txHex)
   assert.equal(syscointx.utils.isPoDATx(tx.version), true)
   const poda = syscointx.getPoDAFromTx(tx)
-  assert.equal(poda.blobHash.toString('hex'), 'f991f396a7ff769af02e0bd4cefe5c61e952eab289254348d49723da1fe420c9')
+  assert.equal(poda.blobHash.toString('hex'), '83115464e443b7e50ad72ce74c2f19e8994142f486a6f04f0b4e9f4ca9c7fd49')
   assert.end()
 })
 fixtures.forEach(async function (f) {
@@ -139,4 +139,510 @@ fixtures.forEach(async function (f) {
     t.same(txOpts.rbf, f.expected.rbf)
     t.end()
   })
+})
+
+tape.test('decodeRawTransaction - PSBT input', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Create a PSBT
+  const psbt = new bitcoin.Psbt({ network: syscoinjs.network })
+  psbt.setVersion(syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND)
+
+  // Add input
+  psbt.addInput({
+    hash: Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'),
+    index: 0,
+    sequence: 0xfffffffd,
+    witnessUtxo: {
+      script: Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'),
+      value: 100000000
+    }
+  })
+
+  // Add outputs including OP_RETURN with asset allocation data
+  const assetAllocations = [{
+    assetGuid: '2369540453',
+    values: [{ n: 0, value: new sjs.utils.BN(50000000) }]
+  }]
+  const assetAllocationsBuffer = syscointx.bufferUtils.serializeAssetAllocations(assetAllocations)
+  const dataScript = bitcoin.payments.embed({ data: [assetAllocationsBuffer] }).output
+
+  psbt.addOutput({
+    script: dataScript,
+    value: 0
+  })
+
+  // Add a regular output with script directly
+  psbt.addOutput({
+    script: Buffer.from('0014' + '2229e6e87a1d24072c54c222b07cd318c0920c2a', 'hex'),
+    value: 49990000
+  })
+
+  const decoded = syscoinjs.decodeRawTransaction(psbt)
+
+  assert.ok(decoded.txid, 'Should have txid')
+  assert.ok(decoded.hash, 'Should have hash')
+  assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND, 'Should have correct version')
+  assert.equal(decoded.syscoin.txtype, 'assetallocation_send', 'Should have correct transaction type')
+  assert.ok(decoded.syscoin.allocations, 'Should have allocation data')
+  assert.equal(decoded.syscoin.allocations.assets[0].assetGuid, '2369540453', 'Should have correct asset GUID')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Transaction object input', (assert) => {
+  // Create a valid transaction from hex (simple Bitcoin v2 transaction)
+  const txHex = '02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff00ffffffff0100f2052a010000001976a914389ffce9cd9ae88dcc0631e88a821ffdbe9bfe2688ac00000000'
+
+  const tx = bitcoin.Transaction.fromHex(txHex)
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.ok(decoded.txid, 'Should have txid')
+  assert.ok(decoded.hash, 'Should have hash')
+  assert.equal(decoded.version, 2, 'Should have correct version')
+  assert.equal(decoded.vin.length, 1, 'Should have 1 input')
+  assert.equal(decoded.vout.length, 1, 'Should have 1 output')
+  assert.equal(decoded.syscoin.txtype, 'bitcoin', 'Should have bitcoin transaction type')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Basic Bitcoin transaction', (assert) => {
+  // Test with a simple Bitcoin transaction (version 2)
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Create a simple transaction for testing
+  const tx = new bitcoin.Transaction()
+  tx.version = 2
+  tx.addInput(Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'), 0, 0xfffffffd)
+  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), 990000)
+
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.equal(decoded.version, 2, 'Should have Bitcoin version 2')
+  assert.equal(decoded.vin.length, 1, 'Should have 1 input')
+  assert.equal(decoded.vout.length, 1, 'Should have 1 output')
+  assert.equal(decoded.syscoin.txtype, 'bitcoin', 'Should have bitcoin transaction type')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - PoDA transaction', (assert) => {
+  // Test with real PoDA transaction from the network
+  const txHex = '8900000000010148b3487329df6f15632f5b2f6966f6b16eec156cda4a515e3b4124ab36fbb5970100000000fdffffff020000000000000000236a212083115464e443b7e50ad72ce74c2f19e8994142f486a6f04f0b4e9f4ca9c7fd496ae2cc7801000000160014e5f8326f905653d56d0bea68fc709ab6bb59539802473044022005768e9a2bc6b5d10fc4eded2ed63903848121537a373ee105a56ac51096c7f30220555745425714cab87eb30ed6764beafedafd36efc37b519ae67547b2ddaad54e012102bf95c9f320f617b44abdc84c25d57fcb3a413e124097d7eae2c9c16f31059bc02d311f00'
+
+  try {
+    const tx = bitcoin.Transaction.fromHex(txHex)
+    const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+    const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+    const decoded = syscoinjs.decodeRawTransaction(tx)
+
+    assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_NEVM_DATA, 'Should have PoDA version (137)')
+    assert.equal(decoded.txid, '302b2563547ca8b9843fa99ebfeb4290770e39bf16f6eaf35fa5fbbcb0f79ca5', 'Should have correct txid')
+    assert.ok(decoded.syscoin, 'Should have syscoin-specific data')
+    assert.equal(decoded.syscoin.txtype, 'nevm_data', 'Should have correct transaction type')
+    assert.ok(decoded.syscoin.poda, 'Should have PoDA data')
+    assert.equal(decoded.syscoin.poda.blobHash, '83115464e443b7e50ad72ce74c2f19e8994142f486a6f04f0b4e9f4ca9c7fd49', 'Should have correct blob hash')
+    assert.equal(decoded.syscoin.poda.blobData, null, 'Should not have blob data (only hash is stored on-chain)')
+    assert.equal(decoded.vout.length, 2, 'Should have 2 outputs')
+    assert.equal(decoded.vout[0].scriptPubKey.type, 'nulldata', 'First output should be OP_RETURN')
+    assert.equal(decoded.vout[1].value, 63.21660522, 'Second output should have correct value')
+    assert.end()
+  } catch (err) {
+    assert.fail('Should not throw error for valid PoDA transaction: ' + err.message)
+    assert.end()
+  }
+})
+
+tape.test('decodeRawTransaction - Transaction with witness data', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Create a transaction with witness data
+  const tx = new bitcoin.Transaction()
+  tx.version = 2
+  tx.addInput(Buffer.from('abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890', 'hex'), 1, 0xfffffffd)
+  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), 1990000)
+
+  // Add witness data to the input
+  tx.ins[0].witness = [
+    Buffer.from('304402203e4f285df7e3e5db85c4e2fe4bce3e3e8b4e8e4e4e4e4e4e4e4e4e4e4e4e4e4e02207e4f285df7e3e5db85c4e2fe4bce3e3e8b4e8e4e4e4e4e4e4e4e4e4e4e4e4e4e01', 'hex'),
+    Buffer.from('02ed51ac306fccf740f5b108afd569df35a8d380313370d8df851ba0a057b4f72123', 'hex')
+  ]
+
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.equal(decoded.vin.length, 1, 'Should have 1 input')
+  assert.ok(decoded.vin[0].txinwitness, 'Should have witness data')
+  assert.equal(decoded.vin[0].txinwitness.length, 2, 'Should have 2 witness elements')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Syscoin Asset Allocation Send', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Use actual hex from fixtures for asset allocation send (version 142)
+  const txHex = '8e00000000010235addfbfd1abfcb55234f51b1ecf8e967df9353b87a9bacdba63a5358803f1440000000000fdffffff4629e5a0b015fc8c0585693539c7cc79b27b6afb21d0bf993e182531c236053f0000000000fdffffff03a8020000000000001600148dc01f0d18640370e091198979398466abed8a8700000000000000000d6a0b0188b5aa803802003b022726dd64ca13000000160014c27fb464acece67abe8e8289a2c9cb2d60cabecd02483045022100a34a7760a9d5d615f792b1216bbf59865a06fe7f088d3765781d9836d64418a502202c158f3f4a6bbbc1618f0482859748038ae2a5b29dd80a7921393b4e0f6bb1e1012103e493f90c55de11c1b3aa3fc13b337807c7c1e121a2767856cfd6946e18c7fcc102483045022100b3da33d80c8b73e5f4b57d211c41861acef4dfa415b9df4ce280f9cfdf2bf83102205686dadd9c424841bdfdd2d381480ec3a583c0466d182eb6bcfdeed30adb4e49012102e58139f9d633d5d1d76feb87fc2c44705cc317e83ade1a812f8d2a4ae7be9cb500000000'
+
+  const tx = bitcoin.Transaction.fromHex(txHex)
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND, 'Should have asset allocation send version')
+  assert.ok(decoded.syscoin, 'Should have syscoin-specific data')
+  assert.equal(decoded.syscoin.txtype, 'assetallocation_send', 'Should have correct transaction type')
+  assert.ok(decoded.syscoin.allocations, 'Should have allocation data')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Syscoin Asset Allocation Burn to Syscoin', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Create a proper allocation burn to syscoin transaction
+  const tx = new bitcoin.Transaction()
+  tx.version = syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN
+  tx.addInput(Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'), 0, 0xfffffffd)
+
+  // Create allocation data
+  const assetAllocations = [{
+    assetGuid: '12345',
+    values: [{ n: 0, value: new sjs.utils.BN(100000000) }]
+  }]
+
+  // Create burn data (empty ethereum address for burn to syscoin)
+  const burnData = {
+    ethaddress: Buffer.from('', 'hex')
+  }
+
+  // Serialize allocations and burn data separately
+  const assetAllocationsBuffer = syscointx.bufferUtils.serializeAssetAllocations(assetAllocations)
+  const burnBuffer = syscointx.bufferUtils.serializeAllocationBurn(burnData)
+
+  // Combine them like createAssetTransaction does: [allocations][burnData]
+  const combinedBuffer = Buffer.concat([assetAllocationsBuffer, burnBuffer])
+
+  // Create OP_RETURN output with the combined data
+  const dataScript = bitcoin.payments.embed({ data: [combinedBuffer] }).output
+  tx.addOutput(dataScript, 0)
+
+  // Add a regular output
+  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), 50000000)
+
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN, 'Should have burn to syscoin version')
+  assert.ok(decoded.syscoin, 'Should have syscoin-specific data')
+  assert.equal(decoded.syscoin.txtype, 'assetallocationburn_to_syscoin', 'Should have correct transaction type')
+  assert.ok(decoded.syscoin.allocations, 'Should have allocation data')
+  assert.equal(decoded.syscoin.allocations.assets.length, 1, 'Should have 1 asset allocation')
+  assert.equal(decoded.syscoin.allocations.assets[0].assetGuid, '12345', 'Should have correct asset GUID')
+  assert.equal(decoded.syscoin.allocations.assets[0].values[0].value, '100000000', 'Should have correct value')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Syscoin Asset Allocation Burn to Ethereum', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Create a proper burn to ethereum transaction
+  const tx = new bitcoin.Transaction()
+  tx.version = syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM
+  tx.addInput(Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'), 0, 0xfffffffd)
+
+  // Create allocation data
+  const assetAllocations = [{
+    assetGuid: '67890',
+    values: [{ n: 0, value: new sjs.utils.BN(200000000) }]
+  }]
+
+  // Create burn data (just ethereum address)
+  const burnData = {
+    ethaddress: Buffer.from('742d35Cc6634C0532925a3b844Bc9e7595f8b5d0', 'hex')
+  }
+
+  // Serialize allocations and burn data separately
+  const assetAllocationsBuffer = syscointx.bufferUtils.serializeAssetAllocations(assetAllocations)
+  const burnBuffer = syscointx.bufferUtils.serializeAllocationBurn(burnData)
+
+  // Combine them like createAssetTransaction does: [allocations][burnData]
+  const combinedBuffer = Buffer.concat([assetAllocationsBuffer, burnBuffer])
+
+  // Create OP_RETURN output with the combined data
+  const dataScript = bitcoin.payments.embed({ data: [combinedBuffer] }).output
+  tx.addOutput(dataScript, 0)
+
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM, 'Should have burn to ethereum version')
+  assert.ok(decoded.syscoin, 'Should have syscoin-specific data')
+  assert.equal(decoded.syscoin.txtype, 'assetallocationburn_to_ethereum', 'Should have correct transaction type')
+  assert.ok(decoded.syscoin.burn, 'Should have burn data')
+  assert.equal(decoded.syscoin.burn.ethaddress, '742d35cc6634c0532925a3b844bc9e7595f8b5d0', 'Should have correct ethereum address')
+  assert.ok(decoded.syscoin.burn.allocation, 'Should have allocation data in burn')
+  assert.equal(decoded.syscoin.burn.allocation[0].assetGuid, '67890', 'Should have correct asset GUID in burn')
+  assert.equal(decoded.syscoin.burn.allocation[0].values[0].value, '200000000', 'Should have correct value in burn')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Syscoin Asset Allocation Mint', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Create a proper asset allocation mint transaction
+  const tx = new bitcoin.Transaction()
+  tx.version = syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_MINT
+  tx.addInput(Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'), 0, 0xfffffffd)
+
+  // Create allocation data
+  const assetAllocations = [{
+    assetGuid: '12345',
+    values: [{ n: 0, value: new sjs.utils.BN(300000000) }]
+  }]
+
+  // Create mint data with Ethereum proof (without allocations, they're added separately)
+  const mintData = {
+    ethtxid: Buffer.from('abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890', 'hex'),
+    blockhash: Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'),
+    txpos: 42,
+    txparentnodes: Buffer.from('deadbeef', 'hex'),
+    txpath: Buffer.from('cafebabe', 'hex'),
+    receiptpos: 1,
+    receiptparentnodes: Buffer.from('feedface', 'hex'),
+    txroot: Buffer.from('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 'hex'),
+    receiptroot: Buffer.from('fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210', 'hex')
+  }
+
+  // Serialize allocations and mint data separately
+  const assetAllocationsBuffer = syscointx.bufferUtils.serializeAssetAllocations(assetAllocations)
+  const mintBuffer = syscointx.bufferUtils.serializeMintSyscoin(mintData)
+
+  // Combine them like createAssetTransaction does: [allocations][mintData]
+  const combinedBuffer = Buffer.concat([assetAllocationsBuffer, mintBuffer])
+
+  // Create OP_RETURN output with the combined data
+  const dataScript = bitcoin.payments.embed({ data: [combinedBuffer] }).output
+  tx.addOutput(dataScript, 0)
+
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_MINT, 'Should have allocation mint version')
+  assert.ok(decoded.syscoin, 'Should have syscoin-specific data')
+  assert.equal(decoded.syscoin.txtype, 'assetallocation_mint', 'Should have correct transaction type')
+  assert.ok(decoded.syscoin.mint, 'Should have mint data')
+  assert.ok(decoded.syscoin.mint.allocation, 'Should have allocation data in mint')
+  assert.equal(decoded.syscoin.mint.allocation[0].assetGuid, '12345', 'Should have correct asset GUID')
+  assert.equal(decoded.syscoin.mint.allocation[0].values[0].value, '300000000', 'Should have correct value')
+  assert.equal(decoded.syscoin.mint.ethtxid, 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890', 'Should have correct ethtxid')
+  assert.equal(decoded.syscoin.mint.blockhash, '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'Should have correct blockhash')
+  assert.equal(decoded.syscoin.mint.txpos, 42, 'Should have correct txpos')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Syscoin Burn to Asset Allocation', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Create a proper syscoin burn to allocation transaction
+  const tx = new bitcoin.Transaction()
+  tx.version = syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION
+  tx.addInput(Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'), 0, 0xfffffffd)
+
+  // Create allocation data
+  const assetAllocations = [{
+    assetGuid: '98765',
+    values: [{ n: 0, value: new sjs.utils.BN(150000000) }]
+  }]
+
+  // For burn to allocation, there's no additional data buffer, just allocations
+  const assetAllocationsBuffer = syscointx.bufferUtils.serializeAssetAllocations(assetAllocations)
+
+  // Create OP_RETURN output with just the allocation data
+  const dataScript = bitcoin.payments.embed({ data: [assetAllocationsBuffer] }).output
+  tx.addOutput(dataScript, 0)
+
+  const decoded = syscoinjs.decodeRawTransaction(tx)
+
+  assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION, 'Should have syscoin burn to allocation version')
+  assert.ok(decoded.syscoin, 'Should have syscoin-specific data')
+  assert.equal(decoded.syscoin.txtype, 'syscoinburn_to_allocation', 'Should have correct transaction type')
+  assert.ok(decoded.syscoin.allocations, 'Should have allocation data')
+  assert.equal(decoded.syscoin.allocations.assets.length, 1, 'Should have 1 asset allocation')
+  assert.equal(decoded.syscoin.allocations.assets[0].assetGuid, '98765', 'Should have correct asset GUID')
+  assert.equal(decoded.syscoin.allocations.assets[0].values[0].value, '150000000', 'Should have correct value')
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Error handling', (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+
+  // Test with invalid input
+  try {
+    syscoinjs.decodeRawTransaction({})
+    assert.fail('Should throw error for invalid input')
+  } catch (err) {
+    assert.ok(err.message.includes('Input must be a PSBT or transaction object'), 'Should throw appropriate error message')
+  }
+
+  // Test with null input
+  try {
+    syscoinjs.decodeRawTransaction(null)
+    assert.fail('Should throw error for null input')
+  } catch (err) {
+    assert.ok(err.message, 'Should throw error for null input')
+  }
+
+  assert.end()
+})
+
+tape.test('decodeRawTransaction - Create and decode PoDA transaction', async (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner, null, syscointx.utils.syscoinNetworks.testnet)
+
+  // Generate a proper testnet address
+  const changeAddress = await HDSigner.getNewReceivingAddress()
+
+  // Create a simple UTXO for funding
+  const p2wpkh = bitcoin.payments.p2wpkh({ address: changeAddress, network: syscoinjs.network })
+  const rawUtxos = {
+    utxos: [{
+      txid: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ef',
+      vout: 0,
+      address: changeAddress,
+      value: '5000000', // 0.05 SYS
+      path: "m/84'/1'/0'/0/0",
+      script: p2wpkh.output.toString('hex')
+    }]
+  }
+  // Create PoDA transaction options - blobData should be hex string
+  const blobData = '64dbfb02268b642f6a32a266bdd54add8989a1fa913b7414a642b5d85e964c68aa' // From fixture
+  const expectedBlobHash = sjs.utils.web3.utils.sha3('0x' + blobData).slice(2) // Remove '0x' prefix
+  const txOpts = {
+    blobData, // Pass as hex string, createPoDA will handle conversion
+    rbf: true
+  }
+
+  const feeRate = new sjs.utils.BN(10)
+
+  try {
+    // Create the PoDA transaction using syscoinjs library
+    const result = await syscoinjs.createPoDA(txOpts, changeAddress, feeRate, changeAddress, rawUtxos)
+    const psbt = result.psbt || result // Handle either PSBT or result object
+
+    assert.ok(psbt, 'Should create PoDA PSBT')
+    assert.equal(psbt.version, syscointx.utils.SYSCOIN_TX_VERSION_NEVM_DATA, 'Should have PoDA version')
+
+    // Extract the transaction from PSBT to decode it
+    const tx = psbt.extractTransaction(true, true)
+
+    // Now decode the transaction
+    const decoded = syscoinjs.decodeRawTransaction(tx)
+
+    assert.ok(decoded, 'Should decode the transaction')
+    assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_NEVM_DATA, 'Decoded should have PoDA version')
+    assert.equal(decoded.syscoin.txtype, 'nevm_data', 'Should have correct transaction type')
+    assert.ok(decoded.syscoin.poda, 'Should have PoDA data')
+
+    // Verify the blob hash matches what we expect
+
+    assert.equal(decoded.syscoin.poda.blobHash, expectedBlobHash, 'Should have correct blob hash')
+    assert.equal(decoded.syscoin.poda.blobData, null, 'Should not have blob data in decoded tx')
+
+    // Verify OP_RETURN output exists
+    let hasOpReturn = false
+    decoded.vout.forEach(vout => {
+      if (vout.scriptPubKey.type === 'nulldata') {
+        hasOpReturn = true
+        assert.ok(vout.scriptPubKey.hex.includes(expectedBlobHash), 'OP_RETURN should contain blob hash')
+      }
+    })
+    assert.ok(hasOpReturn, 'Should have OP_RETURN output')
+
+    assert.end()
+  } catch (err) {
+    assert.fail('Should not throw error: ' + err.message)
+    assert.end()
+  }
+})
+
+tape.test('decodeRawTransaction - Create and decode PoDA PSBT with sjs library', async (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner, null, syscointx.utils.syscoinNetworks.testnet)
+
+  // Generate a proper testnet address
+  const changeAddress = await HDSigner.getNewReceivingAddress()
+
+  // Create PoDA transaction options
+  const blobData = 'cafebabe00112233445566778899aabbccddeeff' // Example blob data (hex)
+  const txOpts = {
+    blobData, // Pass as hex string, createPoDA will handle conversion
+    rbf: false
+  }
+
+  const feeRate = new sjs.utils.BN(10)
+  const sysFromXpubOrAddress = changeAddress
+
+  // Create a simple UTXO for funding
+  const p2wpkh = bitcoin.payments.p2wpkh({ address: changeAddress, network: syscoinjs.network })
+  const rawUtxos = {
+    utxos: [{
+      txid: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ef',
+      vout: 0,
+      address: changeAddress,
+      value: '5000000', // 0.05 SYS
+      path: "m/84'/1'/0'/0/0",
+      script: p2wpkh.output.toString('hex')
+    }]
+  }
+
+  try {
+    // Create the PoDA PSBT using the full syscoinjs library
+    const result = await syscoinjs.createPoDA(txOpts, changeAddress, feeRate, sysFromXpubOrAddress, rawUtxos)
+    const psbt = result.psbt || result // Handle either PSBT or result object
+
+    assert.ok(psbt, 'Should create PoDA PSBT')
+    assert.equal(psbt.version, syscointx.utils.SYSCOIN_TX_VERSION_NEVM_DATA, 'PSBT should have PoDA version')
+    assert.equal(psbt.txInputs.length, 1, 'Should have 1 input')
+    assert.ok(psbt.txOutputs.length >= 1, 'Should have at least 1 output')
+
+    // Now decode the PSBT
+    const decoded = syscoinjs.decodeRawTransaction(psbt)
+
+    assert.ok(decoded, 'Should decode the PSBT')
+    assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_NEVM_DATA, 'Decoded should have PoDA version')
+    assert.equal(decoded.syscoin.txtype, 'nevm_data', 'Should have correct transaction type')
+    assert.ok(decoded.syscoin.poda, 'Should have PoDA data')
+
+    // Verify the blob hash
+    const expectedBlobHash = sjs.utils.web3.utils.sha3('0x' + blobData).slice(2) // Remove '0x' prefix
+    assert.equal(decoded.syscoin.poda.blobHash, expectedBlobHash, 'Should have correct blob hash')
+
+    // When decoding a PSBT, it should not include the blobData
+    assert.equal(decoded.syscoin.poda.blobData, null, 'Should not have blob data in PSBT decode')
+
+    // Verify OP_RETURN output exists
+    let hasOpReturn = false
+    decoded.vout.forEach(vout => {
+      if (vout.scriptPubKey.type === 'nulldata') {
+        hasOpReturn = true
+        assert.ok(vout.scriptPubKey.hex.includes(expectedBlobHash), 'OP_RETURN should contain blob hash')
+      }
+    })
+    assert.ok(hasOpReturn, 'Should have OP_RETURN output')
+
+    // Verify RBF setting
+    assert.equal(decoded.locktime, 0, 'Should have locktime 0')
+    decoded.vin.forEach(vin => {
+      assert.equal(vin.sequence, 0xffffffff, 'Should have max sequence (RBF disabled)')
+    })
+
+    assert.end()
+  } catch (err) {
+    assert.fail('Should not throw error: ' + err.message)
+    assert.end()
+  }
 })
