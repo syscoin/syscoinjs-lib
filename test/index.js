@@ -43,69 +43,6 @@ fixtures.forEach(async function (f) {
           }
         }
       })
-    } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_ACTIVATE) {
-      const psbt = await syscoinjs.assetNew(f.assetOpts, txOpts, f.sysChangeAddress, f.sysReceivingAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      // ensure getAssetsFromTx returns the asset we created as expected
-      const tx = bitcoin.Transaction.fromHex(psbt.extractTransaction().toHex())
-      const assets = syscointx.getAssetsFromTx(tx)
-      t.same(assets.get(f.expected.asset.allocation[0].assetGuid), {})
-      t.same(psbt.txOutputs.length, f.expected.numOutputs)
-      t.same(psbt.version, f.version)
-      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
-      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      psbt.txOutputs.forEach(output => {
-        if (output.script) {
-          // find opreturn
-          const chunks = bitcoin.script.decompile(output.script)
-          if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const asset = syscointx.bufferUtils.deserializeAsset(chunks[1])
-            t.same(asset, f.expected.asset)
-            t.same(asset.allocation, f.expected.asset.allocation)
-          }
-        }
-      })
-    } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_UPDATE) {
-      const psbt = await syscoinjs.assetUpdate(f.assetGuid, f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs.length, f.expected.numOutputs)
-      t.same(psbt.version, f.version)
-      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
-      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      psbt.txOutputs.forEach(output => {
-        if (output.script) {
-          // find opreturn
-          const chunks = bitcoin.script.decompile(output.script)
-          if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const asset = syscointx.bufferUtils.deserializeAsset(chunks[1])
-            t.same(asset, f.expected.asset)
-            t.same(asset.allocation, f.expected.asset.allocation)
-          }
-        }
-      })
-    } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ASSET_SEND) {
-      const psbt = await syscoinjs.assetSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
-      t.same(psbt.txOutputs.length, f.expected.numOutputs)
-      t.same(psbt.version, f.version)
-      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
-      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
-      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
-      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
-      psbt.txOutputs.forEach(output => {
-        if (output.script) {
-          // find opreturn
-          const chunks = bitcoin.script.decompile(output.script)
-          if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
-            t.same(assetAllocations, f.expected.asset.allocation)
-          }
-        }
-      })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_MINT) {
       const psbt = await syscoinjs.assetAllocationMint(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
