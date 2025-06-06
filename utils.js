@@ -1719,8 +1719,42 @@ function exportPsbtToJson (psbt, assetsMap) {
   const assetsMapToStringify = assetsMap || new Map()
   return { psbt: psbt.toBase64(), assets: JSON.stringify([...assetsMapToStringify]) }
 }
+function isBase64 (string) {
+  try {
+    const b = Buffer.from(string, 'base64')
+    return b.toString('base64') === string
+  } catch (err) {
+    return false
+  }
+};
+
+function repairBase64 (base64Str) {
+  return base64Str.replace(/ /g, '+')
+};
 
 function importPsbtFromJson (jsonData, network) {
+  // Validate JSON structure
+  if (!jsonData || typeof jsonData !== 'object') {
+    throw new Error('Invalid PSBT JSON: Expected object format from exportPsbtToJson()')
+  }
+
+  // Extract and validate the nested PSBT
+  const { psbt: psbtBase64 } = jsonData
+  if (!psbtBase64) {
+    throw new Error('Invalid PSBT JSON: Missing psbt field')
+  }
+
+  // Apply base64 validation and repair here
+  let repairedPsbt = psbtBase64
+  if (!isBase64(repairedPsbt)) {
+    // Try to repair common base64 issues
+    repairedPsbt = repairBase64(repairedPsbt)
+  }
+
+  if (!isBase64(repairedPsbt)) {
+    throw new Error('Invalid PSBT: Base64 encoding is corrupted and cannot be repaired')
+  }
+
   return { psbt: SPSBT.fromBase64(jsonData.psbt, { network: network || syscoinNetworks.mainnet }), assets: new Map(JSON.parse(jsonData.assets)) }
 }
 
