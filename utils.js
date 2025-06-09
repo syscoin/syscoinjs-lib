@@ -414,28 +414,29 @@ async function fetchEstimateFee (backendURL, blocks, options) {
       if (response.ok) {
         const data = await response.json()
         if (data && data.result) {
-          let feeInt = parseInt(data.result)
-          // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
-          if (feeInt <= 0) {
-            feeInt = 1000
+          // Parse as float since API returns SYS per KB, not satoshis per KB
+          let feeInSysPerKB = parseFloat(data.result)
+          // if fee is 0 or negative, use minimum
+          if (feeInSysPerKB <= 0) {
+            feeInSysPerKB = 0.001 // 0.001 SYS/KB minimum
           }
-          return feeInt
+          // Return SYS per KB as-is (the existing code will divide by 1024)
+          return feeInSysPerKB
         }
       }
     } else {
       const request = await axios.get(url, axiosConfig)
       if (request && request.data && request.data.result) {
-        let feeInt = parseInt(request.data.result)
-        // if fee is 0 it usually means not enough data, so use min relay fee which is 1000 satoshi per kb in Core by default
-        if (feeInt <= 0) {
-          feeInt = 1000
+        let feeInSysPerKB = parseFloat(request.data.result)
+        if (feeInSysPerKB <= 0) {
+          feeInSysPerKB = 0.001
         }
-        return feeInt
+        return feeInSysPerKB
       }
     }
-    return null
+    return 0.001 // Default fallback: 0.001 SYS/KB
   } catch (e) {
-    return e
+    return 0.001
   }
 }
 
