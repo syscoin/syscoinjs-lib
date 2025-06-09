@@ -395,7 +395,7 @@ Purpose: Get estimated fee from backend
 Returns: Returns JSON object in response, fee object in JSON
 Param blocks: Required. How many blocks to estimate fee for.
 Param options: Optional. possible value conservative=true or false for conservative fee. Default is true.
-Returns: Returns fee response in integer. Fee rate in satoshi per kilobytes.
+Returns: Returns fee response in integer. Fee rate in coins per kilobytes.
 */
 async function fetchEstimateFee (backendURL, blocks, options) {
   try {
@@ -414,13 +414,13 @@ async function fetchEstimateFee (backendURL, blocks, options) {
       if (response.ok) {
         const data = await response.json()
         if (data && data.result) {
-          // Parse as float since API returns SYS per KB, not satoshis per KB
+          // Parse as float since API returns coins per KB, not satoshis per KB
           let feeInSysPerKB = parseFloat(data.result)
           // if fee is 0 or negative, use minimum
           if (feeInSysPerKB <= 0) {
             feeInSysPerKB = 0.001 // 0.001 SYS/KB minimum
           }
-          // Return SYS per KB as-is (the existing code will divide by 1024)
+          // Return coins(SYS) per KB as-is (the existing code will divide by 1024)
           return feeInSysPerKB
         }
       }
