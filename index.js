@@ -25,6 +25,78 @@ function Syscoin (SignerIn, blockbookURL, network) {
 Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn, pathIn) {
   return this.signAndSend(psbt, SignerIn, pathIn)
 }
+
+/* Helper function to check if syscointx result is an error
+Purpose: Check if the result from syscointx methods contains an error
+Param res: The result object from syscointx methods
+Returns: true if error, false otherwise
+*/
+function isErrorResult (res) {
+  // Handle error objects with 'error' field (from syscointx-js)
+  if (res && res.error) {
+    return true
+  }
+  // Handle explicit success: false
+  if (res && res.success === false) {
+    return true
+  }
+  // Handle null/undefined results (from coinselectsyscoin)
+  if (!res || (res && !res.inputs && !res.outputs && !res.fee)) {
+    return true
+  }
+  return false
+}
+
+/* Helper function to format error response
+Purpose: Format error response with structured data for sysweb3
+Param res: The result object from syscointx methods
+Returns: Formatted error object with code, message, and details
+*/
+function formatErrorResponse (res) {
+  const errorResponse = {
+    error: true,
+    code: 'TRANSACTION_CREATION_FAILED'
+  }
+
+  if (!res) {
+    errorResponse.message = 'Transaction creation failed - insufficient funds or invalid inputs'
+    errorResponse.code = 'INSUFFICIENT_FUNDS'
+    return errorResponse
+  }
+
+  // Handle structured errors from syscointx-js
+  if (res.error) {
+    errorResponse.code = res.error
+    errorResponse.message = res.message || res.error
+
+    // Include any additional details
+    if (res.details) {
+      errorResponse.details = res.details
+    }
+
+    // Include fee information if available
+    if (res.fee !== undefined) {
+      errorResponse.fee = res.fee
+    }
+
+    // Include remainingFee for subtractFeeFrom errors
+    if (res.remainingFee !== undefined) {
+      errorResponse.remainingFee = res.remainingFee
+    }
+
+    // Include shortfall for insufficient funds
+    if (res.shortfall !== undefined) {
+      errorResponse.shortfall = res.shortfall
+    }
+
+    return errorResponse
+  }
+
+  // Default error response
+  errorResponse.message = 'Transaction creation failed'
+  return errorResponse
+}
+
 /* createPSBTFromRes
 Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
@@ -249,7 +321,7 @@ Param txOpts: Optional. Transaction options. Fields are described below:
   Field rbf. Optional. True by default. Replace-by-fee functionality allowing one to bump transaction by increasing fee for UTXOs used.
   Field assetWhiteList. Optional. null by default. Allows UTXO's to be added from assets in the whitelist or the asset being sent
 Param changeAddress: Optional. Change address if defined is where change outputs are sent to. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
-Param outputsArr: Required. Output array defining tuples to which addresses to send coins to and how much
+Param outputsArr: Required. Output array defining tuples to which addresses to send coins to and how much. Outputs can include a 'subtractFeeFrom' boolean field to subtract the transaction fee from that output.
 Param feeRate: Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
 Param fromXpubOrAddress: Optional. If wanting to fund from a specific XPUB or address specify this field should be set
 Param utxos: Optional. Pass in specific utxos to fund a transaction.
@@ -268,11 +340,22 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
     inputsArr = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, inputsArr, this.network, txOpts).utxos
   }
   const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, inputsArr)
+
+  // Check if the result is an error
+  if (isErrorResult(res)) {
+    const errorData = formatErrorResponse(res)
+    throw Object.assign(
+      new Error(errorData.message),
+      { code: 402, ...errorData }
+    )
+  }
+
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (fromXpubOrAddress || !this.Signer) {
-    return { psbt, res: psbt }
+    return { psbt, res: psbt, fee: res.fee }
   }
-  return await this.signAndSend(psbt)
+  const signedPsbt = await this.signAndSend(psbt)
+  return { psbt: signedPsbt, fee: res.fee }
 }
 
 /* assetAllocationSend
@@ -316,11 +399,22 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+
+  // Check if the result is an error
+  if (isErrorResult(res)) {
+    const errorData = formatErrorResponse(res)
+    throw Object.assign(
+      new Error(errorData.message),
+      { code: 402, ...errorData }
+    )
+  }
+
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt, res: psbt }
+    return { psbt, res: psbt, fee: res.fee }
   }
-  return await this.signAndSend(psbt)
+  const signedPsbt = await this.signAndSend(psbt)
+  return { psbt: signedPsbt, fee: res.fee }
 }
 
 /* assetAllocationBurn
@@ -362,11 +456,22 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+
+  // Check if the result is an error
+  if (isErrorResult(res)) {
+    const errorData = formatErrorResponse(res)
+    throw Object.assign(
+      new Error(errorData.message),
+      { code: 402, ...errorData }
+    )
+  }
+
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt, res: psbt }
+    return { psbt, res: psbt, fee: res.fee }
   }
-  return await this.signAndSend(psbt)
+  const signedPsbt = await this.signAndSend(psbt)
+  return { psbt: signedPsbt, fee: res.fee }
 }
 
 /* assetAllocationMint
@@ -447,11 +552,22 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+
+  // Check if the result is an error
+  if (isErrorResult(res)) {
+    const errorData = formatErrorResponse(res)
+    throw Object.assign(
+      new Error(errorData.message),
+      { code: 402, ...errorData }
+    )
+  }
+
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt, res: psbt }
+    return { psbt, res: psbt, fee: res.fee }
   }
-  return await this.signAndSend(psbt)
+  const signedPsbt = await this.signAndSend(psbt)
+  return { psbt: signedPsbt, fee: res.fee }
 }
 
 /* syscoinBurnToAssetAllocation
@@ -492,11 +608,22 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+
+  // Check if the result is an error
+  if (isErrorResult(res)) {
+    const errorData = formatErrorResponse(res)
+    throw Object.assign(
+      new Error(errorData.message),
+      { code: 402, ...errorData }
+    )
+  }
+
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt, res: psbt }
+    return { psbt, res: psbt, fee: res.fee }
   }
-  return await this.signAndSend(psbt)
+  const signedPsbt = await this.signAndSend(psbt)
+  return { psbt: signedPsbt, fee: res.fee }
 }
 /* createPoDA
 Purpose: Send Blob to Syscoin
@@ -521,12 +648,23 @@ Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, feeRate, f
   txOpts.blobData = Buffer.from(txOpts.blobData, 'hex')
   txOpts.blobHash = Buffer.from(utils.web3.utils.sha3(strData).slice(2), 'hex')
   const res = syscointx.createPoDA(txOpts, utxos, changeAddress, feeRate)
+
+  // Check if the result is an error
+  if (isErrorResult(res)) {
+    const errorData = formatErrorResponse(res)
+    throw Object.assign(
+      new Error(errorData.message),
+      { code: 402, ...errorData }
+    )
+  }
+
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   psbt.blobData = txOpts.blobData
   if (fromXpubOrAddress || !this.Signer) {
-    return { psbt, res: psbt }
+    return { psbt, res: psbt, fee: res.fee }
   }
-  return await this.signAndSend(psbt)
+  const signedPsbt = await this.signAndSend(psbt)
+  return { psbt: signedPsbt, fee: res.fee }
 }
 
 /* decodeRawTransaction

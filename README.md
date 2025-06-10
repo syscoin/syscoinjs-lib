@@ -142,6 +142,101 @@ Otherwise, pull requests are appreciated.
 
 If you have a use case that you feel could be listed here, please [ask for it](https://github.com/syscoin/syscoinjs-lib/issues/new)!
 
+### New Features
+
+#### Subtract Fee From Output
+
+The `createTransaction` method now supports the `subtractFeeFrom` option in outputs. This allows you to subtract the transaction fee from specific outputs instead of requiring additional inputs for fees.
+
+```javascript
+const outputs = [
+  {
+    address: 'sys1q6f2053q2fnlqpxrwrrqpkhnutwemu984p4vjzm',
+    value: new BN(100000000), // 1 SYS
+    subtractFeeFrom: true // Fee will be deducted from this output
+  }
+];
+
+// Fee is automatically subtracted from outputs marked with subtractFeeFrom
+const result = await syscoinjs.createTransaction(txOpts, changeAddress, outputs, feeRate);
+```
+
+When using multiple outputs with `subtractFeeFrom`, the fee is deducted sequentially:
+
+```javascript
+const outputs = [
+  {
+    address: 'sys1q6f2053q2fnlqpxrwrrqpkhnutwemu984p4vjzm',
+    value: new BN(50000000), // 0.5 SYS
+    subtractFeeFrom: true // Fee deducted from here first
+  },
+  {
+    address: 'sys1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l',
+    value: new BN(50000000), // 0.5 SYS
+    subtractFeeFrom: true // Only used if first output can't cover full fee
+  }
+];
+```
+
+#### Enhanced Error Handling
+
+All transaction creation methods now provide better error handling with structured error objects containing:
+
+- **error**: Boolean indicating an error occurred
+- **code**: Error code (e.g., 'INVALID_MEMO', 'INSUFFICIENT_FUNDS', etc.)
+- **message**: Human-readable error message
+- **fee**: Fee information when available
+- **remainingFee**: Remaining fee for subtractFeeFrom errors
+- **shortfall**: Amount short for insufficient funds errors
+- **details**: Additional error details when available
+
+##### Error Codes
+
+- **INSUFFICIENT_FUNDS**: Not enough funds to complete the transaction
+- **INVALID_MEMO**: Memo field validation errors
+- **INVALID_BLOB**: Blob data validation errors for PoDA transactions
+- **INVALID_OUTPUT_COUNT**: When asset allocation outputs exceed limits
+- **INVALID_ASSET_ALLOCATION**: Asset allocation validation errors
+- **INVALID_PARENT_NODES**: SPV proof validation errors
+- **INVALID_TX_VALUE**: Transaction value validation errors
+- **INVALID_RECEIPT_VALUE**: Receipt validation errors
+- **TRANSACTION_CREATION_FAILED**: Generic failure during transaction creation
+
+Example error handling:
+
+```javascript
+try {
+  const result = await syscoinjs.createTransaction(txOpts, changeAddress, outputs, feeRate);
+  console.log('Transaction created successfully');
+  console.log('Fee spent:', result.fee);
+} catch (error) {
+  console.error('Transaction creation failed:', error.message);
+  
+  // Access structured error data
+  if (error.code === 'INSUFFICIENT_FUNDS' && error.shortfall) {
+    console.error('Short by:', error.shortfall, 'satoshis');
+  }
+  
+  if (error.remainingFee) {
+    console.error('Remaining fee that could not be deducted:', error.remainingFee);
+  }
+}
+```
+
+#### Return Values
+
+All transaction creation methods now return an object containing:
+
+- **psbt**: The created/signed PSBT object
+- **fee**: The transaction fee in satoshis
+
+Example:
+
+```javascript
+const result = await syscoinjs.createTransaction(txOpts, changeAddress, outputs, feeRate);
+console.log('PSBT:', result.psbt);
+console.log('Transaction fee:', result.fee, 'satoshis');
+```
 
 ## Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md).

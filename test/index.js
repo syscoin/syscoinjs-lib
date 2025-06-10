@@ -25,7 +25,8 @@ fixtures.forEach(async function (f) {
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
     if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
-      const psbt = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const result = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const psbt = result.psbt
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
@@ -44,7 +45,8 @@ fixtures.forEach(async function (f) {
         }
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_MINT) {
-      const psbt = await syscoinjs.assetAllocationMint(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const result = await syscoinjs.assetAllocationMint(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const psbt = result.psbt
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
@@ -64,7 +66,8 @@ fixtures.forEach(async function (f) {
         }
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_ETHEREUM || f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN) {
-      const psbt = await syscoinjs.assetAllocationBurn(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const result = await syscoinjs.assetAllocationBurn(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const psbt = result.psbt
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
@@ -84,14 +87,15 @@ fixtures.forEach(async function (f) {
         }
       })
     } else if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND) {
-      let psbt = await syscoinjs.assetAllocationSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const result = await syscoinjs.assetAllocationSend(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      let psbt = result.psbt
       if (f.sysFromXpubOrAddress) {
         // check for VPUB vs regular address
         if (!f.sysFromXpubOrAddress.startsWith('vpub')) {
           const kp = HDSigner.deriveKeypair(f.utxoObj.utxos[0].path)
-          psbt = await syscoinjs.signAndSendWithWIF(psbt.psbt, kp.toWIF(), psbt.assets)
+          psbt = await syscoinjs.signAndSendWithWIF(psbt, kp.toWIF(), result.assets)
         } else {
-          psbt = await syscoinjs.signAndSend(psbt.psbt, psbt.assets)
+          psbt = await syscoinjs.signAndSend(psbt, result.assets)
         }
       }
 
@@ -115,7 +119,8 @@ fixtures.forEach(async function (f) {
         }
       })
     } else if (f.version === 2) {
-      const psbt = await syscoinjs.createTransaction(txOpts, f.changeAddress, f.outputs, f.feeRate, f.fromXpubOrAddress, utxos)
+      const result = await syscoinjs.createTransaction(txOpts, f.changeAddress, f.outputs, f.feeRate, f.fromXpubOrAddress, utxos)
+      const psbt = result.psbt
       t.same(psbt.txOutputs.length, f.expected.numOutputs)
       t.same(psbt.version, f.expected.version)
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
@@ -124,6 +129,26 @@ fixtures.forEach(async function (f) {
       t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('a7bf215279d3f6568dcd17c429d41a35a466f803', 'hex')) != null)
       t.assert(sjs.utils.setTransactionMemo(f.expected.hex, memoHeader, Buffer.from('test memo')) != null)
+      psbt.txOutputs.forEach(output => {
+        if (output.script) {
+          // find opreturn
+          const chunks = bitcoin.script.decompile(output.script)
+          if (chunks[0] === bitcoinops.OP_RETURN) {
+            t.same(output.script, f.expected.script)
+            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
+            t.same(assetAllocations, f.expected.asset.allocation)
+          }
+        }
+      })
+    } else if (f.version === 133) {
+      const result = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+      const psbt = result.psbt
+      t.same(psbt.txOutputs.length, f.expected.numOutputs)
+      t.same(psbt.version, f.version)
+      HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
+      t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
+      t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
+      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn

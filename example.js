@@ -50,6 +50,10 @@ async function signMultiInputs (
   if (!result) {
     console.log('Could not create transaction, not enough funds?')
   }
+
+  // Log the transaction fee
+  console.log('Transaction fee:', result.fee, 'satoshis')
+
   let tx
   try {
     const psbt = await syscoinjs.signAndSendWithWIF(
@@ -64,6 +68,17 @@ async function signMultiInputs (
     tx = psbt.extractTransaction()
   } catch (e) {
     console.log('Could not sign/send transaction: ' + e.stack)
+
+    // Check for structured error data
+    if (e.error && e.code) {
+      console.log('Error code:', e.code)
+      if (e.shortfall) {
+        console.log('Insufficient funds, short by:', e.shortfall, 'satoshis')
+      }
+      if (e.remainingFee) {
+        console.log('Remaining fee that could not be deducted:', e.remainingFee, 'satoshis')
+      }
+    }
   }
   return {
     id: tx.getId(),
