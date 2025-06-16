@@ -833,7 +833,7 @@ function Signer (password, isTestnet, networks, SLIP44, pubTypes) {
   }
 
   this.pubTypes = pubTypes || syscoinZPubTypes
-  this.accounts = [] // length serialized
+  this.accounts = new Map() // Map<number, BIP84Account>
   this.changeIndex = -1
   this.receivingIndex = -1
   this.accountIndex = 0
@@ -858,7 +858,11 @@ function TrezorSigner (password, isTestnet, networks, SLIP44, pubTypes, connectS
     throw new Error('TrezorSigner should be called only from browser context: ' + e)
   }
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
-  this.restore(this.Signer.password)
+
+  // Try to restore from storage if password is set
+  if (this.Signer.password) {
+    this.restore(this.Signer.password)
+  }
 }
 function HDSigner (mnemonicOrZprv, password, isTestnet, networks, SLIP44, pubTypes, bipNum) {
   this.Signer = new Signer(password, isTestnet, networks, SLIP44, pubTypes)
@@ -884,9 +888,12 @@ function HDSigner (mnemonicOrZprv, password, isTestnet, networks, SLIP44, pubTyp
     this.fromMnemonic = new BIP84.fromMnemonic(mnemonicOrZprv, this.Signer.password, this.Signer.isTestnet, this.Signer.SLIP44, this.Signer.pubTypes, this.Signer.network)
   }
 
-  // try to restore, if it does not succeed then initialize from scratch
-  if (!this.Signer.password || !this.restore(this.Signer.password, bipNum)) {
-    this.createAccount(bipNum, isZprv ? mnemonicOrZprv : undefined)
+  // Try to restore from storage if password is set
+  if (this.Signer.password && this.restore(this.Signer.password, bipNum)) {
+    // Successfully restored from storage
+  } else {
+    // Initialize with account 0
+    this.createAccountAtIndex(0, bipNum, isZprv ? mnemonicOrZprv : undefined)
   }
 }
 
@@ -1111,8 +1118,8 @@ Purpose: Set HD account based on accountIndex number passed in so HD indexes (ch
 Param accountIndex: Required. Account number to use
 */
 Signer.prototype.setAccountIndex = function (accountIndex) {
-  if (accountIndex > this.accounts.length) {
-    console.log('Account does not exist, use createAccount to create it first...')
+  if (!this.accounts.has(accountIndex)) {
+    console.log('Account does not exist, use createAccountAtIndex to create it first...')
     return
   }
   if (this.accountIndex !== accountIndex) {
@@ -1149,20 +1156,16 @@ TrezorSigner.prototype.restore = function (password) {
     return false
   }
   const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
-  const numAccounts = decryptedData.numAccounts
-  // sanity checks
-  if (this.Signer.accountIndex > 1000) {
-    return false
-  }
 
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
   this.Signer.accountIndex = 0
-  for (let i = 0; i < numAccounts; i++) {
-    this.Signer.accounts.push(new BIP84.fromZPub(decryptedData.xpubArr[i], this.Signer.pubTypes, this.Signer.networks))
-    if (this.Signer.accounts[i].getAccountPublicKey() !== decryptedData.xpubArr[i]) {
-      throw new Error('Account public key mismatch,check pubtypes and networks being used')
-    }
+  this.Signer.accounts = new Map()
+
+  // Restore accounts from saved data
+  for (const [index, xpub] of Object.entries(decryptedData)) {
+    const accountIndex = parseInt(index, 10)
+    this.Signer.accounts.set(accountIndex, new BIP84.fromZPub(xpub, this.Signer.pubTypes, this.Signer.networks))
   }
   return true
 }
@@ -1183,19 +1186,27 @@ HDSigner.prototype.restore = function (password, bipNum) {
   }
   const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
   this.mnemonicOrZprv = decryptedData.mnemonic || decryptedData.mnemonicOrZprv
-  const numAccounts = decryptedData.numAccounts
-  // sanity checks
-  if (this.Signer.accountIndex > 1000) {
-    return false
-  }
-  this.Signer.accounts = []
+
+  // Initialize fresh state
+  this.Signer.accounts = new Map()
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
   this.Signer.accountIndex = 0
-  for (let i = 0; i < numAccounts; i++) {
-    const child = this.deriveAccount(i, bipNum)
-    /* eslint new-cap: ["error", { "newIsCap": false }] */
-    this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
+
+  // If account indexes were saved, re-derive those specific accounts
+  if (decryptedData.accountIndexes) {
+    for (const index of decryptedData.accountIndexes) {
+      const child = this.deriveAccount(index, bipNum)
+      /* eslint new-cap: ["error", { "newIsCap": false }] */
+      this.Signer.accounts.set(index, new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
+    }
+  } else if (decryptedData.numAccounts) {
+    // Backward compatibility: if old format with numAccounts
+    for (let i = 0; i < decryptedData.numAccounts; i++) {
+      const child = this.deriveAccount(i, bipNum)
+      /* eslint new-cap: ["error", { "newIsCap": false }] */
+      this.Signer.accounts.set(i, new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks))
+    }
   }
 
   return this
@@ -1212,12 +1223,14 @@ TrezorSigner.prototype.backup = function () {
     browserStorage = new LocalStorage('./scratch')
   }
   const key = this.Signer.network.bech32 + '_trezorsigner'
-  const xpubs = []
-  for (let i = 0; i < this.Signer.accounts.length; i++) {
-    xpubs[i] = this.Signer.accounts[i].getAccountPublicKey()
+
+  // Store accounts as object with index keys
+  const accountsData = {}
+  for (const [index, account] of this.Signer.accounts) {
+    accountsData[index] = account.getAccountPublicKey()
   }
-  const obj = { xpubArr: xpubs, numAccounts: this.Signer.accounts.length }
-  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.Signer.password).toString()
+
+  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(accountsData), this.Signer.password).toString()
   browserStorage.setItem(key, ciphertext)
 }
 HDSigner.prototype.backup = function () {
@@ -1228,7 +1241,14 @@ HDSigner.prototype.backup = function () {
     browserStorage = new LocalStorage('./scratch')
   }
   const key = this.Signer.network.bech32 + '_hdsigner'
-  const obj = { mnemonic: this.mnemonicOrZprv, numAccounts: this.Signer.accounts.length }
+
+  // Store mnemonic and account indexes for re-derivation
+  const accountIndexes = Array.from(this.Signer.accounts.keys()).sort((a, b) => a - b)
+  const obj = {
+    mnemonic: this.mnemonicOrZprv,
+    accountIndexes
+  }
+
   const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(obj), this.Signer.password).toString()
   browserStorage.setItem(key, ciphertext)
 }
@@ -1307,24 +1327,42 @@ Purpose: Create and derive a new account
 Param bipNum: Optional. If you want the address derivated in regard of an specific bip number
 Returns: Account index of new account
 */
-TrezorSigner.prototype.createAccount = async function (bipNum) {
+TrezorSigner.prototype.createAccountAtIndex = async function (index, bipNum) {
+  if (index < 0 || index > 2147483647) { // BIP32 limit
+    throw new Error('Invalid account index')
+  }
+
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
+
   return new Promise((resolve, reject) => {
-    this.deriveAccount(this.Signer.accounts.length, bipNum).then(child => {
-      this.Signer.accountIndex = this.Signer.accounts.length
-      this.Signer.accounts.push(new BIP84.fromZPub(child.descriptor, this.Signer.pubTypes, this.Signer.networks))
+    this.deriveAccount(index, bipNum).then(child => {
+      this.Signer.accountIndex = index
+      this.Signer.accounts.set(index, new BIP84.fromZPub(child.descriptor, this.Signer.pubTypes, this.Signer.networks))
       this.backup()
-      resolve(this.Signer.accountIndex)
+      resolve(index)
     }).catch(err => {
       console.error(err)
       reject(err)
-    }
-    )
+    })
   })
 }
 
-HDSigner.prototype.createAccount = function (bipNum, zprv) {
+TrezorSigner.prototype.createAccount = async function (bipNum) {
+  // Find the next index after the highest existing index
+  let nextIndex = 0
+  if (this.Signer.accounts.size > 0) {
+    const maxIndex = Math.max(...this.Signer.accounts.keys())
+    nextIndex = maxIndex + 1
+  }
+  return this.createAccountAtIndex(nextIndex, bipNum)
+}
+
+HDSigner.prototype.createAccountAtIndex = function (index, bipNum, zprv) {
+  if (index < 0 || index > 2147483647) { // BIP32 limit
+    throw new Error('Invalid account index')
+  }
+
   this.Signer.changeIndex = -1
   this.Signer.receivingIndex = -1
 
@@ -1333,13 +1371,22 @@ HDSigner.prototype.createAccount = function (bipNum, zprv) {
     ? this.mnemonicOrZprv
     : null
 
-  const accountIndex = this.Signer.accounts.length
-  const child = zPrivate || this.deriveAccount(accountIndex, bipNum)
-  this.Signer.accountIndex = accountIndex
+  const child = zPrivate || this.deriveAccount(index, bipNum)
+  this.Signer.accountIndex = index
   /* eslint new-cap: ["error", { "newIsCap": false }] */
-  this.Signer.accounts.push(new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks || syscoinNetworks))
+  this.Signer.accounts.set(index, new BIP84.fromZPrv(child, this.Signer.pubTypes, this.Signer.networks || syscoinNetworks))
   this.backup()
-  return this.Signer.accountIndex
+  return index
+}
+
+HDSigner.prototype.createAccount = function (bipNum, zprv) {
+  // Find the next index after the highest existing index
+  let nextIndex = 0
+  if (this.Signer.accounts.size > 0) {
+    const maxIndex = Math.max(...this.Signer.accounts.keys())
+    nextIndex = maxIndex + 1
+  }
+  return this.createAccountAtIndex(nextIndex, bipNum, zprv)
 }
 
 /* getAccountXpub
@@ -1347,7 +1394,11 @@ Purpose: Get XPUB for account, useful for public provider lookups based on XPUB 
 Returns: string representing hex XPUB
 */
 Signer.prototype.getAccountXpub = function () {
-  return this.accounts[this.accountIndex].getAccountPublicKey()
+  const account = this.accounts.get(this.accountIndex)
+  if (!account) {
+    throw new Error(`Account ${this.accountIndex} not found`)
+  }
+  return account.getAccountPublicKey()
 }
 TrezorSigner.prototype.getAccountXpub = function () {
   return this.Signer.getAccountXpub()
@@ -1398,6 +1449,20 @@ TrezorSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
 HDSigner.prototype.setLatestIndexesFromXPubTokens = function (tokens) {
   this.Signer.setLatestIndexesFromXPubTokens(tokens)
 }
+
+/* getAccountIndexes
+Purpose: Get all account indexes that have been created
+Returns: Array of account indexes sorted numerically
+*/
+Signer.prototype.getAccountIndexes = function () {
+  return Array.from(this.accounts.keys()).sort((a, b) => a - b)
+}
+TrezorSigner.prototype.getAccountIndexes = function () {
+  return this.Signer.getAccountIndexes()
+}
+HDSigner.prototype.getAccountIndexes = function () {
+  return this.Signer.getAccountIndexes()
+}
 Signer.prototype.createAddress = function (addressIndex, isChange, bipNum) {
   if (bipNum === undefined) {
     bipNum = 44
@@ -1406,7 +1471,11 @@ Signer.prototype.createAddress = function (addressIndex, isChange, bipNum) {
     this.pubTypes === bitcoinZPubTypes) {
     bipNum = 84
   }
-  return this.accounts[this.accountIndex].getAddress(addressIndex, isChange, bipNum)
+  const account = this.accounts.get(this.accountIndex)
+  if (!account) {
+    throw new Error(`Account ${this.accountIndex} not found`)
+  }
+  return account.getAddress(addressIndex, isChange, bipNum)
 }
 TrezorSigner.prototype.createAddress = function (addressIndex, isChange, bipNum) {
   return this.Signer.createAddress(addressIndex, isChange, bipNum)
@@ -1425,7 +1494,11 @@ HDSigner.prototype.createKeypair = function (addressIndex, isChange) {
   if (addressIndex) {
     recvIndex = addressIndex
   }
-  return this.Signer.accounts[this.Signer.accountIndex].getKeypair(recvIndex, isChange)
+  const account = this.Signer.accounts.get(this.Signer.accountIndex)
+  if (!account) {
+    throw new Error(`Account ${this.Signer.accountIndex} not found`)
+  }
+  return account.getKeypair(recvIndex, isChange)
 }
 
 /* getHDPath
@@ -1540,7 +1613,11 @@ HDSigner.prototype.getRootNode = function () {
 }
 
 TrezorSigner.prototype.getAccountNode = function () {
-  return bjs.bip32.fromBase58(this.Signer.accounts[this.Signer.accountIndex].zpub, this.Signer.network)
+  const account = this.Signer.accounts.get(this.Signer.accountIndex)
+  if (!account) {
+    throw new Error(`Account ${this.Signer.accountIndex} not found`)
+  }
+  return bjs.bip32.fromBase58(account.zpub, this.Signer.network)
 }
 
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
