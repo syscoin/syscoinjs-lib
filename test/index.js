@@ -671,3 +671,129 @@ tape.test('decodeRawTransaction - Create and decode PoDA PSBT with sjs library',
     assert.end()
   }
 })
+
+tape.test('Blockbook API retry mechanism', (assert) => {
+  const utils = require('../utils.js')
+
+  // Store original fetch
+  const originalFetch = global.fetch
+  let attemptCount = 0
+
+  // Test 1: Successful retry after 503 errors
+  global.fetch = async (url, options) => {
+    attemptCount++
+    if (attemptCount <= 2) {
+      // Return 503 for first 2 attempts
+      return {
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => ({ error: 'Service temporarily unavailable' })
+      }
+    } else {
+      // Success on 3rd attempt
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          blockbook: { coin: 'Syscoin' },
+          backend: { chain: 'syscoin' }
+        })
+      }
+    }
+  }
+
+  utils.fetchProviderInfo('https://test-blockbook.example.com').then(result => {
+    assert.ok(result, 'Should succeed after retries')
+    assert.equal(result.blockbook.coin, 'Syscoin', 'Should return correct data')
+    assert.equal(attemptCount, 3, 'Should have made 3 attempts')
+
+    // Reset for next test
+    attemptCount = 0
+
+    // Test 2: Max retries exceeded
+    global.fetch = async (url, options) => {
+      attemptCount++
+      return {
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => ({ error: 'Service permanently unavailable' })
+      }
+    }
+
+    utils.fetchProviderInfo('https://always-503.example.com').then(result => {
+      assert.fail('Should not succeed when always returning 503')
+      assert.end()
+    }).catch(error => {
+      assert.ok(error, 'Should fail after max retries')
+      assert.ok(error.message.includes('503'), 'Should include 503 in error message')
+      assert.equal(attemptCount, 4, 'Should have made 4 attempts (1 initial + 3 retries)')
+
+      // Test 3: 429 (Too Many Requests) should also trigger retry
+      attemptCount = 0
+      global.fetch = async (url, options) => {
+        attemptCount++
+        if (attemptCount <= 1) {
+          return {
+            ok: false,
+            status: 429,
+            statusText: 'Too Many Requests',
+            json: async () => ({ error: 'Rate limited' })
+          }
+        } else {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              blockbook: { coin: 'Bitcoin' },
+              backend: { chain: 'bitcoin' }
+            })
+          }
+        }
+      }
+
+      utils.fetchProviderInfo('https://rate-limited.example.com').then(result => {
+        assert.ok(result, 'Should succeed after 429 retry')
+        assert.equal(result.blockbook.coin, 'Bitcoin', 'Should return correct data')
+        assert.equal(attemptCount, 2, 'Should have made 2 attempts for 429')
+
+        // Test 4: Non-retryable errors should not retry
+        attemptCount = 0
+        global.fetch = async (url, options) => {
+          attemptCount++
+          return {
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+            json: async () => ({ error: 'Not found' })
+          }
+        }
+
+        utils.fetchProviderInfo('https://not-found.example.com').then(result => {
+          assert.equal(result, null, 'Should return null for non-retryable errors')
+          assert.equal(attemptCount, 1, 'Should have made only 1 attempt for 404')
+
+          // Restore original fetch and end test
+          global.fetch = originalFetch
+          assert.end()
+        }).catch(error => {
+          // Restore original fetch and end test
+          global.fetch = originalFetch
+          assert.fail('Unexpected error in non-retryable test: ' + error.message)
+          assert.end()
+        })
+      }).catch(error => {
+        global.fetch = originalFetch
+        assert.fail('Should not fail for 429 retry: ' + error.message)
+        assert.end()
+      })
+    })
+  }).catch(error => {
+    global.fetch = originalFetch
+    assert.fail('Should not fail for successful retry: ' + error.message)
+    assert.end()
+  })
+})

@@ -191,27 +191,39 @@ Syscoin.prototype.send = async function (psbt, SignerIn) {
       console.log('Trying direct fetch as fallback...')
     }
 
-    // Fallback to direct fetch with proper headers
+    // Fallback to direct fetch with proper headers and retry logic
     console.log('Broadcasting transaction via direct fetch...')
     console.log(bjstx.toHex())
-    // eslint-disable-next-line no-undef
-    const response = await fetch(`${this.blockbookURL}/api/v2/sendtx/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain'
-      },
-      body: bjstx.toHex()
+
+    const response = await utils.retryWithBackoff(async () => {
+      // eslint-disable-next-line no-undef
+      const fetchResponse = await fetch(`${this.blockbookURL}/api/v2/sendtx/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: bjstx.toHex()
+      })
+
+      if (!fetchResponse.ok) {
+        if (fetchResponse.status === 503 || fetchResponse.status === 429) {
+          const error = new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`)
+          error.status = fetchResponse.status
+          throw error
+        } else {
+          const responseData = await fetchResponse.text()
+          throw new Error(
+            `HTTP error! Status: ${fetchResponse.status}. Details: ${responseData}`
+          )
+        }
+      }
+
+      return fetchResponse
     })
 
     const responseData = await response.text()
     console.log('Response status:', response.status)
     console.log('Response data:', responseData)
-
-    if (!response.ok) {
-      throw new Error(
-         `HTTP error! Status: ${response.status}. Details: ${responseData}`
-      )
-    }
 
     let data
     try {

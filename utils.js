@@ -53,6 +53,44 @@ const axiosConfig = {
   withCredentials: true
 }
 
+// Retry configuration for blockbook API calls
+const MAX_RETRIES = 3
+const INITIAL_RETRY_DELAY = 1000 // 1 second
+
+/* retryWithBackoff
+Purpose: Generic retry function with exponential backoff for handling rate limiting (503 errors)
+Param fn: Required. Function to retry
+Param retryCount: Internal. Current retry attempt (starts at 0)
+Returns: Returns the result of the function or throws error after max retries
+*/
+async function retryWithBackoff (fn, retryCount = 0) {
+  try {
+    return await fn()
+  } catch (error) {
+    // Check if it's a retryable error (503 Service Unavailable or rate limiting)
+    const isRetryableError =
+      (error.response && (error.response.status === 503 || error.response.status === 429)) ||
+      (error.status === 503 || error.status === 429) ||
+      (error.message && (
+        error.message.includes('503') ||
+        error.message.includes('429') ||
+        error.message.includes('Service Unavailable') ||
+        error.message.includes('Too many requests') ||
+        error.message.includes('rate limit')
+      ))
+
+    if (isRetryableError && retryCount < MAX_RETRIES) {
+      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount)
+      console.log(`[syscoinjs-lib] Blockbook API rate limited, retrying after ${delay}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      return retryWithBackoff(fn, retryCount + 1)
+    }
+
+    // If not retryable or max retries reached, throw the error
+    throw error
+  }
+}
+
 /* fetchBackendAsset
 Purpose: Fetch asset information from backend Blockbook provider
 Param backendURL: Required. Fully qualified URL for blockbook
@@ -60,7 +98,7 @@ Param assetGuid: Required. Asset to fetch
 Returns: Returns JSON object in response, asset information object in JSON
 */
 async function fetchBackendAsset (backendURL, assetGuid) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -74,6 +112,10 @@ async function fetchBackendAsset (backendURL, assetGuid) {
         if (data.asset) {
           return data.asset
         }
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(blockbookURL + '/api/v2/asset/' + assetGuid + '?details=basic', axiosConfig)
@@ -82,9 +124,7 @@ async function fetchBackendAsset (backendURL, assetGuid) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchBackendListAssets
@@ -94,7 +134,7 @@ Param filter: Required. Asset to fetch via filter, will filter contract or symbo
 Returns: Returns JSON array in response, asset information objects in JSON
 */
 async function fetchBackendListAssets (backendURL, filter) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -103,9 +143,15 @@ async function fetchBackendListAssets (backendURL, filter) {
     if (fetch) {
       // eslint-disable-next-line no-undef
       const request = await fetch(blockbookURL + '/api/v2/assets/' + filter)
-      const data = await request.json()
-      if (data && data.asset) {
-        return data.asset
+      if (request.ok) {
+        const data = await request.json()
+        if (data && data.asset) {
+          return data.asset
+        }
+      } else if (request.status === 503 || request.status === 429) {
+        const error = new Error(`HTTP ${request.status}: ${request.statusText}`)
+        error.status = request.status
+        throw error
       }
     } else {
       const request = await axios.get(blockbookURL + '/api/v2/assets/' + filter, axiosConfig)
@@ -114,9 +160,7 @@ async function fetchBackendListAssets (backendURL, filter) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchBackendSPVProof
@@ -127,7 +171,7 @@ Param options: Optional. Optional queries based on https://github.com/syscoin/bl
 Returns: Returns JSON object in response, UTXO object array in JSON
 */
 async function fetchBackendSPVProof (backendURL, txid) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -140,6 +184,10 @@ async function fetchBackendSPVProof (backendURL, txid) {
       if (response.ok) {
         const data = await response.json()
         return data
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(url, axiosConfig)
@@ -148,9 +196,7 @@ async function fetchBackendSPVProof (backendURL, txid) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchBackendUTXOS
@@ -161,7 +207,7 @@ Param options: Optional. Optional queries based on https://github.com/syscoin/bl
 Returns: Returns JSON object in response, UTXO object array in JSON
 */
 async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -180,6 +226,10 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
           data.addressOrXpub = addressOrXpub
           return data
         }
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(url, axiosConfig)
@@ -189,9 +239,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchBackendAccount
@@ -204,7 +252,7 @@ Param mySignerObj: Optional. Signer object if you wish to update change/receivin
 Returns: Returns JSON object in response, account object in JSON
 */
 async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, mySignerObj) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -230,6 +278,10 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
         }
         data.addressOrXpub = addressOrXpub
         return data
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(url, axiosConfig)
@@ -242,10 +294,10 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
       }
     }
     return null
-  } catch (e) {
+  }).catch(e => {
     console.log('Exception: ' + e.message)
     return null
-  }
+  })
 }
 
 /* sendRawTransaction
@@ -256,7 +308,7 @@ Param mySignerObj: Optional. Signer object if you wish to update change/receivin
 Returns: Returns txid in response or error
 */
 async function sendRawTransaction (backendURL, txHex, mySignerObj) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -276,6 +328,10 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
           await fetchBackendAccount(blockbookURL, mySignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, mySignerObj)
         }
         return data
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex, axiosConfig)
@@ -287,9 +343,7 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchBackendRawTx
@@ -299,7 +353,7 @@ Param txid: Required. Transaction ID to get information for
 Returns: Returns JSON object in response, transaction object in JSON
 */
 async function fetchBackendRawTx (backendURL, txid) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -313,6 +367,10 @@ async function fetchBackendRawTx (backendURL, txid) {
         if (data) {
           return data
         }
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(blockbookURL + '/api/v2/tx/' + txid, axiosConfig)
@@ -321,9 +379,7 @@ async function fetchBackendRawTx (backendURL, txid) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchProviderInfo
@@ -331,7 +387,7 @@ Purpose: Get prover info including blockbook and backend data
 Returns: Returns JSON object in response, provider object in JSON
 */
 async function fetchProviderInfo (backendURL) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -345,6 +401,10 @@ async function fetchProviderInfo (backendURL) {
         if (data) {
           return data
         }
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(blockbookURL + '/api/v2', axiosConfig)
@@ -353,9 +413,7 @@ async function fetchProviderInfo (backendURL) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchBackendBlock
@@ -363,7 +421,7 @@ Purpose: Get block from backend
 Returns: Returns JSON object in response, block object in JSON
 */
 async function fetchBackendBlock (backendURL, blockhash) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -377,6 +435,10 @@ async function fetchBackendBlock (backendURL, blockhash) {
         if (data) {
           return data
         }
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(blockbookURL + '/api/v2/block/' + blockhash, axiosConfig)
@@ -385,9 +447,7 @@ async function fetchBackendBlock (backendURL, blockhash) {
       }
     }
     return null
-  } catch (e) {
-    return e
-  }
+  })
 }
 
 /* fetchEstimateFee
@@ -398,7 +458,7 @@ Param options: Optional. possible value conservative=true or false for conservat
 Returns: Returns fee response in integer. Fee rate in coins per kilobytes.
 */
 async function fetchEstimateFee (backendURL, blocks, options) {
-  try {
+  return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -423,6 +483,10 @@ async function fetchEstimateFee (backendURL, blocks, options) {
           // Return coins(SYS) per KB as-is (the existing code will divide by 1024)
           return feeInSysPerKB
         }
+      } else if (response.status === 503 || response.status === 429) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.get(url, axiosConfig)
@@ -435,9 +499,9 @@ async function fetchEstimateFee (backendURL, blocks, options) {
       }
     }
     return 0.001 // Default fallback: 0.001 SYS/KB
-  } catch (e) {
+  }).catch(e => {
     return 0.001
-  }
+  })
 }
 
 /* signPSBTWithWIF
