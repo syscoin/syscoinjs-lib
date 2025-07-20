@@ -332,6 +332,20 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
         const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
         error.status = response.status
         throw error
+      } else {
+        // Handle other error status codes (400, 404, 500, etc.)
+        let errorText = response.statusText
+        try {
+          const errorData = await response.text()
+          if (errorData) {
+            errorText = errorData
+          }
+        } catch (e) {
+          // If we can't read the response body, use the status text
+        }
+        const error = new Error(`HTTP error! Status: ${response.status}. Details: ${errorText}`)
+        error.status = response.status
+        throw error
       }
     } else {
       const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex, axiosConfig)

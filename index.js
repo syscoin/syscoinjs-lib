@@ -212,9 +212,16 @@ Syscoin.prototype.send = async function (psbt, SignerIn) {
           throw error
         } else {
           const responseData = await fetchResponse.text()
-          throw new Error(
-            `HTTP error! Status: ${fetchResponse.status}. Details: ${responseData}`
-          )
+          try {
+            const jsonData = JSON.parse(responseData)
+            throw new Error(
+              `HTTP error! Status: ${fetchResponse.status}. Details: ${JSON.stringify(jsonData)}`
+            )
+          } catch (e) {
+            throw new Error(
+              `HTTP error! Status: ${fetchResponse.status}. Details: ${responseData}`
+            )
+          }
         }
       }
 
