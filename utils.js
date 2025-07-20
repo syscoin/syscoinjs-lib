@@ -1936,5 +1936,6 @@ module.exports = {
   setPoDA,
   copyPSBT,
   importPsbtFromJson,
-  exportPsbtToJson
+  exportPsbtToJson,
+  retryWithBackoff
 }
