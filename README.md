@@ -101,9 +101,9 @@ These are some supporting functions used to support the library like working wit
 - [buildEthProof()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L190)
 - [sanitizeBlockbookUTXOs()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L277)
 
-These are the HDSigner/TrezorSigner exported functions, HDSigner is used to manage creating addresses and sign transactions internally using your XPUB (HD wallets). TrezorSigner is used to manage creating addresses and signing transactions via Trezor HW Wallet. BIP44/BIP84 are supported. P2WPKH, P2WSH, P2PKH, P2SH:
+These are the HDSigner exported functions, HDSigner is used to manage creating addresses and sign transactions internally using your XPUB (HD wallets). BIP44/BIP84 are supported. P2WPKH, P2WSH, P2PKH, P2SH:
 
-- [HDSigner()/TrezorSigner()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L378)
+- [HDSigner()()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L378)
 - [getMasterFingerprint()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L410)
 - [deriveAccount()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L419)
 - [setAccountIndex()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L432)
@@ -258,7 +258,6 @@ This library consumes [syscointx-js](https://github.com/syscoin/syscointx-js) fo
 - [bitcoin-ops](https://github.com/bitcoinjs/bitcoin-ops) - A javascript Bitcoin OP code library for referencing script OP codes for Bitcoin's script
 - [varuint-bitcoin](https://github.com/bitcoinjs/varuint-bitcoin) - encode/decode number as bitcoin variable length integer
 - [BIP84](https://github.com/Anderson-Juhasc/bip84) - P2WPKH/P2WSH HD wallet derivation library for BECH32 addresses
-- [crypto-js](https://github.com/brix/crypto-js) - JavaScript library of crypto standards. Used for AES Encrypt/Decrypt of sensitive HD wallet info to local storage.
 - [axios](https://github.com/axios/axios) - Promise based HTTP client for the browser and node.js. Used for backend communication with a Blockbook API
 - [eth-object](https://github.com/zmitton/eth-object) - Ethereum Trie / LevelDB data from hex, buffers and rpc.
 - [eth-proof](https://github.com/zmitton/eth-proof) - Generalized merkle-patricia-proof module that supports ethereum state proofs. Used for Eth SPV proofs.
