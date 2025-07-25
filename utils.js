@@ -8,11 +8,35 @@ const varuint = require('varuint-bitcoin')
 const { VerifyProof, GetProof } = require('eth-proof')
 const { encode } = require('eth-util-lite')
 const { Log } = require('eth-object')
-const Web3 = require('web3')
+const ethers = require('ethers')
 const syscointx = require('syscointx-js')
 const utxoLib = require('@trezor/utxo-lib')
 const TrezorConnect = require('trezor-connect').default
-const web3 = new Web3()
+
+// Web3 utility replacements using ethers and BN.js
+const web3Utils = {
+  BN,
+  toBN: (value) => new BN(value),
+  hexToNumberString: (hex) => new BN(hex.replace('0x', ''), 16).toString(10),
+  sha3: (data) => ethers.utils.keccak256(data)
+}
+
+// Web3 ABI replacement using ethers
+const web3Eth = {
+  abi: {
+    decodeParameters: (types, data) => {
+      const abiCoder = new ethers.utils.AbiCoder()
+      return abiCoder.decode(types, data)
+    }
+  }
+}
+
+// Create web3-compatible object for backward compatibility
+const web3 = {
+  utils: web3Utils,
+  eth: web3Eth
+}
+
 const bitcoinNetworks = { mainnet: bjs.networks.bitcoin, testnet: bjs.networks.testnet }
 /* global localStorage */
 const syscoinNetworks = {
@@ -565,7 +589,7 @@ Returns: Returns JSON object in response, SPV proof object in JSON
 */
 async function buildEthProof (assetOpts) {
   const ethProof = new GetProof(assetOpts.web3url)
-  const web3Provider = new Web3(assetOpts.web3url)
+  const web3Provider = new ethers.providers.JsonRpcProvider(assetOpts.web3url)
   try {
     const txHash = assetOpts.ethtxid.startsWith('0x') ? assetOpts.ethtxid : `0x${assetOpts.ethtxid}`
     let result = await ethProof.transactionProof(txHash)
@@ -580,7 +604,7 @@ async function buildEthProof (assetOpts) {
     const txparentnodes = encode(result.txProof).toString('hex')
     const txpath = encode(result.txIndex).toString('hex')
     const blocknumber = parseInt(result.header[8].toString('hex'), 16)
-    const block = await web3Provider.eth.getBlock(blocknumber)
+    const block = await web3Provider.getBlock(blocknumber)
     const blockhash = block.hash.substring(2) // remove hex prefix
     const receiptroot = result.header[5].toString('hex')
     result = await ethProof.receiptProof(txHash)
