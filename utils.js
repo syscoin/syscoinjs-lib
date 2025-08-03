@@ -7,7 +7,9 @@ const varuint = require('varuint-bitcoin')
 const { VerifyProof, GetProof } = require('eth-proof')
 const { encode } = require('eth-util-lite')
 const { Log } = require('eth-object')
-const ethers = require('ethers')
+const { keccak256 } = require('@ethersproject/keccak256')
+const { AbiCoder } = require('@ethersproject/abi')
+const { JsonRpcProvider } = require('@ethersproject/providers')
 const syscointx = require('syscointx-js')
 
 // Web3 utility replacements using ethers and BN.js
@@ -15,14 +17,14 @@ const web3Utils = {
   BN,
   toBN: (value) => new BN(value),
   hexToNumberString: (hex) => new BN(hex.replace('0x', ''), 16).toString(10),
-  sha3: (data) => ethers.utils.keccak256(data)
+  sha3: (data) => keccak256(data)
 }
 
 // Web3 ABI replacement using ethers
 const web3Eth = {
   abi: {
     decodeParameters: (types, data) => {
-      const abiCoder = new ethers.utils.AbiCoder()
+      const abiCoder = new AbiCoder()
       return abiCoder.decode(types, data)
     }
   }
@@ -583,7 +585,7 @@ Returns: Returns JSON object in response, SPV proof object in JSON
 */
 async function buildEthProof (assetOpts) {
   const ethProof = new GetProof(assetOpts.web3url)
-  const web3Provider = new ethers.providers.JsonRpcProvider(assetOpts.web3url)
+  const web3Provider = new JsonRpcProvider(assetOpts.web3url)
   try {
     const txHash = assetOpts.ethtxid.startsWith('0x') ? assetOpts.ethtxid : `0x${assetOpts.ethtxid}`
     let result = await ethProof.transactionProof(txHash)
