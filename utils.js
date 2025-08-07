@@ -917,14 +917,29 @@ HDSigner.prototype.signPSBT = async function (psbt, pathIn) {
 
   for (let i = 0; i < txInputs.length; i++) {
     const dataInput = psbt.data.inputs[i]
-    if (pathIn || (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 1 && dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
-      const keyPath = pathIn || dataInput.unknownKeyVals[1].value.toString()
+
+    // Find path and address from unknownKeyVals by searching for the keys, not using hardcoded indices
+    let pathFromInput = null
+    let addressFromInput = null
+
+    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 0) {
+      for (const kv of dataInput.unknownKeyVals) {
+        if (kv.key.equals(Buffer.from('path'))) {
+          pathFromInput = kv.value.toString()
+        } else if (kv.key.equals(Buffer.from('address'))) {
+          addressFromInput = kv.value.toString()
+        }
+      }
+    }
+
+    if (pathIn || (pathFromInput && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
+      const keyPath = pathIn || pathFromInput
       // For zprv imports, we need to adjust the path by removing the account-level prefix
       const path = this.importMethod === 'fromBase58' ? keyPath.slice(13) : keyPath
 
       const pubkey = this.derivePubKey(path)
       const address = this.getAddressFromPubKey(pubkey)
-      if (pubkey && (pathIn || dataInput.unknownKeyVals[0].value.toString() === address)) {
+      if (pubkey && (pathIn || addressFromInput === address)) {
         dataInput.bip32Derivation = [
           {
             masterFingerprint: rootNode.fingerprint,
