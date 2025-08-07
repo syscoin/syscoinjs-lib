@@ -320,6 +320,7 @@ tape.test('decodeRawTransaction - Syscoin Asset Allocation Send', (assert) => {
   assert.ok(decoded.syscoin, 'Should have syscoin-specific data')
   assert.equal(decoded.syscoin.txtype, 'assetallocation_send', 'Should have correct transaction type')
   assert.ok(decoded.syscoin.allocations, 'Should have allocation data')
+  assert.equal(decoded.syscoin.allocations.assets[0].assetGuid, '2529870008', 'Should have correct asset GUID')
   assert.end()
 })
 
@@ -592,6 +593,226 @@ tape.test('decodeRawTransaction - Create and decode PoDA transaction', async (as
     assert.fail('Should not throw error: ' + err.message)
     assert.end()
   }
+})
+
+tape.test('decodeRawTransaction - Asset allocation with assetInfo metadata', async (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner, null, syscointx.utils.syscoinNetworks.testnet)
+
+  // Generate addresses
+  const changeAddress = await HDSigner.getNewReceivingAddress()
+  const receivingAddress = await HDSigner.getNewReceivingAddress()
+
+  // Create asset map for SYSX (guid: 123456)
+  const assetMap = new Map()
+  const assetGuid = '123456'
+  assetMap.set(assetGuid, {
+    changeAddress,
+    outputs: [{
+      value: new sjs.utils.BN(200000000), // 2 SYSX
+      address: receivingAddress
+    }]
+  })
+
+  // Mock the createAssetTransaction to return a result with inputs/outputs that have assetInfo
+  const mockRes = {
+    txVersion: syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND,
+    inputs: [{
+      txId: Buffer.from('efabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890', 'hex').reverse(),
+      vout: 0,
+      value: new sjs.utils.BN(1000),
+      address: changeAddress,
+      assetInfo: {
+        assetGuid,
+        value: new sjs.utils.BN(500000000)
+      }
+    }],
+    outputs: [
+      {
+        address: receivingAddress,
+        value: new sjs.utils.BN(1000),
+        assetInfo: {
+          assetGuid,
+          value: new sjs.utils.BN(200000000)
+        }
+      },
+      {
+        address: changeAddress,
+        value: new sjs.utils.BN(1000),
+        assetInfo: {
+          assetGuid,
+          value: new sjs.utils.BN(300000000) // 3 SYSX change
+        }
+      },
+      {
+        script: bitcoin.payments.embed({ data: [Buffer.from('74657374', 'hex')] }).output, // 'test' in hex
+        value: new sjs.utils.BN(0)
+      }
+    ],
+    fee: new sjs.utils.BN(1000)
+  }
+
+  try {
+    // Create PSBT from the mock result
+    const psbt = await syscoinjs.createPSBTFromRes(mockRes)
+
+    // Check that assetInfo was added to PSBT metadata
+    assert.ok(psbt.data.inputs[0].unknownKeyVals, 'Input should have unknown key vals')
+
+    // Find assetInfo in metadata
+    let inputAssetInfo = null
+    psbt.data.inputs[0].unknownKeyVals.forEach(kv => {
+      if (kv.key.toString() === 'assetInfo') {
+        inputAssetInfo = JSON.parse(kv.value.toString())
+      }
+    })
+    assert.ok(inputAssetInfo, 'Input should have assetInfo metadata')
+    assert.equal(inputAssetInfo.assetGuid, assetGuid, 'Input assetInfo should have correct guid')
+    assert.equal(inputAssetInfo.value.toString(), '500000000', 'Input assetInfo should have correct value')
+
+    // Check output metadata
+    assert.ok(psbt.data.outputs[0].unknownKeyVals, 'Output 0 should have unknown key vals')
+    let outputAssetInfo = null
+    psbt.data.outputs[0].unknownKeyVals.forEach(kv => {
+      if (kv.key.toString() === 'assetInfo') {
+        outputAssetInfo = JSON.parse(kv.value.toString())
+      }
+    })
+    assert.ok(outputAssetInfo, 'Output should have assetInfo metadata')
+    assert.equal(outputAssetInfo.assetGuid, assetGuid, 'Output assetInfo should have correct guid')
+
+    // Now decode the PSBT and verify assetInfo appears on vin/vout
+    const decoded = syscoinjs.decodeRawTransaction(psbt)
+
+    assert.ok(decoded, 'Should decode the PSBT')
+    assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND, 'Should have correct version')
+    assert.equal(decoded.syscoin.txtype, 'assetallocation_send', 'Should have correct transaction type')
+
+    // Check that assetInfo appears on inputs
+    assert.ok(decoded.vin[0].assetInfo, 'Input should have assetInfo')
+    assert.equal(decoded.vin[0].assetInfo.assetGuid, assetGuid, 'Input assetInfo should have correct guid')
+    assert.equal(decoded.vin[0].assetInfo.value.toString(), '500000000', 'Input assetInfo should have correct value')
+
+    // Check that assetInfo appears on outputs
+    assert.ok(decoded.vout[0].assetInfo, 'Output 0 should have assetInfo')
+    assert.equal(decoded.vout[0].assetInfo.assetGuid, assetGuid, 'Output 0 assetInfo should have correct guid')
+    assert.equal(decoded.vout[0].assetInfo.value.toString(), '200000000', 'Output 0 assetInfo should have correct value')
+
+    assert.ok(decoded.vout[1].assetInfo, 'Output 1 (change) should have assetInfo')
+    assert.equal(decoded.vout[1].assetInfo.assetGuid, assetGuid, 'Output 1 assetInfo should have correct guid')
+    assert.equal(decoded.vout[1].assetInfo.value.toString(), '300000000', 'Output 1 assetInfo should have correct value')
+
+    // Output 2 (OP_RETURN) should not have assetInfo
+    assert.equal(decoded.vout[2].assetInfo, undefined, 'OP_RETURN output should not have assetInfo')
+
+    assert.end()
+  } catch (err) {
+    assert.fail('Should not throw error: ' + err.message)
+    assert.end()
+  }
+})
+
+tape.test('Full flow: Create asset transaction from UTXOs with assetInfo', async (assert) => {
+  const HDSigner = new sjs.utils.HDSigner('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about', null, true)
+  const syscoinjs = new sjs.SyscoinJSLib(HDSigner, null, syscointx.utils.syscoinNetworks.testnet)
+
+  // Generate addresses
+  const changeAddress = await HDSigner.getNewReceivingAddress()
+  const receivingAddress = await HDSigner.getNewReceivingAddress()
+
+  // Create UTXOs with asset info - simulating what comes from the backend
+  const p2wpkh = bitcoin.payments.p2wpkh({ address: changeAddress, network: syscoinjs.network })
+  const utxos = {
+    utxos: [{
+      txid: 'abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ef',
+      vout: 0,
+      address: changeAddress,
+      value: new sjs.utils.BN(100000), // 0.001 SYS for gas
+      path: "m/84'/1'/0'/0/0",
+      script: p2wpkh.output.toString('hex'),
+      type: 'BECH32',
+      assetInfo: {
+        assetGuid: '123456',
+        value: new sjs.utils.BN(500000000) // 5 SYSX input
+      }
+    }],
+    assets: [{
+      assetGuid: '123456',
+      symbol: 'SYSX',
+      decimals: 8
+    }]
+  }
+
+  // Create asset map for the transaction
+  const assetMap = new Map()
+  assetMap.set('123456', {
+    changeAddress,
+    outputs: [{
+      value: new sjs.utils.BN(200000000), // 2 SYSX to send
+      address: receivingAddress
+    }]
+  })
+
+  const txOpts = { rbf: true }
+  const feeRate = new sjs.utils.BN(10)
+
+  // Step 1: Use syscointx to create the transaction
+  const result = syscointx.assetAllocationSend(txOpts, utxos, assetMap, changeAddress, feeRate)
+  assert.ok(result.success, 'Transaction creation should succeed')
+  assert.equal(result.txVersion, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND, 'Should be asset allocation send')
+
+  // Step 2: Fix the format difference between syscointx output and syscoinjs input
+  // syscointx returns { txid: string, ... } but createPSBTFromRes expects { txId: Buffer, ... }
+  const formattedResult = {
+    ...result,
+    inputs: result.inputs.map(input => ({
+      ...input,
+      txId: Buffer.from(input.txid, 'hex').reverse(), // Convert string to Buffer and reverse
+      assetInfo: input.assetInfo // This should already be present from syscointx
+    }))
+  }
+
+  // Step 3: Create PSBT from the result
+  const psbt = await syscoinjs.createPSBTFromRes(formattedResult)
+
+  // Step 4: Verify assetInfo was added to PSBT metadata
+  assert.ok(psbt.data.inputs[0].unknownKeyVals, 'Input should have unknownKeyVals')
+  const inputAssetInfo = psbt.data.inputs[0].unknownKeyVals.find(kv => kv.key.toString() === 'assetInfo')
+  assert.ok(inputAssetInfo, 'Input should have assetInfo metadata')
+  const inputData = JSON.parse(inputAssetInfo.value.toString())
+  assert.equal(inputData.assetGuid, '123456', 'Input assetInfo should have correct assetGuid')
+  assert.equal(inputData.value, '500000000', 'Input assetInfo should have correct value')
+
+  // Check output assetInfo metadata
+  assert.ok(psbt.data.outputs[0].unknownKeyVals, 'Output 0 should have unknownKeyVals')
+  const outputAssetInfo = psbt.data.outputs[0].unknownKeyVals.find(kv => kv.key.toString() === 'assetInfo')
+  assert.ok(outputAssetInfo, 'Output 0 should have assetInfo metadata')
+  const outputData = JSON.parse(outputAssetInfo.value.toString())
+  assert.equal(outputData.assetGuid, '123456', 'Output 0 assetInfo should have correct assetGuid')
+  assert.equal(outputData.value, '200000000', 'Output 0 assetInfo should have correct value')
+
+  // Step 5: Decode the PSBT to verify assetInfo is attached to vin/vout
+  const decoded = syscoinjs.decodeRawTransaction(psbt)
+
+  assert.equal(decoded.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND, 'Should be asset allocation send')
+  assert.equal(decoded.syscoin.txtype, 'assetallocation_send', 'Should have correct txtype')
+
+  // Verify assetInfo is attached to inputs
+  assert.ok(decoded.vin[0].assetInfo, 'Input should have assetInfo attached from PSBT metadata')
+  assert.equal(decoded.vin[0].assetInfo.assetGuid, '123456', 'Input assetInfo should have correct assetGuid')
+  assert.equal(decoded.vin[0].assetInfo.value, '500000000', 'Input assetInfo should have correct value')
+
+  // Verify assetInfo is attached to outputs
+  assert.ok(decoded.vout[0].assetInfo, 'Output 0 should have assetInfo attached')
+  assert.equal(decoded.vout[0].assetInfo.assetGuid, '123456', 'Output 0 assetInfo should have correct assetGuid')
+  assert.equal(decoded.vout[0].assetInfo.value, '200000000', 'Output 0 assetInfo should have correct value')
+
+  // Change output should also have assetInfo
+  assert.ok(decoded.vout[2].assetInfo, 'Output 2 (change) should have assetInfo attached')
+  assert.equal(decoded.vout[2].assetInfo.assetGuid, '123456', 'Output 2 assetInfo should have correct assetGuid')
+  assert.equal(decoded.vout[2].assetInfo.value, '300000000', 'Output 2 assetInfo should have correct value')
+
+  assert.end()
 })
 
 tape.test('decodeRawTransaction - Create and decode PoDA PSBT with sjs library', async (assert) => {

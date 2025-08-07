@@ -149,13 +149,37 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
     if (input.path) {
       psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
     }
+    // Add asset information if available
+    if (input.assetInfo) {
+      // Convert BN values to strings for JSON serialization
+      const assetData = {
+        ...input.assetInfo,
+        value: input.assetInfo.value?.toString ? input.assetInfo.value.toString() : input.assetInfo.value
+      }
+      psbt.addUnknownKeyValToInput(i, {
+        key: Buffer.from('assetInfo'),
+        value: Buffer.from(JSON.stringify(assetData))
+      })
+    }
   }
-  res.outputs.forEach(output => {
+  res.outputs.forEach((output, index) => {
     psbt.addOutput({
       script: output.script,
       address: output.script ? null : output.address,
       value: output.value.toNumber()
     })
+    // Add asset information if available
+    if (output.assetInfo) {
+      // Convert BN values to strings for JSON serialization
+      const assetData = {
+        ...output.assetInfo,
+        value: output.assetInfo.value?.toString ? output.assetInfo.value.toString() : output.assetInfo.value
+      }
+      psbt.addUnknownKeyValToOutput(index, {
+        key: Buffer.from('assetInfo'),
+        value: Buffer.from(JSON.stringify(assetData))
+      })
+    }
   })
   return psbt
 }
@@ -693,9 +717,39 @@ Returns: Comprehensive JSON object with Bitcoin transaction details and Syscoin-
 */
 Syscoin.prototype.decodeRawTransaction = function (psbtOrTx) {
   let tx = null
+  const inputAssetInfo = []
+  const outputAssetInfo = []
 
   // Handle PSBT input - check for PSBT properties instead of constructor name
   if (psbtOrTx && psbtOrTx.data && psbtOrTx.data.inputs && psbtOrTx.data.outputs) {
+    // Extract asset metadata from PSBT proprietary fields
+    psbtOrTx.data.inputs.forEach((input, index) => {
+      if (input.unknownKeyVals) {
+        input.unknownKeyVals.forEach(kv => {
+          if (kv.key.toString() === 'assetInfo') {
+            try {
+              inputAssetInfo[index] = JSON.parse(kv.value.toString())
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        })
+      }
+    })
+
+    psbtOrTx.data.outputs.forEach((output, index) => {
+      if (output.unknownKeyVals) {
+        output.unknownKeyVals.forEach(kv => {
+          if (kv.key.toString() === 'assetInfo') {
+            try {
+              outputAssetInfo[index] = JSON.parse(kv.value.toString())
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        })
+      }
+    })
     try {
       // Try to extract complete transaction
       tx = psbtOrTx.extractTransaction(true, true)
@@ -736,8 +790,28 @@ Syscoin.prototype.decodeRawTransaction = function (psbtOrTx) {
     throw new Error('Input must be a PSBT or transaction object')
   }
 
-  // Use syscointx to decode the transaction
-  return syscointx.decodeRawTransaction(tx, this.network)
+  // Use syscointx to decode the transaction with asset info
+  const decoded = syscointx.decodeRawTransaction(tx, this.network)
+
+  // Add input asset info from PSBT metadata if available
+  if (inputAssetInfo.length > 0) {
+    decoded.vin.forEach((vin, index) => {
+      if (inputAssetInfo[index]) {
+        vin.assetInfo = inputAssetInfo[index]
+      }
+    })
+  }
+
+  // Add output asset info from PSBT metadata if available
+  if (outputAssetInfo.length > 0) {
+    decoded.vout.forEach((vout, index) => {
+      if (outputAssetInfo[index]) {
+        vout.assetInfo = outputAssetInfo[index]
+      }
+    })
+  }
+
+  return decoded
 }
 
 module.exports = {
