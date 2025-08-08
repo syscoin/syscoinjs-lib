@@ -69,9 +69,10 @@ const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
 const VaultManager = '0x7904299b3D3dC1b03d1DdEb45E9fDF3576aCBd5f'
 const tokenFreezeFunction = '0b8914e27c9a6c88836bc5547f82ccf331142c761f84e9f1d36934a6a31eefad' // token freeze function signature
-const axiosConfig = {
-  withCredentials: true
-}
+const axiosConfig = { withCredentials: false }
+
+// Detect availability of fetch in a safe, cross-environment way
+const hasFetch = (typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function')
 
 // Retry configuration for blockbook API calls
 const MAX_RETRIES = 3
@@ -123,9 +124,7 @@ async function fetchBackendAsset (backendURL, assetGuid) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(`${blockbookURL}/api/v2/asset/${assetGuid}?details=basic`)
       if (response.ok) {
         const data = await response.json()
@@ -159,9 +158,7 @@ async function fetchBackendListAssets (backendURL, filter) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const request = await fetch(blockbookURL + '/api/v2/assets/' + filter)
       if (request.ok) {
         const data = await request.json()
@@ -197,9 +194,7 @@ async function fetchBackendSPVProof (backendURL, txid) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     const url = blockbookURL + '/api/v2/getspvproof/' + txid
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
@@ -236,9 +231,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     if (options) {
       url += '?' + options
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
@@ -287,9 +280,7 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     if (options) {
       url += '?' + options
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
@@ -333,13 +324,11 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
+    if (hasFetch) {
       const requestOptions = {
         method: 'POST',
         body: txHex
       }
-      // eslint-disable-next-line no-undef
       const response = await fetch(blockbookURL + '/api/v2/sendtx/', requestOptions)
 
       if (response.ok) {
@@ -392,9 +381,7 @@ async function fetchBackendRawTx (backendURL, txid) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(blockbookURL + '/api/v2/tx/' + txid)
       if (response.ok) {
         const data = await response.json()
@@ -426,9 +413,7 @@ async function fetchProviderInfo (backendURL) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(blockbookURL + '/api/v2')
       if (response.ok) {
         const data = await response.json()
@@ -460,9 +445,7 @@ async function fetchBackendBlock (backendURL, blockhash) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(blockbookURL + '/api/v2/block/' + blockhash)
       if (response.ok) {
         const data = await response.json()
@@ -501,9 +484,7 @@ async function fetchEstimateFee (backendURL, blocks, options) {
     if (options) {
       url += '?' + options
     }
-    // eslint-disable-next-line no-undef
-    if (fetch) {
-      // eslint-disable-next-line no-undef
+    if (hasFetch) {
       const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()

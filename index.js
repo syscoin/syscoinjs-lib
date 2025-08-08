@@ -194,82 +194,20 @@ Syscoin.prototype.send = async function (psbt, SignerIn) {
   }
   if (this.blockbookURL) {
     utils.setPoDA(bjstx, psbt.blobData)
-    try {
-      const response = await utils.sendRawTransaction(this.blockbookURL, bjstx.toHex(), SignerIn)
-      if (response && response.result) {
-        console.log('Transaction broadcast successful:', response.result)
-        return psbt
-      } else if (response && response.error) {
-        console.log('Transaction broadcast received error:', response.error)
-        throw Object.assign(
-          new Error(JSON.stringify(response.error)),
-          { code: 402 }
-        )
-      } else {
-        console.log(
-          'No valid response from utils.sendRawTransaction, trying direct fetch...'
-        )
-      }
-    } catch (utilsError) {
-      console.log('Error using utils.sendRawTransaction:', utilsError.message)
-      console.log('Trying direct fetch as fallback...')
-    }
-
-    // Fallback to direct fetch with proper headers and retry logic
-    console.log('Broadcasting transaction via direct fetch...')
-    console.log(bjstx.toHex())
-
-    const response = await utils.retryWithBackoff(async () => {
-      // eslint-disable-next-line no-undef
-      const fetchResponse = await fetch(`${this.blockbookURL}/api/v2/sendtx/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain'
-        },
-        body: bjstx.toHex()
-      })
-
-      if (!fetchResponse.ok) {
-        if (fetchResponse.status === 503 || fetchResponse.status === 429) {
-          const error = new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`)
-          error.status = fetchResponse.status
-          throw error
-        } else {
-          const responseData = await fetchResponse.text()
-          try {
-            const jsonData = JSON.parse(responseData)
-            throw new Error(
-              `HTTP error! Status: ${fetchResponse.status}. Details: ${JSON.stringify(jsonData)}`
-            )
-          } catch (e) {
-            throw new Error(
-              `HTTP error! Status: ${fetchResponse.status}. Details: ${responseData}`
-            )
-          }
-        }
-      }
-
-      return fetchResponse
-    })
-
-    const responseData = await response.text()
-    console.log('Response status:', response.status)
-    console.log('Response data:', responseData)
-
-    let data
-    try {
-      data = JSON.parse(responseData)
-    } catch (e) {
-      console.log('Response is not JSON, using as-is')
+    const response = await utils.sendRawTransaction(this.blockbookURL, bjstx.toHex(), SignerIn)
+    if (response && response.result) {
+      console.log('Transaction broadcast successful:', response.result)
+      return psbt
+    } else if (response && response.error) {
+      console.log('Transaction broadcast received error:', response.error)
       throw Object.assign(
-        new Error(`Transaction broadcast error: ${JSON.stringify(e)}`),
+        new Error(JSON.stringify(response.error)),
         { code: 402 }
       )
-    }
-
-    if (data.error) {
+    } else {
+      // No valid response from sendRawTransaction
       throw Object.assign(
-        new Error(`Transaction broadcast error: ${JSON.stringify(data.error)}`),
+        new Error('No valid response from transaction broadcast'),
         { code: 402 }
       )
     }
