@@ -15,8 +15,39 @@ const syscointx = require('syscointx-js')
 // Web3 utility replacements using ethers and BN.js
 const web3Utils = {
   BN,
-  toBN: (value) => new BN(value),
-  hexToNumberString: (hex) => new BN(hex.replace('0x', ''), 16).toString(10),
+  toBN: (value) => {
+    if (value == null) return new BN(0)
+    if (BN.isBN && BN.isBN(value)) return value
+    // ethers.js BigNumber (v5)
+    if (typeof value === 'object' && value._isBigNumber && typeof value.toString === 'function') {
+      return new BN(value.toString())
+    }
+    // BigInt support
+    if (typeof value === 'bigint') {
+      return new BN(value.toString())
+    }
+    // Hex or decimal string
+    if (typeof value === 'string') {
+      if (value.startsWith('0x') || value.startsWith('0X')) {
+        return new BN(value.slice(2), 16)
+      }
+      return new BN(value, 10)
+    }
+    // Numbers (note: limited precision for large values)
+    if (typeof value === 'number') {
+      return new BN(value.toString(), 10)
+    }
+    // Buffers / typed arrays / array-like
+    if (Buffer.isBuffer(value)) {
+      return new BN(value.toString('hex'), 16)
+    }
+    if (value && (value instanceof Uint8Array || Array.isArray(value))) {
+      return new BN(Buffer.from(value).toString('hex'), 16)
+    }
+    // Fallback
+    return new BN(value)
+  },
+  hexToNumberString: (hex) => new BN(hex.replace(/^0x/i, ''), 16).toString(10),
   sha3: (data) => keccak256(data)
 }
 
@@ -125,7 +156,7 @@ async function fetchBackendAsset (backendURL, assetGuid) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     if (hasFetch) {
-      const response = await fetch(`${blockbookURL}/api/v2/asset/${assetGuid}?details=basic`)
+      const response = await globalThis.fetch(`${blockbookURL}/api/v2/asset/${assetGuid}?details=basic`)
       if (response.ok) {
         const data = await response.json()
         if (data.asset) {
@@ -159,7 +190,7 @@ async function fetchBackendListAssets (backendURL, filter) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     if (hasFetch) {
-      const request = await fetch(blockbookURL + '/api/v2/assets/' + filter)
+      const request = await globalThis.fetch(blockbookURL + '/api/v2/assets/' + filter)
       if (request.ok) {
         const data = await request.json()
         if (data && data.asset) {
@@ -195,7 +226,7 @@ async function fetchBackendSPVProof (backendURL, txid) {
     }
     const url = blockbookURL + '/api/v2/getspvproof/' + txid
     if (hasFetch) {
-      const response = await fetch(url)
+      const response = await globalThis.fetch(url)
       if (response.ok) {
         const data = await response.json()
         return data
@@ -232,7 +263,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
       url += '?' + options
     }
     if (hasFetch) {
-      const response = await fetch(url)
+      const response = await globalThis.fetch(url)
       if (response.ok) {
         const data = await response.json()
         if (data) {
@@ -281,7 +312,7 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
       url += '?' + options
     }
     if (hasFetch) {
-      const response = await fetch(url)
+      const response = await globalThis.fetch(url)
       if (response.ok) {
         const data = await response.json()
         if (xpub && data.tokens && mySignerObj) {
@@ -329,7 +360,7 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
         method: 'POST',
         body: txHex
       }
-      const response = await fetch(blockbookURL + '/api/v2/sendtx/', requestOptions)
+      const response = await globalThis.fetch(blockbookURL + '/api/v2/sendtx/', requestOptions)
 
       if (response.ok) {
         const data = await response.json()
@@ -382,7 +413,7 @@ async function fetchBackendRawTx (backendURL, txid) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     if (hasFetch) {
-      const response = await fetch(blockbookURL + '/api/v2/tx/' + txid)
+      const response = await globalThis.fetch(blockbookURL + '/api/v2/tx/' + txid)
       if (response.ok) {
         const data = await response.json()
         if (data) {
@@ -414,7 +445,7 @@ async function fetchProviderInfo (backendURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     if (hasFetch) {
-      const response = await fetch(blockbookURL + '/api/v2')
+      const response = await globalThis.fetch(blockbookURL + '/api/v2')
       if (response.ok) {
         const data = await response.json()
         if (data) {
@@ -446,7 +477,7 @@ async function fetchBackendBlock (backendURL, blockhash) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     if (hasFetch) {
-      const response = await fetch(blockbookURL + '/api/v2/block/' + blockhash)
+      const response = await globalThis.fetch(blockbookURL + '/api/v2/block/' + blockhash)
       if (response.ok) {
         const data = await response.json()
         if (data) {
@@ -485,7 +516,7 @@ async function fetchEstimateFee (backendURL, blocks, options) {
       url += '?' + options
     }
     if (hasFetch) {
-      const response = await fetch(url)
+      const response = await globalThis.fetch(url)
       if (response.ok) {
         const data = await response.json()
         if (data && data.result) {
