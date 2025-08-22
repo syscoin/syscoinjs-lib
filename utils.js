@@ -258,7 +258,8 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    let url = blockbookURL + '/api/v2/utxo/' + addressOrXpub
+    // Always URL-encode in case identifier is a descriptor containing special characters
+    let url = blockbookURL + '/api/v2/utxo/' + encodeURIComponent(addressOrXpub)
     if (options) {
       url += '?' + options
     }
@@ -307,7 +308,8 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     } else {
       url += '/api/v2/address/'
     }
-    url += addressOrXpub
+    // URL-encode identifier to support descriptors and special characters
+    url += encodeURIComponent(addressOrXpub)
     if (options) {
       url += '?' + options
     }
