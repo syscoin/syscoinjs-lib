@@ -1,6 +1,6 @@
 const axios = require('axios')
 const BN = require('bn.js')
-const BIP84 = require('bip84')
+const BIP84 = require('./bip84-replacement')
 const bjs = require('bitcoinjs-lib')
 // Initialize ECC backend for bitcoinjs-lib v7 (extension-friendly, no WASM)
 let ecc

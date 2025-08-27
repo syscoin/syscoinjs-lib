@@ -1,6 +1,6 @@
 {
   "name": "syscoinjs-lib",
-  "version": "1.0.257",
+  "version": "1.0.258",
   "description": "A transaction creation library interfacing with coin selection for Syscoin.",
   "keywords": [
     "coinselect",
@@ -27,6 +27,7 @@
   "files": [
     "index.js",
     "utils.js",
+    "bip84-replacement.js",
     "polyfills"
   ],
   "main": "index.js",
@@ -49,7 +50,8 @@
     "@bitcoinerlab/secp256k1": "^1.2.0",
     "axios": "^0.21.1",
     "bip32": "^5.0.0-rc.0",
-    "bip84": "^0.2.7",
+    "bip39": "^3.1.0",
+    "bs58": "^6.0.0",
     "bitcoin-ops": "^1.4.1",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bn.js": "^5.1.3",
