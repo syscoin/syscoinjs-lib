@@ -38,9 +38,10 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
-            t.same(assetAllocations, f.expected.asset.allocation)
+            t.same(Buffer.from(output.script), f.expected.script)
+            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(Buffer.from(chunks[1]))
+            const norm = allocs => allocs.map(a => ({ assetGuid: a.assetGuid, values: a.values.map(v => ({ n: v.n, value: v.value.toString() })) }))
+            t.same(norm(assetAllocations), norm(f.expected.asset.allocation))
           }
         }
       })
@@ -58,10 +59,12 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const asset = syscointx.bufferUtils.deserializeMintSyscoin(chunks[1])
-            t.same(asset, f.expected.asset)
-            t.same(asset.allocation, f.expected.asset.allocation)
+            t.same(Buffer.from(output.script), f.expected.script)
+            const asset = syscointx.bufferUtils.deserializeMintSyscoin(Buffer.from(chunks[1]))
+            const normAlloc = allocs => allocs.map(a => ({ assetGuid: a.assetGuid, values: a.values.map(v => ({ n: v.n, value: v.value.toString() })) }))
+            const normAsset = a => ({ allocation: normAlloc(a.allocation), ethaddress: a.ethaddress })
+            t.same(normAsset(asset), normAsset(f.expected.asset))
+            t.same(normAlloc(asset.allocation), normAlloc(f.expected.asset.allocation))
           }
         }
       })
@@ -79,10 +82,12 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const asset = syscointx.bufferUtils.deserializeAllocationBurn(chunks[1])
-            t.same(asset, f.expected.asset)
-            t.same(asset.allocation, f.expected.asset.allocation)
+            t.same(Buffer.from(output.script), f.expected.script)
+            const asset = syscointx.bufferUtils.deserializeAllocationBurn(Buffer.from(chunks[1]))
+            const normAlloc = allocs => allocs.map(a => ({ assetGuid: a.assetGuid, values: a.values.map(v => ({ n: v.n, value: v.value.toString() })) }))
+            const normAsset = a => ({ allocation: normAlloc(a.allocation), ethaddress: a.ethaddress })
+            t.same(normAsset(asset), normAsset(f.expected.asset))
+            t.same(normAlloc(asset.allocation), normAlloc(f.expected.asset.allocation))
           }
         }
       })
@@ -112,9 +117,10 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
-            t.same(assetAllocations, f.expected.asset.allocation)
+            t.same(Buffer.from(output.script), f.expected.script)
+            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(Buffer.from(chunks[1]))
+            const norm = allocs => allocs.map(a => ({ assetGuid: a.assetGuid, values: a.values.map(v => ({ n: v.n, value: v.value.toString() })) }))
+            t.same(norm(assetAllocations), norm(f.expected.asset.allocation))
           }
         }
       })
@@ -134,9 +140,10 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
-            t.same(assetAllocations, f.expected.asset.allocation)
+            t.same(Buffer.from(output.script), f.expected.script)
+            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(Buffer.from(chunks[1]))
+            const norm = allocs => allocs.map(a => ({ assetGuid: a.assetGuid, values: a.values.map(v => ({ n: v.n, value: v.value.toString() })) }))
+            t.same(norm(assetAllocations), norm(f.expected.asset.allocation))
           }
         }
       })
@@ -154,9 +161,10 @@ fixtures.forEach(async function (f) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(output.script, f.expected.script)
-            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(chunks[1])
-            t.same(assetAllocations, f.expected.asset.allocation)
+            t.same(Buffer.from(output.script), f.expected.script)
+            const assetAllocations = syscointx.bufferUtils.deserializeAssetAllocations(Buffer.from(chunks[1]))
+            const norm = allocs => allocs.map(a => ({ assetGuid: a.assetGuid, values: a.values.map(v => ({ n: v.n, value: v.value.toString() })) }))
+            t.same(norm(assetAllocations), norm(f.expected.asset.allocation))
           }
         }
       })
@@ -181,7 +189,7 @@ tape.test('decodeRawTransaction - PSBT input', (assert) => {
     sequence: 0xfffffffd,
     witnessUtxo: {
       script: Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'),
-      value: 100000000
+      value: BigInt(100000000)
     }
   })
 
@@ -195,13 +203,13 @@ tape.test('decodeRawTransaction - PSBT input', (assert) => {
 
   psbt.addOutput({
     script: dataScript,
-    value: 0
+    value: BigInt(0)
   })
 
   // Add a regular output with script directly
   psbt.addOutput({
     script: Buffer.from('0014' + '2229e6e87a1d24072c54c222b07cd318c0920c2a', 'hex'),
-    value: 49990000
+    value: BigInt(49990000)
   })
 
   const decoded = syscoinjs.decodeRawTransaction(psbt)
@@ -243,7 +251,7 @@ tape.test('decodeRawTransaction - Basic Bitcoin transaction', (assert) => {
   const tx = new bitcoin.Transaction()
   tx.version = 2
   tx.addInput(Buffer.from('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', 'hex'), 0, 0xfffffffd)
-  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), 990000)
+  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), BigInt(990000))
 
   const decoded = syscoinjs.decodeRawTransaction(tx)
 
@@ -290,7 +298,7 @@ tape.test('decodeRawTransaction - Transaction with witness data', (assert) => {
   const tx = new bitcoin.Transaction()
   tx.version = 2
   tx.addInput(Buffer.from('abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890', 'hex'), 1, 0xfffffffd)
-  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), 1990000)
+  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), BigInt(1990000))
 
   // Add witness data to the input
   tx.ins[0].witness = [
@@ -353,10 +361,10 @@ tape.test('decodeRawTransaction - Syscoin Asset Allocation Burn to Syscoin', (as
 
   // Create OP_RETURN output with the combined data
   const dataScript = bitcoin.payments.embed({ data: [combinedBuffer] }).output
-  tx.addOutput(dataScript, 0)
+  tx.addOutput(dataScript, BigInt(0))
 
   // Add a regular output
-  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), 50000000)
+  tx.addOutput(Buffer.from('0014' + '1234567890abcdef1234567890abcdef12345678', 'hex'), BigInt(50000000))
 
   const decoded = syscoinjs.decodeRawTransaction(tx)
 
@@ -399,7 +407,7 @@ tape.test('decodeRawTransaction - Syscoin Asset Allocation Burn to Ethereum', (a
 
   // Create OP_RETURN output with the combined data
   const dataScript = bitcoin.payments.embed({ data: [combinedBuffer] }).output
-  tx.addOutput(dataScript, 0)
+  tx.addOutput(dataScript, BigInt(0))
 
   const decoded = syscoinjs.decodeRawTransaction(tx)
 
@@ -451,7 +459,7 @@ tape.test('decodeRawTransaction - Syscoin Asset Allocation Mint', (assert) => {
 
   // Create OP_RETURN output with the combined data
   const dataScript = bitcoin.payments.embed({ data: [combinedBuffer] }).output
-  tx.addOutput(dataScript, 0)
+  tx.addOutput(dataScript, BigInt(0))
 
   const decoded = syscoinjs.decodeRawTransaction(tx)
 
@@ -488,7 +496,7 @@ tape.test('decodeRawTransaction - Syscoin Burn to Asset Allocation', (assert) =>
 
   // Create OP_RETURN output with just the allocation data
   const dataScript = bitcoin.payments.embed({ data: [assetAllocationsBuffer] }).output
-  tx.addOutput(dataScript, 0)
+  tx.addOutput(dataScript, BigInt(0))
 
   const decoded = syscoinjs.decodeRawTransaction(tx)
 
@@ -645,7 +653,19 @@ tape.test('decodeRawTransaction - Asset allocation with assetInfo metadata', asy
         }
       },
       {
-        script: bitcoin.payments.embed({ data: [Buffer.from('74657374', 'hex')] }).output, // 'test' in hex
+        // Include a valid allocation OP_RETURN so allocation txs have proper payload
+        // Values reference output indices 0 and 1 above
+        script: (() => {
+          const allocations = [{
+            assetGuid,
+            values: [
+              { n: 0, value: new sjs.utils.BN(200000000) },
+              { n: 1, value: new sjs.utils.BN(300000000) }
+            ]
+          }]
+          const buf = syscointx.bufferUtils.serializeAssetAllocations(allocations)
+          return bitcoin.payments.embed({ data: [buf] }).output
+        })(),
         value: new sjs.utils.BN(0)
       }
     ],

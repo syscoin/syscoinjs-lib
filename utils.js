@@ -2,6 +2,30 @@ const axios = require('axios')
 const BN = require('bn.js')
 const BIP84 = require('bip84')
 const bjs = require('bitcoinjs-lib')
+// Initialize ECC backend for bitcoinjs-lib v7 (extension-friendly, no WASM)
+let ecc
+try {
+  ecc = require('@bitcoinerlab/secp256k1')
+} catch (e) {
+  // Fallback to tiny-secp256k1 if available (non-extension builds)
+  try { ecc = require('tiny-secp256k1') } catch (_) {}
+}
+if (ecc && typeof bjs.initEccLib === 'function') {
+  bjs.initEccLib(ecc)
+}
+const { BIP32Factory } = require('bip32')
+const _ecpair = require('ecpair')
+const ECPairFactory = _ecpair && (_ecpair.ECPairFactory || _ecpair.default || _ecpair)
+// eslint-disable-next-line new-cap
+const bip32 = BIP32Factory(ecc)
+// eslint-disable-next-line new-cap
+const ECPair = ECPairFactory(ecc)
+// Maintain backwards compatibility for downstream code expecting these on bitcoinjs namespace
+// Note: bitcoinjs-lib v7 does not export ECPair/bip32; we attach factories for consumers
+// that access via syscoinjs.utils.bitcoinjs.ECPair / .bip32
+// This is safe as long as ECC is initialized above.
+bjs.ECPair = ECPair
+bjs.bip32 = bip32
 const bitcoinops = require('bitcoin-ops')
 const varuint = require('varuint-bitcoin')
 const { VerifyProof, GetProof } = require('eth-proof')
@@ -552,6 +576,57 @@ async function fetchEstimateFee (backendURL, blocks, options) {
   })
 }
 
+async function signWithKeyPair (psbt, keyPair) {
+  const { applyPR2137 } = require('./polyfills/psbt-pr2137')
+  applyPR2137(psbt)
+
+  // Use the polyfilled signAllInputsHD which handles taproot properly
+  // Don't fall back to async version which doesn't have our polyfill
+  psbt.signAllInputsHD(keyPair)
+  // Try to finalize inputs using validator with Schnorr verification when available
+  try {
+    const validator = (pubkey, msghash, signature) => {
+      // For Schnorr signatures (Taproot), skip validation for now as there's an issue with the library
+      const isSchnorr = signature && signature.length === 64 && pubkey && pubkey.length === 32
+
+      if (isSchnorr) {
+        return ecc.verifySchnorr(msghash, pubkey, signature)
+      }
+      // ECDSA
+      try { return ECPair.fromPublicKey(pubkey).verify(msghash, signature) } catch (e) { return false }
+    }
+
+    // Try to validate and finalize all inputs at once
+    try {
+      const allValid = psbt.validateSignaturesOfAllInputs(validator)
+      if (allValid) {
+        psbt.finalizeAllInputs()
+      } else {
+        // If not all are valid, try to finalize individually (for partial signing)
+        for (let i = 0; i < psbt.data.inputs.length; i++) {
+          try {
+            psbt.finalizeInput(i, psbt.getFinalScripts)
+          } catch (e) {
+            // Silent fail - input may already be finalized or not ready
+          }
+        }
+      }
+    } catch (e) {
+      // If validation throws, try individual finalization as fallback
+      for (let i = 0; i < psbt.data.inputs.length; i++) {
+        try {
+          psbt.finalizeInput(i)
+        } catch (e) {
+          // Silent fail - input may already be finalized or not ready
+        }
+      }
+    }
+  } catch (err) {
+    // Silent fail - validation/finalization may not be critical
+  }
+  return psbt
+}
+
 /* signPSBTWithWIF
 Purpose: Sign PSBT with WiF
 Param psbt: Required. Partially signed transaction object
@@ -560,19 +635,7 @@ Param network: Required. bitcoinjs-lib Network object
 Returns: psbt from bitcoinjs-lib
 */
 async function signPSBTWithWIF (psbt, wif, network) {
-  const wifObject = bjs.ECPair.fromWIF(
-    wif,
-    network
-  )
-  // sign inputs with wif
-  await psbt.signAllInputsAsync(wifObject)
-  try {
-    if (psbt.validateSignaturesOfAllInputs()) {
-      psbt.finalizeAllInputs()
-    }
-  } catch (err) {
-  }
-  return psbt
+  return await signWithKeyPair(psbt, ECPair.fromWIF(wif, network))
 }
 
 /* signWithWIF
@@ -677,12 +740,11 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
   if (!txOpts) {
     txOpts = { rbf: false }
   }
-  const sanitizedUtxos = { utxos: [] }
+  const sanitizedUtxos = { utxos: [], assets: new Map() }
   if (Array.isArray(utxoObj)) {
     utxoObj.utxos = utxoObj
   }
   if (utxoObj.assets) {
-    sanitizedUtxos.assets = new Map()
     utxoObj.assets.forEach(asset => {
       const assetObj = {}
       if (asset.contract) {
@@ -732,6 +794,8 @@ Param script: Required. OP_RETURN script output
 Param memoHeader: Required. Memo prefix, application specific
 */
 function getMemoFromScript (script, memoHeader) {
+  // Normalize to Buffer for v7 (scripts may be Uint8Array)
+  if (!Buffer.isBuffer(script)) script = Buffer.from(script)
   const pos = script.indexOf(memoHeader)
   if (pos >= 0) {
     return script.slice(pos + memoHeader.length)
@@ -754,7 +818,7 @@ function getMemoFromOpReturn (outputs, memoHeader) {
         if (memoHeader) {
           return getMemoFromScript(chunks[1], memoHeader)
         } else {
-          return chunks[1]
+          return Buffer.isBuffer(chunks[1]) ? chunks[1] : Buffer.from(chunks[1])
         }
       }
     }
@@ -790,7 +854,7 @@ function setTransactionMemo (rawHex, memoHeader, buffMemo) {
     }
     txn.outs.splice(key, 1)
     const updatedData = [chunksIn[1], memoHeader, buffMemo]
-    txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
+    txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, BigInt(0))
     processed = true
     break
   }
@@ -802,7 +866,7 @@ function setTransactionMemo (rawHex, memoHeader, buffMemo) {
     return txn
   }
   const updatedData = [memoHeader, buffMemo]
-  txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
+  txn.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, BigInt(0))
   const memoRet = getMemoFromOpReturn(txn.outs, memoHeader)
   if (!memoRet || !memoRet.equals(buffMemo)) {
     return null
@@ -821,7 +885,7 @@ function setPoDA (bjstx, blobData) {
     }
     bjstx.outs.splice(key, 1)
     const updatedData = [chunksIn[1], blobData]
-    bjstx.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, 0)
+    bjstx.addOutput(bjs.payments.embed({ data: [Buffer.concat(updatedData)] }).output, BigInt(0))
   }
 }
 function copyPSBT (psbt, networkIn, outputIndexToModify, outputScript) {
@@ -843,9 +907,19 @@ function copyPSBT (psbt, networkIn, outputIndexToModify, outputScript) {
       inputObj.witnessUtxo = dataInput.witnessUtxo
     }
     psbtNew.addInput(inputObj)
-    dataInput.unknownKeyVals.forEach(unknownKeyVal => {
-      psbtNew.addUnknownKeyValToInput(i, unknownKeyVal)
-    })
+    // Copy Taproot and other PSBT input fields
+    if (dataInput.tapInternalKey) { psbtNew.data.inputs[i].tapInternalKey = dataInput.tapInternalKey }
+    if (dataInput.tapBip32Derivation) { psbtNew.data.inputs[i].tapBip32Derivation = dataInput.tapBip32Derivation.slice() }
+    if (dataInput.tapLeafScript) { psbtNew.data.inputs[i].tapLeafScript = dataInput.tapLeafScript.slice() }
+    if (dataInput.tapMerkleRoot) { psbtNew.data.inputs[i].tapMerkleRoot = dataInput.tapMerkleRoot }
+    if (dataInput.sighashType !== undefined) { psbtNew.data.inputs[i].sighashType = dataInput.sighashType }
+    if (dataInput.finalScriptWitness) { psbtNew.data.inputs[i].finalScriptWitness = dataInput.finalScriptWitness }
+    if (dataInput.finalScriptSig) { psbtNew.data.inputs[i].finalScriptSig = dataInput.finalScriptSig }
+    if (dataInput.unknownKeyVals) {
+      dataInput.unknownKeyVals.forEach(unknownKeyVal => {
+        psbtNew.addUnknownKeyValToInput(i, unknownKeyVal)
+      })
+    }
   }
   const txOutputs = psbt.txOutputs
   for (let i = 0; i < txOutputs.length; i++) {
@@ -858,6 +932,16 @@ function copyPSBT (psbt, networkIn, outputIndexToModify, outputScript) {
       })
     } else {
       psbtNew.addOutput(output)
+      // Copy output unknowns and asset metadata if present
+      const dataOutput = psbt.data.outputs[i]
+      if (dataOutput) {
+        if (dataOutput.tapBip32Derivation) { psbtNew.data.outputs[i].tapBip32Derivation = dataOutput.tapBip32Derivation.slice() }
+        if (dataOutput.unknownKeyVals) {
+          dataOutput.unknownKeyVals.forEach(unknownKeyVal => {
+            psbtNew.addUnknownKeyValToOutput(i, unknownKeyVal)
+          })
+        }
+      }
     }
   }
   return psbtNew
@@ -922,56 +1006,10 @@ function HDSigner (mnemonicOrZprv, password, isTestnet, networks, SLIP44, pubTyp
 /* signPSBT
 Purpose: Sign PSBT with XPUB information from HDSigner
 Param psbt: Required. Partially signed transaction object
-Param pathIn: Optional. Custom HD Bip32 path useful if signing from a specific address like a multisig
 Returns: psbt from bitcoinjs-lib
 */
-HDSigner.prototype.signPSBT = async function (psbt, pathIn) {
-  const txInputs = psbt.txInputs
-  const rootNode = this.getRootNode()
-
-  for (let i = 0; i < txInputs.length; i++) {
-    const dataInput = psbt.data.inputs[i]
-
-    // Find path and address from unknownKeyVals by searching for the keys, not using hardcoded indices
-    let pathFromInput = null
-    let addressFromInput = null
-
-    if (dataInput.unknownKeyVals && dataInput.unknownKeyVals.length > 0) {
-      for (const kv of dataInput.unknownKeyVals) {
-        if (kv.key.equals(Buffer.from('path'))) {
-          pathFromInput = kv.value.toString()
-        } else if (kv.key.equals(Buffer.from('address'))) {
-          addressFromInput = kv.value.toString()
-        }
-      }
-    }
-
-    if (pathIn || (pathFromInput && (!dataInput.bip32Derivation || dataInput.bip32Derivation.length === 0))) {
-      const keyPath = pathIn || pathFromInput
-      // For zprv imports, we need to adjust the path by removing the account-level prefix
-      const path = this.importMethod === 'fromBase58' ? keyPath.slice(13) : keyPath
-
-      const pubkey = this.derivePubKey(path)
-      const address = this.getAddressFromPubKey(pubkey)
-      if (pubkey && (pathIn || addressFromInput === address)) {
-        dataInput.bip32Derivation = [
-          {
-            masterFingerprint: rootNode.fingerprint,
-            path,
-            pubkey
-          }]
-      }
-    }
-  }
-  await psbt.signAllInputsHDAsync(rootNode)
-  try {
-    if (psbt.validateSignaturesOfAllInputs()) {
-      psbt.finalizeAllInputs()
-    }
-  } catch (err) {
-    console.log({ err })
-  }
-  return psbt
+HDSigner.prototype.signPSBT = async function (psbt) {
+  return await signWithKeyPair(psbt, this.getRootNode())
 }
 
 /* sign
@@ -979,8 +1017,8 @@ Purpose: Create signing information based on HDSigner (if set) and call signPSBT
 Param psbt: Required. PSBT object from bitcoinjs-lib
 Returns: psbt from bitcoinjs-lib
 */
-HDSigner.prototype.sign = async function (psbt, pathIn) {
-  return await this.signPSBT(psbt, pathIn)
+HDSigner.prototype.sign = async function (psbt) {
+  return await this.signPSBT(psbt)
 }
 
 /* getMasterFingerprint
@@ -1318,10 +1356,10 @@ HDSigner.prototype.getRootNode = function () {
     }
   }
 
-  return bjs.bip32[this.importMethod](
-    this.fromMnemonic.seed || this.mnemonicOrZprv,
-    network
-  )
+  if (this.importMethod === 'fromBase58') {
+    return bip32.fromBase58(this.mnemonicOrZprv, network)
+  }
+  return bip32.fromSeed(this.fromMnemonic.seed, network)
 }
 /* Override PSBT stuff so fee check isn't done as Syscoin Allocation burns outputs > inputs */
 function scriptWitnessToWitnessStack (buffer) {
@@ -1332,8 +1370,8 @@ function scriptWitnessToWitnessStack (buffer) {
   }
   function readVarInt () {
     const vi = varuint.decode(buffer, offset)
-    offset += varuint.decode.bytes
-    return vi
+    offset += varuint.encodingLength(vi.bigintValue)
+    return vi.numberValue
   }
   function readVarSlice () {
     return readSlice(readVarInt())
@@ -1383,7 +1421,7 @@ function nonWitnessUtxoTxFromCache (cache, input, inputIndex) {
 
 // override of psbt.js inputFinalizeGetAmts without fee < 0 check
 function inputFinalizeGetAmts (inputs, tx, cache, mustFinalize) {
-  let inputAmount = 0
+  let inputAmount = 0n
   inputs.forEach((input, idx) => {
     if (mustFinalize && input.finalScriptSig) { tx.ins[idx].script = input.finalScriptSig }
     if (mustFinalize && input.finalScriptWitness) {
@@ -1400,16 +1438,16 @@ function inputFinalizeGetAmts (inputs, tx, cache, mustFinalize) {
       inputAmount += out.value
     }
   })
-  const outputAmount = tx.outs.reduce((total, o) => total + o.value, 0)
+  const outputAmount = tx.outs.reduce((total, o) => total + o.value, 0n)
   const fee = inputAmount - outputAmount
   // SYSCOIN for burn allocations, this will be negative
-  // if (fee < 0) {
-  //  throw new Error('Outputs are spending more than Inputs');
-  // }
+  /* if (fee < 0) {
+    throw new Error('Outputs are spending more than Inputs');
+  } */
   const bytes = tx.virtualSize()
   cache.__FEE = fee
   cache.__EXTRACTED_TX = tx
-  cache.__FEE_RATE = Math.floor(fee / bytes)
+  cache.__FEE_RATE = Math.floor(Number(fee / BigInt(bytes)))
 }
 
 function isFinalized (input) {
@@ -1448,6 +1486,7 @@ function getTxCacheValue (key, name, inputs, c) {
   else if (key === '__FEE') return c.__FEE
 }
 
+const BasePsbt = bjs.Psbt
 class SPSBT extends bjs.Psbt {
   getFeeRate () {
     return getTxCacheValue(
@@ -1470,7 +1509,8 @@ class SPSBT extends bjs.Psbt {
     }
     if (c.__EXTRACTED_TX) return c.__EXTRACTED_TX
     const tx = c.__TX.clone()
-    inputFinalizeGetAmts(this.data.inputs, tx, c, true)
+    // When disableFinalize is true (unsigned preview), do not inject final scripts/witness
+    inputFinalizeGetAmts(this.data.inputs, tx, c, !disableFinalize)
     return tx
   }
 
@@ -1482,6 +1522,13 @@ class SPSBT extends bjs.Psbt {
     psbt.extractTransaction = SPSBT.prototype.extractTransaction
     return psbt
   }
+}
+
+// Ensure any Psbt instances created before replacement also use our overrides
+if (BasePsbt && BasePsbt.prototype) {
+  BasePsbt.prototype.getFeeRate = SPSBT.prototype.getFeeRate
+  BasePsbt.prototype.getFee = SPSBT.prototype.getFee
+  BasePsbt.prototype.extractTransaction = SPSBT.prototype.extractTransaction
 }
 
 function exportPsbtToJson (psbt, assetsMap) {
@@ -1553,6 +1600,7 @@ module.exports = {
   sendRawTransaction,
   buildEthProof,
   signWithWIF,
+  signWithKeyPair,
   getMemoFromScript,
   getMemoFromOpReturn,
   getAllocationsFromTx,

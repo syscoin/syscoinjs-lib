@@ -65,7 +65,7 @@ tape('subtractFeeFrom functionality', async (t) => {
       t.ok(res.fee > 0, 'Fee is greater than 0')
 
       // Verify the output value is reduced by the fee
-      const outputValue = res.psbt.txOutputs[0].value
+      const outputValue = Number(res.psbt.txOutputs[0].value)
       const feeNumber = typeof res.fee === 'object' ? res.fee.toNumber() : res.fee
       t.equal(outputValue + feeNumber, 100000000, 'Output value plus fee equals original amount')
 
@@ -125,7 +125,7 @@ tape('subtractFeeFrom functionality', async (t) => {
       t.ok(res.fee, 'Fee information returned')
 
       // Verify total output value is reduced by fee
-      const totalOutputValue = res.psbt.txOutputs.reduce((sum, output) => sum + output.value, 0)
+      const totalOutputValue = res.psbt.txOutputs.reduce((sum, output) => sum + Number(output.value), 0)
       const feeNumber = typeof res.fee === 'object' ? res.fee.toNumber() : res.fee
       t.equal(totalOutputValue + feeNumber, 100000000, 'Total output value plus fee equals input value')
 

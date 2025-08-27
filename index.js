@@ -22,8 +22,8 @@ function Syscoin (SignerIn, blockbookURL, network) {
 }
 
 // proxy to signAndSend
-Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn, pathIn) {
-  return this.signAndSend(psbt, SignerIn, pathIn)
+Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn) {
+  return this.signAndSend(psbt, SignerIn)
 }
 
 /* Helper function to check if syscointx result is an error
@@ -116,7 +116,8 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
       hash: input.txId,
       index: input.vout,
       sequence: input.sequence,
-      bip32Derivation: []
+      bip32Derivation: [],
+      tapBip32Derivation: []
     }
     // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
     // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
@@ -137,18 +138,52 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
         }
       }
     } else {
-      inputObj.witnessUtxo = { script: utils.bitcoinjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
+      // bitcoinjs-lib v7 requires BigInt for witnessUtxo.value
+      inputObj.witnessUtxo = { script: utils.bitcoinjs.address.toOutputScript(input.address, this.network), value: BigInt(input.value.toNumber()) }
       if (redeemOrWitnessScript) {
         inputObj.witnessScript = redeemOrWitnessScript
       }
     }
     psbt.addInput(inputObj)
-    if (input.address) {
-      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('address'), value: Buffer.from(input.address) })
-    }
-    if (input.path) {
-      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
-    }
+
+    // Populate BIP-32/BIP-371 derivations when we have a signer and path
+    try {
+      if (this.Signer && input.path) {
+        const path = input.path
+        const pubkey = this.Signer.derivePubKey(path)
+        if (pubkey) {
+          const xOnly = pubkey.length === 33 ? pubkey.slice(1, 33) : pubkey
+          // Detect P2TR from address script
+          let isTaproot = false
+          try {
+            const script = inputObj.witnessUtxo ? inputObj.witnessUtxo.script : utils.bitcoinjs.address.toOutputScript(input.address, this.network)
+            const chunks = utils.bitcoinjs.script.decompile(script) || []
+            // Check for Uint8Array as well as Buffer since decompile may return either
+            isTaproot = chunks.length === 2 && chunks[0] === utils.bitcoinjs.opcodes.OP_1 && (Buffer.isBuffer(chunks[1]) || chunks[1] instanceof Uint8Array) && chunks[1].length === 32
+          } catch (_) {}
+
+          const fp = this.Signer.getRootNode().fingerprint
+
+          if (isTaproot && xOnly && xOnly.length === 32) {
+            // Attach BIP-371 taproot derivation
+            psbt.data.inputs[i].tapInternalKey = xOnly
+            psbt.data.inputs[i].tapBip32Derivation = [{
+              masterFingerprint: fp,
+              path,
+              pubkey: xOnly,
+              leafHashes: []
+            }]
+          } else {
+            // Attach BIP-32 derivation for non-taproot
+            psbt.data.inputs[i].bip32Derivation = [{
+              masterFingerprint: fp,
+              path,
+              pubkey
+            }]
+          }
+        }
+      }
+    } catch (_) {}
     // Add asset information if available
     if (input.assetInfo) {
       // Convert BN values to strings for JSON serialization
@@ -161,12 +196,19 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
         value: Buffer.from(JSON.stringify(assetData))
       })
     }
+
+    if (input.address) {
+      psbt.addUnknownKeyValToInput(i, {
+        key: Buffer.from('address'),
+        value: Buffer.from(input.address)
+      })
+    }
   }
   res.outputs.forEach((output, index) => {
     psbt.addOutput({
       script: output.script,
       address: output.script ? null : output.address,
-      value: output.value.toNumber()
+      value: BigInt(output.value.toNumber())
     })
     // Add asset information if available
     if (output.assetInfo) {
@@ -178,6 +220,13 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
       psbt.addUnknownKeyValToOutput(index, {
         key: Buffer.from('assetInfo'),
         value: Buffer.from(JSON.stringify(assetData))
+      })
+    }
+    // Add address for Pali wallet popup detection
+    if (output.address) {
+      psbt.addUnknownKeyValToOutput(index, {
+        key: Buffer.from('address'),
+        value: Buffer.from(output.address)
       })
     }
   })
@@ -220,9 +269,9 @@ Param psbt: Required. The resulting PSBT object passed in which is assigned from
 Param SignerIn: Optional. Signer used to sign transaction
 Returns: PSBT signed success or unsigned if failure
 */
-Syscoin.prototype.signAndSend = async function (psbt, SignerIn, pathIn) {
+Syscoin.prototype.signAndSend = async function (psbt, SignerIn) {
   const Signer = SignerIn || this.Signer
-  psbt = await Signer.sign(psbt, pathIn)
+  psbt = await Signer.sign(psbt)
   return this.send(psbt, Signer)
 }
 
@@ -692,31 +741,31 @@ Syscoin.prototype.decodeRawTransaction = function (psbtOrTx) {
       // Try to extract complete transaction
       tx = psbtOrTx.extractTransaction(true, true)
     } catch (err) {
-      // If we can't extract a complete transaction, use TransactionBuilder to create one
+      // If we can't extract, reconstruct a minimal Transaction from PSBT
       if (psbtOrTx.data.globalMap && psbtOrTx.data.globalMap.unsignedTx) {
         const bitcoinjs = utils.bitcoinjs
-        const txBuilder = new bitcoinjs.TransactionBuilder(this.network)
+        const txTmp = new bitcoinjs.Transaction()
+        txTmp.version = psbtOrTx.version || 2
 
-        // Set version
-        txBuilder.setVersion(psbtOrTx.version || 2)
-
-        // Add inputs from PSBT data
+        // Inputs
         psbtOrTx.data.inputs.forEach((input, index) => {
           const txInput = psbtOrTx.txInputs[index]
-          txBuilder.addInput(txInput.hash, txInput.index, txInput.sequence)
+          const hashBuf = Buffer.isBuffer(txInput.hash) ? txInput.hash : Buffer.from(txInput.hash)
+          txTmp.addInput(hashBuf, txInput.index, txInput.sequence)
         })
 
-        // Add outputs from PSBT data
+        // Outputs
         psbtOrTx.txOutputs.forEach(output => {
-          txBuilder.addOutput(output.script || output.address, output.value)
+          const script = output.script || (output.address ? bitcoinjs.address.toOutputScript(output.address, this.network) : Buffer.alloc(0))
+          const value = typeof output.value === 'bigint' ? output.value : BigInt(output.value)
+          txTmp.addOutput(script, value)
         })
 
-        // Set locktime if available
         if (psbtOrTx.locktime !== undefined) {
-          txBuilder.setLockTime(psbtOrTx.locktime)
+          txTmp.locktime = psbtOrTx.locktime
         }
 
-        tx = txBuilder.buildIncomplete()
+        tx = txTmp
       } else {
         throw new Error('Unable to extract transaction data from PSBT: ' + err.message)
       }

@@ -88,7 +88,7 @@ tape('HDSigner - ZPRV vs Mnemonic Consistency', function (t) {
   const mnemonicPubkey = mnemonicSigner.derivePubKey("m/84'/1'/0'/0/0")
   const zprvPubkey = zprvSigner.derivePubKey('0/0')
 
-  t.ok(mnemonicPubkey.equals(zprvPubkey), 'Public keys should match between mnemonic and zprv signers')
+  t.ok(Buffer.from(mnemonicPubkey).equals(Buffer.from(zprvPubkey)), 'Public keys should match between mnemonic and zprv signers')
 
   // Both should generate the same addresses when using the derived public keys
   const mnemonicAddress = mnemonicSigner.getAddressFromPubKey(mnemonicPubkey)
@@ -100,7 +100,7 @@ tape('HDSigner - ZPRV vs Mnemonic Consistency', function (t) {
   const mnemonicKeypair = mnemonicSigner.deriveKeypair("m/84'/1'/0'/0/0")
   const zprvKeypair = zprvSigner.deriveKeypair('0/0')
 
-  t.ok(mnemonicKeypair.privateKey.equals(zprvKeypair.privateKey), 'Private keys should match between mnemonic and zprv signers')
+  t.ok(Buffer.from(mnemonicKeypair.privateKey).equals(Buffer.from(zprvKeypair.privateKey)), 'Private keys should match between mnemonic and zprv signers')
 
   t.end()
 })
