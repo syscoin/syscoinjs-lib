@@ -209,7 +209,7 @@ fromZPrv.prototype.getPublicKey = function (index, isChange) {
   const change = isChange === true ? 1 : 0
   const prvkey = bip32.fromBase58(this.zprv, this.network).derive(change).derive(index)
 
-  return prvkey.publicKey.toString('hex')
+  return Buffer.from(prvkey.publicKey).toString('hex')
 }
 
 /**
@@ -316,7 +316,7 @@ fromZPub.prototype.getPublicKey = function (index, isChange) {
   const change = isChange === true ? 1 : 0
   const zpub = bip32.fromBase58(this.zpub, this.network).derive(change).derive(index)
 
-  return zpub.publicKey.toString('hex')
+  return Buffer.from(zpub.publicKey).toString('hex')
 }
 
 /**
