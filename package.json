@@ -1,6 +1,6 @@
 {
   "name": "syscoinjs-lib",
-  "version": "1.0.256",
+  "version": "1.0.257",
   "description": "A transaction creation library interfacing with coin selection for Syscoin.",
   "keywords": [
     "coinselect",
@@ -26,7 +26,8 @@
   "author": "Jagdeep Sidhu",
   "files": [
     "index.js",
-    "utils.js"
+    "utils.js",
+    "polyfills"
   ],
   "main": "index.js",
   "repository": {
