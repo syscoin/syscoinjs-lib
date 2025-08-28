@@ -64,10 +64,6 @@ tape('Taproot asset allocation send - HDSigner', async (t) => {
     const feeRate = new BN(10)
     const { psbt } = await sys.assetAllocationSend({ rbf: true }, assetMap, address1, feeRate, address1, utxos)
 
-    // Check that tapInternalKey and tapBip32Derivation are set for taproot inputs
-    t.ok(psbt.data.inputs[0].tapInternalKey, 'Input should have tapInternalKey')
-    t.ok(psbt.data.inputs[0].tapBip32Derivation, 'Input should have tapBip32Derivation')
-
     // Check outputs have proper asset info
     const hasAssetOutput = psbt.data.outputs.some(output => {
       const proprietary = output.unknownKeyVals
@@ -77,8 +73,17 @@ tape('Taproot asset allocation send - HDSigner', async (t) => {
     })
     t.ok(hasAssetOutput, 'Should have asset output with proprietary data')
 
-    // Sign the PSBT
+    // Sign the PSBT (skip finalization to preserve metadata for testing)
+    psbt._skipFinalization = true
     const signed = await HDSigner.sign(psbt)
+
+    // After signing, check that tapInternalKey and tapBip32Derivation are set for taproot inputs
+    // NOTE: We check before finalization because it clears metadata
+    t.ok(signed.data.inputs[0].tapInternalKey, 'Input should have tapInternalKey after signing')
+    t.ok(signed.data.inputs[0].tapBip32Derivation, 'Input should have tapBip32Derivation after signing')
+
+    // Now finalize and extract transaction
+    signed.finalizeAllInputs()
     const tx = signed.extractTransaction(true)
     t.ok(typeof tx.hasWitnesses === 'function' ? tx.hasWitnesses() : tx.ins[0].witness.length > 0,
       'Asset tx with taproot should have witness')
@@ -124,16 +129,14 @@ tape('Taproot asset allocation with multiple inputs - WIF', async (t) => {
       hash: Buffer.from('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'hex'),
       index: 0,
       sequence: 0xfffffffd,
-      witnessUtxo: { script: p2tr1.output, value: BigInt(5000000) },
-      tapInternalKey: xOnly1
+      witnessUtxo: { script: p2tr1.output, value: BigInt(5000000) }
     })
 
     psbt.addInput({
       hash: Buffer.from('cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', 'hex'),
       index: 1,
       sequence: 0xfffffffd,
-      witnessUtxo: { script: p2tr2.output, value: BigInt(3000000) },
-      tapInternalKey: xOnly2
+      witnessUtxo: { script: p2tr2.output, value: BigInt(3000000) }
     })
 
     // Add asset info as proprietary data to inputs

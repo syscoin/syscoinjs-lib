@@ -68,8 +68,7 @@ tape('Taproot key-path signing - imported WIF', async (t) => {
       hash: Buffer.from('abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890', 'hex'),
       index: 1,
       sequence: 0xfffffffd,
-      witnessUtxo: { script, value: BigInt(200000000) },
-      tapInternalKey: xOnly
+      witnessUtxo: { script, value: BigInt(200000000) }
     })
     psbt.addOutput({ script, value: BigInt(199000000) })
 

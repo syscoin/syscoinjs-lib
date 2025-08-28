@@ -146,46 +146,9 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
     }
     psbt.addInput(inputObj)
 
-    // Populate BIP-32/BIP-371 derivations when we have a signer and path
-    try {
-      if (this.Signer && input.path) {
-        const path = input.path
-        const pubkey = this.Signer.derivePubKey(path)
-        if (pubkey) {
-          const xOnly = pubkey.length === 33 ? pubkey.slice(1, 33) : pubkey
-          // Detect P2TR from address script
-          let isTaproot = false
-          try {
-            const script = inputObj.witnessUtxo ? inputObj.witnessUtxo.script : utils.bitcoinjs.address.toOutputScript(input.address, this.network)
-            const chunks = utils.bitcoinjs.script.decompile(script) || []
-            // Check for Uint8Array as well as Buffer since decompile may return either
-            isTaproot = chunks.length === 2 && chunks[0] === utils.bitcoinjs.opcodes.OP_1 && (Buffer.isBuffer(chunks[1]) || chunks[1] instanceof Uint8Array) && chunks[1].length === 32
-          } catch (_) {}
-
-          const fp = this.Signer.getRootNode().fingerprint
-
-          if (isTaproot && xOnly && xOnly.length === 32) {
-            // Attach BIP-371 taproot derivation
-            psbt.data.inputs[i].tapInternalKey = xOnly
-            psbt.data.inputs[i].tapBip32Derivation = [{
-              masterFingerprint: fp,
-              path,
-              pubkey: xOnly,
-              leafHashes: []
-            }]
-          } else {
-            // Attach BIP-32 derivation for non-taproot
-            psbt.data.inputs[i].bip32Derivation = [{
-              masterFingerprint: fp,
-              path,
-              pubkey
-            }]
-          }
-        }
-      }
-    } catch (_) {}
-
-    // Always store the HD path as proprietary unknown key for hardware fallback (e.g., Trezor)
+    // Store the HD path as proprietary data for all inputs
+    // All BIP-32 derivations (regular and taproot) will be set during signing
+    // This removes the need for the signer during PSBT creation
     if (input.path) {
       psbt.addUnknownKeyValToInput(i, {
         key: Buffer.from('path'),

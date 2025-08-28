@@ -576,24 +576,383 @@ async function fetchEstimateFee (backendURL, blocks, options) {
   })
 }
 
-async function signWithKeyPair (psbt, keyPair) {
-  const { applyPR2137 } = require('./polyfills/psbt-pr2137')
-  applyPR2137(psbt)
+/* checkPubkeyInScript
+Purpose: Check if a pubkey is used in a witnessScript or redeemScript
+Param script: The witness or redeem script buffer
+Param pubkey: The public key buffer to search for
+Returns: boolean indicating if pubkey is found in script
+*/
+function checkPubkeyInScript (script, pubkey) {
+  if (!script || !pubkey) return false
 
-  // Use the polyfilled signAllInputsHD which handles taproot properly
-  // Don't fall back to async version which doesn't have our polyfill
-  psbt.signAllInputsHD(keyPair)
-  // Try to finalize inputs using validator with Schnorr verification when available
+  try {
+    const scriptBuf = Buffer.from(script)
+    const pubkeyBuf = Buffer.from(pubkey)
+    const decompiled = bjs.script.decompile(scriptBuf)
+    if (!decompiled) return false
+
+    for (const chunk of decompiled) {
+      // Check if chunk is a buffer-like object and matches our pubkey
+      if (chunk && (Buffer.isBuffer(chunk) || chunk instanceof Uint8Array)) {
+        const chunkBuf = Buffer.from(chunk)
+        if (chunkBuf.length === pubkeyBuf.length && chunkBuf.equals(pubkeyBuf)) {
+          return true
+        }
+      }
+    }
+  } catch (_) {}
+
+  return false
+}
+
+/* checkSimpleScriptOwnership
+Purpose: Check if a pubkey controls a simple single-key script (P2PKH, P2WPKH, P2SH-P2WPKH)
+Param scriptBuffer: The output script to check
+Param pubkey: The public key to test
+Param network: The network object
+Param psbt: The PSBT object (to potentially set redeemScript)
+Param inputIndex: The input index (for setting redeemScript)
+Returns: boolean indicating if pubkey controls this script
+*/
+function checkSimpleScriptOwnership (scriptBuffer, pubkey, network, psbt, inputIndex) {
+  if (!scriptBuffer || !pubkey) return false
+
+  const scriptBuf = Buffer.from(scriptBuffer)
+  const pubkeyBuf = Buffer.from(pubkey)
+
+  // Try P2PKH
+  try {
+    const p2pkh = bjs.payments.p2pkh({ pubkey: pubkeyBuf, network })
+    if (p2pkh.output && Buffer.from(p2pkh.output).equals(scriptBuf)) {
+      return true
+    }
+  } catch (_) {}
+
+  // Try P2WPKH
+  try {
+    const p2wpkh = bjs.payments.p2wpkh({ pubkey: pubkeyBuf, network })
+    if (p2wpkh.output && Buffer.from(p2wpkh.output).equals(scriptBuf)) {
+      return true
+    }
+  } catch (_) {}
+
+  // Try P2SH-P2WPKH
+  try {
+    const p2wpkh = bjs.payments.p2wpkh({ pubkey: pubkeyBuf, network })
+    const p2sh = bjs.payments.p2sh({ redeem: p2wpkh, network })
+    if (p2sh.output && Buffer.from(p2sh.output).equals(scriptBuf)) {
+      // Also set the redeemScript for P2SH-P2WPKH if not already set
+      if (psbt && inputIndex !== undefined && psbt.data && psbt.data.inputs &&
+          psbt.data.inputs[inputIndex] && !psbt.data.inputs[inputIndex].redeemScript && p2wpkh.output) {
+        psbt.data.inputs[inputIndex].redeemScript = Buffer.from(p2wpkh.output)
+      }
+      return true
+    }
+  } catch (_) {}
+
+  return false
+}
+
+/* shouldAddBip32Derivation
+Purpose: Determine if BIP32 derivation should be added for a non-taproot input
+Param dataInput: The PSBT input data
+Param scriptBuffer: The output script buffer
+Param pubkey: The public key
+Param network: The network object
+Param psbt: The PSBT object (for setting redeemScript)
+Param inputIndex: The input index
+Returns: boolean indicating if derivation should be added
+*/
+function shouldAddBip32Derivation (dataInput, scriptBuffer, pubkey, network, psbt, inputIndex) {
+  // Check multisig/script cases first
+  if (dataInput.witnessScript || dataInput.redeemScript) {
+    const script = dataInput.witnessScript || dataInput.redeemScript
+    return checkPubkeyInScript(script, pubkey)
+  }
+
+  // Check simple single-key cases
+  return checkSimpleScriptOwnership(scriptBuffer, pubkey, network, psbt, inputIndex)
+}
+
+/* setTaprootMetadata
+Purpose: Set tapInternalKey for simple single-key P2TR inputs that match the given public key
+Note: This only works for simple key-path spends. Complex cases (script paths, MuSig) require
+      metadata to be set during PSBT creation with full knowledge of the script structure.
+Param psbt: Required. Partially signed transaction object
+Param pubkey: Required. The public key (33 or 32 bytes)
+Param network: Required. bitcoinjs-lib Network object
+Returns: void (modifies psbt in place)
+*/
+function setTaprootMetadata (psbt, pubkey, network) {
+  if (!psbt || !psbt.data || !Array.isArray(psbt.data.inputs) || !pubkey) return
+
+  const xOnly = pubkey.length === 33 ? pubkey.slice(1, 33) : pubkey
+
+  // Create P2TR payment to get the expected output script for simple single-key case
+  const p2tr = bjs.payments.p2tr({
+    internalPubkey: xOnly,
+    network
+  })
+
+  // Only set tapInternalKey for inputs that match this pubkey's P2TR address
+  for (let i = 0; i < psbt.data.inputs.length; i++) {
+    const dataInput = psbt.data.inputs[i]
+    const script = dataInput && dataInput.witnessUtxo && dataInput.witnessUtxo.script
+
+    // Convert script to Buffer if it's a Uint8Array for consistent comparison
+    const scriptBuffer = script ? Buffer.from(script) : null
+
+    // Check if this is a P2TR input
+    const isP2TR = scriptBuffer && scriptBuffer.length === 34 &&
+                   scriptBuffer[0] === bjs.opcodes.OP_1 && scriptBuffer[1] === 0x20
+
+    if (!isP2TR) continue
+
+    // Strategy for non-HD signers (like WIF):
+    // 1. If tapInternalKey is already set, check if it matches our key
+    // 2. If not set, check if this is a simple single-key output we control
+    // 3. For complex cases, tapInternalKey should already be set
+
+    if (dataInput.tapInternalKey) {
+      // Internal key already set - for complex cases (script paths, MuSig),
+      // we can't determine if we're a participant without additional info
+      const internalKey = Buffer.from(dataInput.tapInternalKey)
+      if (!internalKey.equals(xOnly)) {
+        // Not a simple single-key with our key - skip
+        continue
+      }
+      // Our key matches the internal key, we're good
+    } else {
+      // No internal key set - check if this is a simple single-key P2TR
+      // This check ONLY works for simple key-path spends
+      if (!p2tr.output || !scriptBuffer.equals(p2tr.output)) {
+        // Output doesn't match our single key - could be:
+        // - Script path spend (tweaked with merkle root)
+        // - MuSig (aggregated key)
+        // - Someone else's input
+        continue
+      }
+      // Simple single-key P2TR that matches our key
+      psbt.data.inputs[i].tapInternalKey = xOnly
+    }
+  }
+}
+
+/* getPathFromInput
+Purpose: Extract the HD path from input's proprietary data
+Param dataInput: The PSBT input data
+Returns: string path or null if not found
+*/
+function getPathFromInput (dataInput) {
+  if (!dataInput?.unknownKeyVals) return null
+
+  const pathData = dataInput.unknownKeyVals.find(kv =>
+    kv.key && kv.key.toString() === 'path'
+  )
+
+  return pathData?.value ? pathData.value.toString() : null
+}
+
+/* getScriptFromInput
+Purpose: Extract the script from a PSBT input (witness or non-witness)
+Param dataInput: The PSBT input data
+Param psbt: The PSBT object (for non-witness UTXOs)
+Param inputIndex: The input index
+Returns: Buffer of the script or null
+*/
+function getScriptFromInput (dataInput, psbt, inputIndex) {
+  // Try witness UTXO first
+  if (dataInput?.witnessUtxo?.script) {
+    return Buffer.from(dataInput.witnessUtxo.script)
+  }
+
+  // Try non-witness UTXO
+  if (dataInput?.nonWitnessUtxo) {
+    try {
+      const tx = bjs.Transaction.fromBuffer(dataInput.nonWitnessUtxo)
+      const vout = psbt.txInputs[inputIndex].index
+      if (tx.outs[vout]?.script) {
+        return Buffer.from(tx.outs[vout].script)
+      }
+    } catch (_) {}
+  }
+
+  return null
+}
+
+/* isP2TRScript
+Purpose: Check if a script is a P2TR (Taproot) script
+Param scriptBuffer: The script buffer to check
+Returns: boolean indicating if script is P2TR
+*/
+function isP2TRScript (scriptBuffer) {
+  return scriptBuffer && scriptBuffer.length === 34 &&
+         scriptBuffer[0] === bjs.opcodes.OP_1 && scriptBuffer[1] === 0x20
+}
+
+/* handleNonTaprootDerivation
+Purpose: Handle BIP32 derivation for non-taproot inputs
+Param psbt: The PSBT object
+Param inputIndex: The input index
+Param dataInput: The input data
+Param scriptBuffer: The script buffer
+Param child: The derived child key
+Param keyPair: The signing keypair
+Param path: The derivation path
+Param network: The network object
+Returns: void (modifies psbt in place)
+*/
+function handleNonTaprootDerivation (psbt, inputIndex, dataInput, scriptBuffer, child, keyPair, path, network) {
+  // Check if we already have BIP-32 derivation for this input
+  const existingDerivation = dataInput.bip32Derivation?.find(d =>
+    d.masterFingerprint && Buffer.from(d.masterFingerprint).equals(keyPair.fingerprint)
+  )
+
+  if (!existingDerivation) {
+    // Check if we should add derivation for this input
+    const shouldAdd = shouldAddBip32Derivation(dataInput, scriptBuffer, child.publicKey, network, psbt, inputIndex)
+
+    if (shouldAdd) {
+      if (!dataInput.bip32Derivation) {
+        psbt.data.inputs[inputIndex].bip32Derivation = []
+      }
+      psbt.data.inputs[inputIndex].bip32Derivation.push({
+        masterFingerprint: keyPair.fingerprint,
+        path,
+        pubkey: child.publicKey
+      })
+    }
+  }
+}
+
+/* handleTaprootDerivation
+Purpose: Handle taproot (BIP371) derivation for P2TR inputs
+Param psbt: The PSBT object
+Param inputIndex: The input index
+Param dataInput: The input data
+Param scriptBuffer: The script buffer
+Param child: The derived child key
+Param keyPair: The signing keypair
+Param path: The derivation path
+Param network: The network object
+Returns: void (modifies psbt in place)
+*/
+function handleTaprootDerivation (psbt, inputIndex, dataInput, scriptBuffer, child, keyPair, path, network) {
+  const xOnly = child.publicKey.length === 33 ? child.publicKey.slice(1, 33) : child.publicKey
+
+  // Check if we already have derivation info for this input
+  const existingDerivation = dataInput.tapBip32Derivation?.find(d =>
+    d.masterFingerprint && Buffer.from(d.masterFingerprint).equals(keyPair.fingerprint)
+  )
+
+  if (existingDerivation) {
+    // We're already identified as a signer, ensure tapInternalKey is set if needed
+    if (!dataInput.tapInternalKey && existingDerivation.pubkey) {
+      psbt.data.inputs[inputIndex].tapInternalKey = Buffer.from(existingDerivation.pubkey)
+    }
+    return
+  }
+
+  // If tapInternalKey is already set, check if we should add our derivation
+  if (dataInput.tapInternalKey) {
+    const internalKey = Buffer.from(dataInput.tapInternalKey)
+
+    // Check if our derived key matches the internal key (simple key-path case)
+    if (internalKey.equals(xOnly)) {
+      // This is a simple key-path spend with our key as the internal key
+      if (!dataInput.tapBip32Derivation) {
+        psbt.data.inputs[inputIndex].tapBip32Derivation = []
+      }
+      psbt.data.inputs[inputIndex].tapBip32Derivation.push({
+        masterFingerprint: keyPair.fingerprint,
+        path,
+        pubkey: xOnly,
+        leafHashes: []
+      })
+    }
+    return
+  }
+
+  // No tapInternalKey set - try to detect simple single-key case
+  const p2tr = bjs.payments.p2tr({
+    internalPubkey: xOnly,
+    network
+  })
+
+  // Check if our single key would generate this output (simple case only)
+  if (p2tr.output && scriptBuffer.equals(p2tr.output)) {
+    // This is a simple single-key P2TR that we control
+    psbt.data.inputs[inputIndex].tapInternalKey = xOnly
+
+    if (!dataInput.tapBip32Derivation) {
+      psbt.data.inputs[inputIndex].tapBip32Derivation = []
+    }
+    psbt.data.inputs[inputIndex].tapBip32Derivation.push({
+      masterFingerprint: keyPair.fingerprint,
+      path,
+      pubkey: xOnly,
+      leafHashes: []
+    })
+  }
+}
+
+/* setDerivationsForHDSigner
+Purpose: Set all BIP32/BIP371 derivations for HD signers
+Param psbt: The PSBT object
+Param keyPair: The HD signing keypair
+Param network: The network object
+Returns: void (modifies psbt in place)
+*/
+function setDerivationsForHDSigner (psbt, keyPair, network) {
+  if (!keyPair?.fingerprint || !keyPair?.publicKey) return
+  if (typeof keyPair.derivePath !== 'function') return
+
+  for (let i = 0; i < psbt.data.inputs.length; i++) {
+    const dataInput = psbt.data.inputs[i]
+
+    // Get path from proprietary data
+    const path = getPathFromInput(dataInput)
+    if (!path) continue
+
+    // Derive the child key for this path
+    const child = keyPair.derivePath(path)
+    if (!child?.publicKey) continue
+
+    // Get the script from the input
+    const scriptBuffer = getScriptFromInput(dataInput, psbt, i)
+    if (!scriptBuffer) continue
+
+    // Check if this is a taproot input
+    if (isP2TRScript(scriptBuffer)) {
+      handleTaprootDerivation(psbt, i, dataInput, scriptBuffer, child, keyPair, path, network)
+    } else {
+      handleNonTaprootDerivation(psbt, i, dataInput, scriptBuffer, child, keyPair, path, network)
+    }
+  }
+}
+
+/* finalizePSBT
+Purpose: Finalize PSBT inputs after signing
+Param psbt: The PSBT object
+Returns: void (modifies psbt in place)
+*/
+function finalizePSBT (psbt) {
+  if (psbt._skipFinalization) return
+
   try {
     const validator = (pubkey, msghash, signature) => {
-      // For Schnorr signatures (Taproot), skip validation for now as there's an issue with the library
+      // For Schnorr signatures (Taproot), use appropriate verification
       const isSchnorr = signature && signature.length === 64 && pubkey && pubkey.length === 32
 
       if (isSchnorr) {
         return ecc.verifySchnorr(msghash, pubkey, signature)
       }
       // ECDSA
-      try { return ECPair.fromPublicKey(pubkey).verify(msghash, signature) } catch (e) { return false }
+      try {
+        return ECPair.fromPublicKey(pubkey).verify(msghash, signature)
+      } catch (e) {
+        return false
+      }
     }
 
     // Try to validate and finalize all inputs at once
@@ -624,6 +983,24 @@ async function signWithKeyPair (psbt, keyPair) {
   } catch (err) {
     // Silent fail - validation/finalization may not be critical
   }
+}
+
+async function signWithKeyPair (psbt, keyPair, network) {
+  // For HD signers, set all derivations before signing
+  try {
+    setDerivationsForHDSigner(psbt, keyPair, network)
+  } catch (_) {}
+
+  // Apply polyfill for Taproot signing support
+  const { applyPR2137 } = require('./polyfills/psbt-pr2137')
+  applyPR2137(psbt)
+
+  // Sign all inputs with the polyfilled method
+  psbt.signAllInputsHD(keyPair)
+
+  // Finalize the transaction (optional)
+  finalizePSBT(psbt)
+
   return psbt
 }
 
@@ -635,7 +1012,12 @@ Param network: Required. bitcoinjs-lib Network object
 Returns: psbt from bitcoinjs-lib
 */
 async function signPSBTWithWIF (psbt, wif, network) {
-  return await signWithKeyPair(psbt, ECPair.fromWIF(wif, network))
+  // Ensure Taproot metadata for key-path spends when missing (WIF/imported cases)
+  const keyPair = ECPair.fromWIF(wif, network)
+  try {
+    setTaprootMetadata(psbt, keyPair.publicKey, network)
+  } catch (_) {}
+  return await signWithKeyPair(psbt, keyPair, network)
 }
 
 /* signWithWIF
@@ -1009,7 +1391,9 @@ Param psbt: Required. Partially signed transaction object
 Returns: psbt from bitcoinjs-lib
 */
 HDSigner.prototype.signPSBT = async function (psbt) {
-  return await signWithKeyPair(psbt, this.getRootNode())
+  // Pass network info along with the keyPair
+  const keyPair = this.getRootNode()
+  return await signWithKeyPair(psbt, keyPair, this.Signer.network)
 }
 
 /* sign
@@ -1601,6 +1985,17 @@ module.exports = {
   buildEthProof,
   signWithWIF,
   signWithKeyPair,
+  setTaprootMetadata,
+  checkPubkeyInScript,
+  checkSimpleScriptOwnership,
+  shouldAddBip32Derivation,
+  getPathFromInput,
+  getScriptFromInput,
+  isP2TRScript,
+  handleNonTaprootDerivation,
+  handleTaprootDerivation,
+  setDerivationsForHDSigner,
+  finalizePSBT,
   getMemoFromScript,
   getMemoFromOpReturn,
   getAllocationsFromTx,
