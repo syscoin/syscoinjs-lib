@@ -6,8 +6,6 @@ try { ecc = require('@bitcoinerlab/secp256k1') } catch (e) { try { ecc = require
 const { BIP32Factory } = require('bip32')
 const bip32 = BIP32Factory(ecc)
 
-// helper removed to avoid lint warning (not needed now)
-
 function isTaprootInput (input) {
   return !!input.tapInternalKey
 }
@@ -56,7 +54,7 @@ function applyPR2137 (psbt) {
     const input = this.data.inputs[inputIndex]
 
     // Check if this is a non-HD signer (like WIF key)
-    if (!hdKeyPair.fingerprint) {
+    if (!hdKeyPair.fingerprint && !hdKeyPair.getMasterFingerprint && !hdKeyPair.getRootNode) {
       // For non-HD signers, handle taproot specially
       if (isTaprootInput(input) && hdKeyPair.privateKey) {
         const P = input.tapInternalKey // x-only internal key (32 bytes)
@@ -70,8 +68,28 @@ function applyPR2137 (psbt) {
           throw new Error('Signer public key does not match tapInternalKey')
         }
 
-        // For non-HD signers, we don't have leaf hashes from derivation
-        const h = calculateScriptTreeMerkleRoot([])
+        // For non-HD signers, determine if this is key-path or script-path
+        let h
+        if (input.tapLeafScript && input.tapLeafScript.length > 0) {
+          // Script-path spend - calculate merkle root from leaf scripts
+          // Extract leaf hashes from tapLeafScript entries
+          const leafHashes = input.tapLeafScript.map(leaf => {
+            // Each leaf script needs to be hashed according to BIP341
+            const leafVer = leaf.leafVersion || 0xc0
+            const script = leaf.script
+            return bjs.crypto.taggedHash(
+              'TapLeaf',
+              Buffer.concat([Buffer.from([leafVer]), Buffer.from([script.length]), script])
+            )
+          })
+          h = calculateScriptTreeMerkleRoot(leafHashes)
+        } else if (input.tapMerkleRoot) {
+          // If merkle root is provided directly, use it
+          h = input.tapMerkleRoot
+        } else {
+          // Key-path spend - no script tree
+          h = undefined
+        }
         const tweak = bjs.crypto.taggedHash('TapTweak', h ? Buffer.concat([P, h]) : P)
         const addTweak = ecc.xOnlyPointAddTweak(P, tweak)
         if (!addTweak) throw new Error('Failed to add taproot tweak')
@@ -84,7 +102,13 @@ function applyPR2137 (psbt) {
         }
         const signer = {
           publicKey: Qx, // x-only tweaked pubkey
-          signSchnorr: (hash) => ecc.signSchnorr(hash, k)
+          signSchnorr: (hash) => {
+            // Ensure hash is a Buffer for consistent handling
+            const hashBuffer = Buffer.isBuffer(hash) ? hash : Buffer.from(hash)
+            // bitcoinjs-lib should already handle the epoch byte (0x00) in the sighash
+            // but we need to ensure the signature is created correctly
+            return ecc.signSchnorr(hashBuffer, k)
+          }
         }
         this.signInput(inputIndex, signer, sighashTypes)
       } else {
@@ -95,10 +119,31 @@ function applyPR2137 (psbt) {
     }
 
     // HD signer path (original code)
-    if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) { throw new Error('Need HDSigner to sign input') }
-    const deriv = getDerivationForRoot(input, hdKeyPair.fingerprint)
+    // Get fingerprint from various sources
+    let fingerprint
+    if (hdKeyPair.fingerprint) {
+      fingerprint = hdKeyPair.fingerprint
+    } else if (hdKeyPair.getMasterFingerprint) {
+      fingerprint = hdKeyPair.getMasterFingerprint()
+    } else if (hdKeyPair.getRootNode) {
+      fingerprint = hdKeyPair.getRootNode().fingerprint
+    }
+
+    if (!hdKeyPair || !hdKeyPair.publicKey || !fingerprint) { throw new Error('Need HDSigner to sign input') }
+    const deriv = getDerivationForRoot(input, fingerprint)
     if (!deriv || !deriv.path) { throw new Error('Need derivation path to sign with HD') }
-    const child = typeof hdKeyPair.derivePath === 'function' ? hdKeyPair.derivePath(deriv.path) : bip32.fromBase58(hdKeyPair.toBase58(), undefined).derivePath(deriv.path)
+
+    // Support both derivePath and deriveKeypair
+    let child
+    if (typeof hdKeyPair.derivePath === 'function') {
+      child = hdKeyPair.derivePath(deriv.path)
+    } else if (typeof hdKeyPair.deriveKeypair === 'function') {
+      child = hdKeyPair.deriveKeypair(deriv.path)
+    } else {
+      // Fallback to using bip32 if available
+      child = bip32.fromBase58(hdKeyPair.toBase58(), undefined).derivePath(deriv.path)
+    }
+
     if (!child || !child.privateKey) { throw new Error('Cannot derive child private key') }
 
     if (isTaprootInput(input)) {
@@ -116,7 +161,13 @@ function applyPR2137 (psbt) {
       }
       const signer = {
         publicKey: Qx, // x-only tweaked pubkey
-        signSchnorr: (hash) => ecc.signSchnorr(hash, k)
+        signSchnorr: (hash) => {
+          // Ensure hash is a Buffer for consistent handling
+          const hashBuffer = Buffer.isBuffer(hash) ? hash : Buffer.from(hash)
+          // bitcoinjs-lib should already handle the epoch byte (0x00) in the sighash
+          // but we need to ensure the signature is created correctly
+          return ecc.signSchnorr(hashBuffer, k)
+        }
       }
       this.signInput(inputIndex, signer, sighashTypes)
     } else {
