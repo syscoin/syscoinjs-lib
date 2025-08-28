@@ -1,8 +1,8 @@
 /* Polyfill for HD signing (including Taproot) akin to bitcoinjs PR-2137
    Applied per-psbt instance to avoid global prototype changes. */
 const bjs = require('bitcoinjs-lib')
-let ecc
-try { ecc = require('@bitcoinerlab/secp256k1') } catch (e) { try { ecc = require('tiny-secp256k1') } catch (_) {} }
+// Use @bitcoinerlab/secp256k1 exclusively to avoid native tiny-secp256k1 in browser/Next builds
+const ecc = require('@bitcoinerlab/secp256k1')
 const { BIP32Factory } = require('bip32')
 const bip32 = BIP32Factory(ecc)
 
@@ -88,9 +88,18 @@ function applyPR2137 (psbt) {
     if (!hdKeyPair.fingerprint && !hdKeyPair.getMasterFingerprint && !hdKeyPair.getRootNode) {
       // For non-HD signers, handle taproot specially
       if (isTaprootInput(input)) {
-        const tweak = getTaprootTweak(input)
-        const tweakedSigner = hdKeyPair.tweak(tweak)
-        this.signInput(inputIndex, tweakedSigner, sighashTypes)
+        // Determine if this is key-path or script-path spending
+        const isScriptPath = input.tapLeafScript && input.tapLeafScript.length > 0
+
+        if (isScriptPath) {
+          // Script-path: DON'T tweak
+          this.signInput(inputIndex, hdKeyPair, sighashTypes)
+        } else {
+          // Key-path: DO tweak
+          const tweak = getTaprootTweak(input)
+          const tweakedSigner = hdKeyPair.tweak(tweak)
+          this.signInput(inputIndex, tweakedSigner, sighashTypes)
+        }
       } else {
         // Non-taproot, non-HD signing
         this.signInput(inputIndex, hdKeyPair, sighashTypes)
@@ -110,6 +119,7 @@ function applyPR2137 (psbt) {
     }
 
     if (!hdKeyPair || !hdKeyPair.publicKey || !fingerprint) { throw new Error('Need HDSigner to sign input') }
+
     const deriv = getDerivationForRoot(input, fingerprint)
     if (!deriv || !deriv.path) { throw new Error('Need derivation path to sign with HD') }
 
@@ -127,9 +137,20 @@ function applyPR2137 (psbt) {
     if (!child || !child.privateKey) { throw new Error('Cannot derive child private key') }
 
     if (isTaprootInput(input)) {
-      const tweak = getTaprootTweak(input)
-      const tweakedChild = child.tweak(tweak)
-      this.signInput(inputIndex, tweakedChild, sighashTypes)
+      // Determine if this is key-path or script-path spending
+      const isScriptPath = input.tapLeafScript && input.tapLeafScript.length > 0
+
+      if (isScriptPath) {
+        // Script-path: DON'T tweak - sign with the original key
+        // bitcoinjs-lib will handle creating tapScriptSig
+        this.signInput(inputIndex, child, sighashTypes)
+      } else {
+        // Key-path: DO tweak - sign with the tweaked key
+        // bitcoinjs-lib will handle creating tapKeySig
+        const tweak = getTaprootTweak(input)
+        const tweakedChild = child.tweak(tweak)
+        this.signInput(inputIndex, tweakedChild, sighashTypes)
+      }
     } else {
       this.signInput(inputIndex, {
         publicKey: child.publicKey,
@@ -143,10 +164,19 @@ function applyPR2137 (psbt) {
     // Allow non-HD signers (like WIF keys) - they won't have fingerprint
     if (!hdKeyPair || !hdKeyPair.publicKey) { throw new Error('Need signer with public key') }
     const results = []
+    const errors = []
     for (let i = 0; i < this.data.inputs.length; i++) {
-      try { this.signInputHD(i, hdKeyPair, sighashTypes); results.push(true) } catch (e) { results.push(false) }
+      try {
+        this.signInputHD(i, hdKeyPair, sighashTypes)
+        results.push(true)
+      } catch (e) {
+        results.push(false)
+        errors.push(`${e.message}`)
+      }
     }
-    if (results.every(v => v === false)) { throw new Error('No inputs were signed') }
+    if (results.every(v => v === false)) {
+      throw new Error('No inputs were signed. Errors: ' + errors.join('; '))
+    }
     return this
   }
 

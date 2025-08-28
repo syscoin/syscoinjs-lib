@@ -3,13 +3,8 @@ const BN = require('bn.js')
 const BIP84 = require('./bip84-replacement')
 const bjs = require('bitcoinjs-lib')
 // Initialize ECC backend for bitcoinjs-lib v7 (extension-friendly, no WASM)
-let ecc
-try {
-  ecc = require('@bitcoinerlab/secp256k1')
-} catch (e) {
-  // Fallback to tiny-secp256k1 if available (non-extension builds)
-  try { ecc = require('tiny-secp256k1') } catch (_) {}
-}
+// Use @bitcoinerlab/secp256k1 exclusively to avoid native tiny-secp256k1 in browser/Next builds
+const ecc = require('@bitcoinerlab/secp256k1')
 if (ecc && typeof bjs.initEccLib === 'function') {
   bjs.initEccLib(ecc)
 }

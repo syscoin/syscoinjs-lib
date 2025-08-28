@@ -50,7 +50,7 @@ For random number generation, we *default* to the [`randombytes`](https://github
 Although this default is ~OK, there is no simple way to detect if the underlying RNG provided is good enough, or if it is **catastrophically bad**.
 You should always verify this yourself to your own standards.
 
-This library uses [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) which uses [tiny-secp256k1](https://github.com/bitcoinjs/tiny-secp256k1), which uses [RFC6979](https://tools.ietf.org/html/rfc6979) to help prevent `k` re-use and exploitation.
+This library uses [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) with the ECC backend [@bitcoinerlab/secp256k1](https://www.npmjs.com/package/@bitcoinerlab/secp256k1), which uses [RFC6979](https://tools.ietf.org/html/rfc6979) to help prevent `k` re-use and exploitation.
 Unfortunately, this isn't a silver bullet.
 Often, Javascript itself is working against us by bypassing these counter-measures.
 

@@ -1,5 +1,5 @@
 const { ECPairFactory } = require('ecpair')
-const ecc = require('tiny-secp256k1')
+const ecc = require('@bitcoinerlab/secp256k1')
 const sjs = require('syscoinjs-lib')
 
 const syscoinjs = new sjs.SyscoinJSLib(
