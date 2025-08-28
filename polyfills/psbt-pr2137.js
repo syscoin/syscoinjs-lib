@@ -49,6 +49,37 @@ function calculateScriptTreeMerkleRoot (leafHashes) {
   return level[0]
 }
 
+function getTaprootTweak (input) {
+  if (!input.tapInternalKey) {
+    throw new Error('tapInternalKey is required for taproot inputs')
+  }
+
+  const P = input.tapInternalKey // x-only internal key (32 bytes)
+
+  // Determine if this is key-path or script-path spend based on PSBT fields
+  let h
+  if (input.tapLeafScript && input.tapLeafScript.length > 0) {
+    // Script-path spend - calculate merkle root from leaf scripts
+    const leafHashes = input.tapLeafScript.map(leaf => {
+      const leafVer = leaf.leafVersion || 0xc0
+      const script = leaf.script
+      return bjs.crypto.taggedHash(
+        'TapLeaf',
+        Buffer.concat([Buffer.from([leafVer]), Buffer.from([script.length]), script])
+      )
+    })
+    h = calculateScriptTreeMerkleRoot(leafHashes)
+  } else if (input.tapMerkleRoot) {
+    // If merkle root is provided directly, use it
+    h = input.tapMerkleRoot
+  } else {
+    // Key-path spend - no script tree
+    h = undefined
+  }
+
+  return bjs.crypto.taggedHash('TapTweak', h ? Buffer.concat([P, h]) : P)
+}
+
 function applyPR2137 (psbt) {
   psbt.signInputHD = function (inputIndex, hdKeyPair, sighashTypes) {
     const input = this.data.inputs[inputIndex]
@@ -56,61 +87,10 @@ function applyPR2137 (psbt) {
     // Check if this is a non-HD signer (like WIF key)
     if (!hdKeyPair.fingerprint && !hdKeyPair.getMasterFingerprint && !hdKeyPair.getRootNode) {
       // For non-HD signers, handle taproot specially
-      if (isTaprootInput(input) && hdKeyPair.privateKey) {
-        const P = input.tapInternalKey // x-only internal key (32 bytes)
-
-        // Check if this signer's public key matches the tapInternalKey
-        const signerXOnly = hdKeyPair.publicKey.length === 33 ? hdKeyPair.publicKey.slice(1, 33) : hdKeyPair.publicKey
-        // Convert both to Buffer for comparison (handle Uint8Array vs Buffer)
-        const signerBuf = Buffer.from(signerXOnly)
-        const tapKeyBuf = Buffer.from(P)
-        if (!tapKeyBuf.equals(signerBuf)) {
-          throw new Error('Signer public key does not match tapInternalKey')
-        }
-
-        // For non-HD signers, determine if this is key-path or script-path
-        let h
-        if (input.tapLeafScript && input.tapLeafScript.length > 0) {
-          // Script-path spend - calculate merkle root from leaf scripts
-          // Extract leaf hashes from tapLeafScript entries
-          const leafHashes = input.tapLeafScript.map(leaf => {
-            // Each leaf script needs to be hashed according to BIP341
-            const leafVer = leaf.leafVersion || 0xc0
-            const script = leaf.script
-            return bjs.crypto.taggedHash(
-              'TapLeaf',
-              Buffer.concat([Buffer.from([leafVer]), Buffer.from([script.length]), script])
-            )
-          })
-          h = calculateScriptTreeMerkleRoot(leafHashes)
-        } else if (input.tapMerkleRoot) {
-          // If merkle root is provided directly, use it
-          h = input.tapMerkleRoot
-        } else {
-          // Key-path spend - no script tree
-          h = undefined
-        }
-        const tweak = bjs.crypto.taggedHash('TapTweak', h ? Buffer.concat([P, h]) : P)
-        const addTweak = ecc.xOnlyPointAddTweak(P, tweak)
-        if (!addTweak) throw new Error('Failed to add taproot tweak')
-        const Qx = addTweak.xOnlyPubkey
-        const parity = addTweak.parity
-        let k = ecc.privateAdd(hdKeyPair.privateKey, tweak)
-        if (!k) throw new Error('Failed to tweak private key')
-        if (parity === 1) {
-          k = ecc.privateNegate(k)
-        }
-        const signer = {
-          publicKey: Qx, // x-only tweaked pubkey
-          signSchnorr: (hash) => {
-            // Ensure hash is a Buffer for consistent handling
-            const hashBuffer = Buffer.isBuffer(hash) ? hash : Buffer.from(hash)
-            // bitcoinjs-lib should already handle the epoch byte (0x00) in the sighash
-            // but we need to ensure the signature is created correctly
-            return ecc.signSchnorr(hashBuffer, k)
-          }
-        }
-        this.signInput(inputIndex, signer, sighashTypes)
+      if (isTaprootInput(input)) {
+        const tweak = getTaprootTweak(input)
+        const tweakedSigner = hdKeyPair.tweak(tweak)
+        this.signInput(inputIndex, tweakedSigner, sighashTypes)
       } else {
         // Non-taproot, non-HD signing
         this.signInput(inputIndex, hdKeyPair, sighashTypes)
@@ -147,29 +127,9 @@ function applyPR2137 (psbt) {
     if (!child || !child.privateKey) { throw new Error('Cannot derive child private key') }
 
     if (isTaprootInput(input)) {
-      const P = input.tapInternalKey // x-only internal key (32 bytes)
-      const h = calculateScriptTreeMerkleRoot((deriv && deriv.leafHashes) || [])
-      const tweak = bjs.crypto.taggedHash('TapTweak', h ? Buffer.concat([P, h]) : P)
-      const addTweak = ecc.xOnlyPointAddTweak(P, tweak)
-      if (!addTweak) throw new Error('Failed to add taproot tweak')
-      const Qx = addTweak.xOnlyPubkey
-      const parity = addTweak.parity
-      let k = ecc.privateAdd(child.privateKey, tweak)
-      if (!k) throw new Error('Failed to tweak private key')
-      if (parity === 1) {
-        k = ecc.privateNegate(k)
-      }
-      const signer = {
-        publicKey: Qx, // x-only tweaked pubkey
-        signSchnorr: (hash) => {
-          // Ensure hash is a Buffer for consistent handling
-          const hashBuffer = Buffer.isBuffer(hash) ? hash : Buffer.from(hash)
-          // bitcoinjs-lib should already handle the epoch byte (0x00) in the sighash
-          // but we need to ensure the signature is created correctly
-          return ecc.signSchnorr(hashBuffer, k)
-        }
-      }
-      this.signInput(inputIndex, signer, sighashTypes)
+      const tweak = getTaprootTweak(input)
+      const tweakedChild = child.tweak(tweak)
+      this.signInput(inputIndex, tweakedChild, sighashTypes)
     } else {
       this.signInput(inputIndex, {
         publicKey: child.publicKey,
