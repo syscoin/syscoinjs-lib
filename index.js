@@ -184,6 +184,14 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
         }
       }
     } catch (_) {}
+
+    // Always store the HD path as proprietary unknown key for hardware fallback (e.g., Trezor)
+    if (input.path) {
+      psbt.addUnknownKeyValToInput(i, {
+        key: Buffer.from('path'),
+        value: Buffer.from(input.path)
+      })
+    }
     // Add asset information if available
     if (input.assetInfo) {
       // Convert BN values to strings for JSON serialization
