@@ -725,7 +725,9 @@ function setTaprootMetadata (psbt, pubkey, network) {
     } else {
       // No internal key set - check if this is a simple single-key P2TR
       // This check ONLY works for simple key-path spends
-      if (!p2tr.output || !scriptBuffer.equals(p2tr.output)) {
+      // Ensure both are Buffers for proper comparison (p2tr.output might be Uint8Array)
+      const p2trOutputBuffer = p2tr.output ? Buffer.from(p2tr.output) : null
+      if (!p2trOutputBuffer || !scriptBuffer.equals(p2trOutputBuffer)) {
         // Output doesn't match our single key - could be:
         // - Script path spend (tweaked with merkle root)
         // - MuSig (aggregated key)
@@ -880,7 +882,9 @@ function handleTaprootDerivation (psbt, inputIndex, dataInput, scriptBuffer, chi
   })
 
   // Check if our single key would generate this output (simple case only)
-  if (p2tr.output && scriptBuffer.equals(p2tr.output)) {
+  // Ensure both are Buffers for proper comparison (p2tr.output might be Uint8Array)
+  const p2trOutputBuffer = p2tr.output ? Buffer.from(p2tr.output) : null
+  if (p2trOutputBuffer && scriptBuffer.equals(p2trOutputBuffer)) {
     // This is a simple single-key P2TR that we control
     psbt.data.inputs[inputIndex].tapInternalKey = xOnly
 
