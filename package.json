@@ -1,6 +1,6 @@
 {
   "name": "syscoinjs-lib",
-  "version": "1.0.266",
+  "version": "1.0.267",
   "description": "A transaction creation library interfacing with coin selection for Syscoin.",
   "keywords": [
     "coinselect",
@@ -61,7 +61,7 @@
     "@ethersproject/keccak256": "^5.8.0",
     "@ethersproject/providers": "^5.8.0",
     "ecpair": "^3.0.0-rc.0",
-    "syscointx-js": "^1.0.123",
+    "syscointx-js": "^1.0.124",
     "varuint-bitcoin": "^2.0.0"
   }
 }
