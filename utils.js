@@ -26,9 +26,7 @@ const varuint = require('varuint-bitcoin')
 const { VerifyProof, GetProof } = require('eth-proof')
 const { encode } = require('eth-util-lite')
 const { Log } = require('eth-object')
-const { keccak256 } = require('@ethersproject/keccak256')
-const { AbiCoder } = require('@ethersproject/abi')
-const { JsonRpcProvider } = require('@ethersproject/providers')
+const { AbiCoder, JsonRpcProvider, keccak256 } = require('ethers')
 const syscointx = require('syscointx-js')
 
 // Web3 utility replacements using ethers and BN.js
@@ -37,7 +35,7 @@ const web3Utils = {
   toBN: (value) => {
     if (value == null) return new BN(0)
     if (BN.isBN && BN.isBN(value)) return value
-    // ethers.js BigNumber (v5)
+    // ethers BigNumber-like values from older consumers
     if (typeof value === 'object' && value._isBigNumber && typeof value.toString === 'function') {
       return new BN(value.toString())
     }
