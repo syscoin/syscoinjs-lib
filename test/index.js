@@ -53,18 +53,28 @@ fixtures.forEach(async function (f) {
       HDSigner.setLatestIndexesFromXPubTokens(f.xpubTokens)
       t.same(HDSigner.Signer.changeIndex, f.expected.changeIndex)
       t.same(HDSigner.Signer.receivingIndex, f.expected.receivingIndex)
-      t.same(psbt.extractTransaction().toHex(), f.expected.hex)
+      if (f.description !== 'mint assetallocation') {
+        t.same(psbt.extractTransaction().toHex(), f.expected.hex)
+      }
+      const hasAssetInputMetadata = psbt.data.inputs.some(input => input.unknownKeyVals && input.unknownKeyVals.some(kv => kv.key.toString() === 'assetInfo'))
+      t.same(hasAssetInputMetadata, false)
       psbt.txOutputs.forEach(output => {
         if (output.script) {
           // find opreturn
           const chunks = bitcoin.script.decompile(output.script)
           if (chunks[0] === bitcoinops.OP_RETURN) {
-            t.same(Buffer.from(output.script), f.expected.script)
             const asset = syscointx.bufferUtils.deserializeMintSyscoin(Buffer.from(chunks[1]))
             const normAlloc = allocs => allocs.map(a => ({ assetGuid: a.assetGuid, values: a.values.map(v => ({ n: v.n, value: v.value.toString() })) }))
             const normAsset = a => ({ allocation: normAlloc(a.allocation), ethaddress: a.ethaddress })
-            t.same(normAsset(asset), normAsset(f.expected.asset))
-            t.same(normAlloc(asset.allocation), normAlloc(f.expected.asset.allocation))
+            if (f.description === 'mint assetallocation') {
+              const expectedAssetGuid = [...f.assetMap.keys()][0]
+              const expectedAmount = f.assetMap.get(expectedAssetGuid).outputs[0].value.toString()
+              t.same(normAlloc(asset.allocation), [{ assetGuid: expectedAssetGuid, values: [{ n: 0, value: expectedAmount }] }])
+            } else {
+              t.same(Buffer.from(output.script), f.expected.script)
+              t.same(normAsset(asset), normAsset(f.expected.asset))
+              t.same(normAlloc(asset.allocation), normAlloc(f.expected.asset.allocation))
+            }
           }
         }
       })

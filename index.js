@@ -97,6 +97,350 @@ function formatErrorResponse (res) {
   return errorResponse
 }
 
+function bridgeBurnError (code, message, details) {
+  return Object.assign(
+    new Error(message),
+    { code, error: true, details }
+  )
+}
+
+function normalizeAssetGuid (assetGuid) {
+  if (assetGuid && assetGuid.toString) {
+    return assetGuid.toString(10)
+  }
+  return String(assetGuid)
+}
+
+function isBridgeBurn (assetOpts) {
+  return assetOpts && assetOpts.ethaddress && assetOpts.ethaddress.length > 0
+}
+
+function getOpReturnPayloadFromOutputs (outputs) {
+  for (const output of outputs) {
+    if (!output.script) {
+      continue
+    }
+    const chunks = utils.bitcoinjs.script.decompile(output.script)
+    if (chunks && chunks[0] === utils.bitcoinjs.opcodes.OP_RETURN && chunks[1]) {
+      return Buffer.isBuffer(chunks[1]) ? chunks[1] : Buffer.from(chunks[1])
+    }
+  }
+  return null
+}
+
+function prepareBridgeBurnOptions (txOpts, assetMap) {
+  if (!(assetMap instanceof Map) || assetMap.size !== 1) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_BURN_ASSET_MAP',
+      'Bridge burns must target exactly one asset'
+    )
+  }
+
+  const [[assetGuid, valueAssetObj]] = assetMap.entries()
+  const targetAssetGuid = normalizeAssetGuid(assetGuid)
+  if (!valueAssetObj || !Array.isArray(valueAssetObj.outputs) || valueAssetObj.outputs.length !== 1) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_BURN_OUTPUTS',
+      'Bridge burns must contain exactly one burn output for the target asset'
+    )
+  }
+
+  const hardenedTxOpts = { ...(txOpts || {}) }
+  if (hardenedTxOpts.assetWhiteList) {
+    for (const whitelistedGuid of hardenedTxOpts.assetWhiteList.keys()) {
+      if (normalizeAssetGuid(whitelistedGuid) !== targetAssetGuid) {
+        throw bridgeBurnError(
+          'INVALID_BRIDGE_BURN_WHITELIST',
+          'Bridge burn assetWhiteList may not include non-target assets',
+          { targetAssetGuid, whitelistedGuid: normalizeAssetGuid(whitelistedGuid) }
+        )
+      }
+    }
+  }
+  // Empty whitelist means sanitizer accepts only assetMap assets and rejects every other asset UTXO.
+  hardenedTxOpts.assetWhiteList = new Map()
+
+  return {
+    txOpts: hardenedTxOpts,
+    assetMap: new Map([[targetAssetGuid, valueAssetObj]]),
+    targetAssetGuid
+  }
+}
+
+function prepareBridgeMintOptions (assetMap) {
+  if (!(assetMap instanceof Map) || assetMap.size !== 1) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_MINT_ASSET_MAP',
+      'Bridge mints must create exactly one asset'
+    )
+  }
+
+  const [[assetGuid, valueAssetObj]] = assetMap.entries()
+  const targetAssetGuid = normalizeAssetGuid(assetGuid)
+  if (!valueAssetObj || !Array.isArray(valueAssetObj.outputs) || valueAssetObj.outputs.length !== 1) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_MINT_OUTPUTS',
+      'Bridge mints must contain exactly one output for the minted asset'
+    )
+  }
+
+  return {
+    assetMap: new Map([[targetAssetGuid, valueAssetObj]]),
+    targetAssetGuid
+  }
+}
+
+function normalizeBridgeUtxos (utxos) {
+  const normalizeUtxo = utxo => {
+    if (!utxo || !utxo.assetInfo) {
+      return utxo
+    }
+    return {
+      ...utxo,
+      assetInfo: {
+        ...utxo.assetInfo,
+        assetGuid: normalizeAssetGuid(utxo.assetInfo.assetGuid)
+      }
+    }
+  }
+
+  if (Array.isArray(utxos)) {
+    return utxos.map(normalizeUtxo)
+  }
+  if (!utxos || typeof utxos !== 'object') {
+    return utxos
+  }
+
+  return {
+    ...utxos,
+    assets: Array.isArray(utxos.assets)
+      ? utxos.assets.map(asset => ({
+        ...asset,
+        assetGuid: normalizeAssetGuid(asset.assetGuid)
+      }))
+      : utxos.assets,
+    utxos: Array.isArray(utxos.utxos) ? utxos.utxos.map(normalizeUtxo) : utxos.utxos
+  }
+}
+
+function removeAssetUtxos (utxos) {
+  if (!utxos || !Array.isArray(utxos.utxos)) {
+    return utxos
+  }
+  return {
+    ...utxos,
+    utxos: utxos.utxos.filter(utxo => !utxo.assetInfo)
+  }
+}
+
+function validateSingleAssetAllocation (res, targetAssetGuid, errorPrefix) {
+  const target = normalizeAssetGuid(targetAssetGuid)
+  const allocations = syscointx.getAllocationsFromOutputs(res.outputs)
+  if (!allocations || allocations.length !== 1) {
+    throw bridgeBurnError(
+      `INVALID_${errorPrefix}_ALLOCATION_COUNT`,
+      'Bridge transaction must serialize exactly one asset allocation'
+    )
+  }
+
+  const allocation = allocations[0]
+  if (normalizeAssetGuid(allocation.assetGuid) !== target) {
+    throw bridgeBurnError(
+      `INVALID_${errorPrefix}_ALLOCATION_ASSET`,
+      'Bridge transaction allocation asset does not match the target asset',
+      { targetAssetGuid: target, allocationAssetGuid: normalizeAssetGuid(allocation.assetGuid) }
+    )
+  }
+
+  const assignedOutputs = new Set()
+  for (const value of allocation.values) {
+    if (assignedOutputs.has(value.n)) {
+      throw bridgeBurnError(
+        `INVALID_${errorPrefix}_DUPLICATE_OUTPUT`,
+        'Bridge transaction allocation contains a duplicate output index'
+      )
+    }
+    assignedOutputs.add(value.n)
+  }
+
+  return { allocation, allocations, target }
+}
+
+function validateAssetOutputMetadataMatchesAllocation (res, allocation, target, errorPrefix, allowedScriptAllocationIndex) {
+  const valuesByIndex = new Map()
+  for (const value of allocation.values) {
+    valuesByIndex.set(value.n, value.value)
+  }
+
+  for (const [index, output] of res.outputs.entries()) {
+    if (output.script && output.assetInfo) {
+      throw bridgeBurnError(
+        `INVALID_${errorPrefix}_OUTPUT_METADATA`,
+        'Bridge transaction script outputs may not carry asset metadata',
+        { outputIndex: index }
+      )
+    }
+    if (!output.assetInfo) {
+      continue
+    }
+    const expectedValue = valuesByIndex.get(index)
+    if (!expectedValue) {
+      throw bridgeBurnError(
+        `INVALID_${errorPrefix}_OUTPUT_METADATA`,
+        'Bridge transaction output asset metadata is not committed by the serialized allocation',
+        { outputIndex: index }
+      )
+    }
+    if (normalizeAssetGuid(output.assetInfo.assetGuid) !== target || !new BN(output.assetInfo.value).eq(new BN(expectedValue))) {
+      throw bridgeBurnError(
+        `INVALID_${errorPrefix}_OUTPUT_METADATA`,
+        'Bridge transaction output asset metadata does not match the serialized allocation',
+        {
+          outputIndex: index,
+          targetAssetGuid: target,
+          metadataAssetGuid: normalizeAssetGuid(output.assetInfo.assetGuid),
+          metadataValue: new BN(output.assetInfo.value).toString(10),
+          allocationValue: new BN(expectedValue).toString(10)
+        }
+      )
+    }
+  }
+
+  for (const [index, expectedValue] of valuesByIndex.entries()) {
+    const output = res.outputs[index]
+    if (!output) {
+      throw bridgeBurnError(
+        `INVALID_${errorPrefix}_OUTPUT_METADATA`,
+        'Bridge transaction allocation references a missing output',
+        { outputIndex: index }
+      )
+    }
+    if (output.script && index === allowedScriptAllocationIndex) {
+      continue
+    }
+    if (!output.assetInfo || normalizeAssetGuid(output.assetInfo.assetGuid) !== target || !new BN(output.assetInfo.value).eq(new BN(expectedValue))) {
+      throw bridgeBurnError(
+        `INVALID_${errorPrefix}_OUTPUT_METADATA`,
+        'Bridge transaction serialized allocation is not mirrored by output asset metadata',
+        { outputIndex: index, targetAssetGuid: target, allocationValue: new BN(expectedValue).toString(10) }
+      )
+    }
+  }
+}
+
+function validateBridgeBurnResultShape (res, targetAssetGuid, assetOpts) {
+  if (!res || !Array.isArray(res.inputs) || !Array.isArray(res.outputs)) {
+    throw bridgeBurnError('INVALID_BRIDGE_BURN_RESULT', 'Bridge burn transaction creation failed')
+  }
+  if (res.inputs.length >= 100) {
+    throw bridgeBurnError('INVALID_BRIDGE_BURN_INPUT_COUNT', 'Bridge burn has too many inputs for relay parsing')
+  }
+  if (res.outputs.length >= 10) {
+    throw bridgeBurnError('INVALID_BRIDGE_BURN_OUTPUT_COUNT', 'Bridge burn has too many outputs for relay parsing')
+  }
+
+  const { allocation, allocations, target } = validateSingleAssetAllocation(res, targetAssetGuid, 'BRIDGE_BURN')
+  const opReturnIndex = res.outputs.findIndex(output => output.script && Buffer.from(output.script)[0] === 0x6a)
+  if (opReturnIndex < 0 || !allocation.values.some(value => value.n === opReturnIndex)) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_BURN_MISSING_BURN_OUTPUT',
+      'Bridge burn allocation does not commit the OP_RETURN burn output'
+    )
+  }
+
+  let targetInputTotal = new BN(0)
+  for (const input of res.inputs) {
+    if (!input.assetInfo) {
+      continue
+    }
+    if (normalizeAssetGuid(input.assetInfo.assetGuid) !== target) {
+      throw bridgeBurnError(
+        'INVALID_BRIDGE_BURN_INPUT_ASSET',
+        'Bridge burn selected a non-target asset input',
+        { targetAssetGuid: target, inputAssetGuid: normalizeAssetGuid(input.assetInfo.assetGuid) }
+      )
+    }
+    targetInputTotal = targetInputTotal.add(new BN(input.assetInfo.value))
+  }
+  if (targetInputTotal.isZero()) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_BURN_MISSING_INPUT_ASSET',
+      'Bridge burn must spend at least one target asset input',
+      { targetAssetGuid: target }
+    )
+  }
+  for (const output of res.outputs) {
+    if (output.assetInfo && normalizeAssetGuid(output.assetInfo.assetGuid) !== target) {
+      throw bridgeBurnError(
+        'INVALID_BRIDGE_BURN_OUTPUT_ASSET',
+        'Bridge burn created a non-target asset output',
+        { targetAssetGuid: target, outputAssetGuid: normalizeAssetGuid(output.assetInfo.assetGuid) }
+      )
+    }
+  }
+  validateAssetOutputMetadataMatchesAllocation(res, allocation, target, 'BRIDGE_BURN', opReturnIndex)
+  const allocationTotal = allocation.values.reduce((total, value) => total.add(new BN(value.value)), new BN(0))
+  if (!targetInputTotal.eq(allocationTotal)) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_BURN_ASSET_BALANCE',
+      'Bridge burn target asset inputs must equal the serialized allocation total',
+      { targetAssetGuid: target, inputTotal: targetInputTotal.toString(10), allocationTotal: allocationTotal.toString(10) }
+    )
+  }
+
+  const payload = getOpReturnPayloadFromOutputs(res.outputs)
+  const expectedPayload = Buffer.concat([
+    syscointx.bufferUtils.serializeAssetAllocations(allocations),
+    syscointx.bufferUtils.serializeAllocationBurn(assetOpts)
+  ])
+  if (!payload || payload.length !== expectedPayload.length || !payload.equals(expectedPayload)) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_BURN_PAYLOAD',
+      'Bridge burn OP_RETURN payload must contain only the asset allocation and Ethereum address'
+    )
+  }
+}
+
+function validateBridgeMintResultShape (res, targetAssetGuid, assetOpts) {
+  if (!res || !Array.isArray(res.inputs) || !Array.isArray(res.outputs)) {
+    throw bridgeBurnError('INVALID_BRIDGE_MINT_RESULT', 'Bridge mint transaction creation failed')
+  }
+
+  const { allocations, target } = validateSingleAssetAllocation(res, targetAssetGuid, 'BRIDGE_MINT')
+
+  for (const input of res.inputs) {
+    if (input.assetInfo) {
+      throw bridgeBurnError(
+        'INVALID_BRIDGE_MINT_INPUT_ASSET',
+        'Bridge mint selected an asset input',
+        { inputAssetGuid: normalizeAssetGuid(input.assetInfo.assetGuid) }
+      )
+    }
+  }
+  for (const output of res.outputs) {
+    if (output.assetInfo && normalizeAssetGuid(output.assetInfo.assetGuid) !== target) {
+      throw bridgeBurnError(
+        'INVALID_BRIDGE_MINT_OUTPUT_ASSET',
+        'Bridge mint created a non-target asset output',
+        { targetAssetGuid: target, outputAssetGuid: normalizeAssetGuid(output.assetInfo.assetGuid) }
+      )
+    }
+  }
+  validateAssetOutputMetadataMatchesAllocation(res, allocations[0], target, 'BRIDGE_MINT')
+
+  const payload = getOpReturnPayloadFromOutputs(res.outputs)
+  const expectedPayload = Buffer.concat([
+    syscointx.bufferUtils.serializeAssetAllocations(allocations),
+    syscointx.bufferUtils.serializeMintSyscoin(assetOpts)
+  ])
+  if (!payload || payload.length !== expectedPayload.length || !payload.equals(expectedPayload)) {
+    throw bridgeBurnError(
+      'INVALID_BRIDGE_MINT_PAYLOAD',
+      'Bridge mint OP_RETURN payload must contain only the asset allocation and mint proof'
+    )
+  }
+}
+
 /* createPSBTFromRes
 Purpose: Craft PSBT from res object. Detects witness/non-witness UTXOs and sets appropriate data required for bitcoinjs-lib to sign properly
 Param res: Required. The resulting object passed in which is assigned from syscointx.createTransaction()/syscointx.createAssetTransaction()
@@ -444,6 +788,13 @@ Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript f
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
 Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+  let bridgeBurnTargetAssetGuid
+  if (isBridgeBurn(assetOpts)) {
+    const bridgeBurnOptions = prepareBridgeBurnOptions(txOpts, assetMap)
+    txOpts = bridgeBurnOptions.txOpts
+    assetMap = bridgeBurnOptions.assetMap
+    bridgeBurnTargetAssetGuid = bridgeBurnOptions.targetAssetGuid
+  }
   if (this.Signer) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.Signer.getNewChangeAddress()
@@ -455,6 +806,9 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+  if (bridgeBurnTargetAssetGuid) {
+    utxos = normalizeBridgeUtxos(utxos)
+  }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
 
@@ -465,6 +819,9 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
       new Error(errorData.message),
       { code: 402, ...errorData }
     )
+  }
+  if (bridgeBurnTargetAssetGuid) {
+    validateBridgeBurnResultShape(res, bridgeBurnTargetAssetGuid, assetOpts)
   }
 
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
@@ -549,9 +906,13 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
       receiptparentnodes: Buffer.from(ethProof.receiptparentnodes, 'hex')
     }
   }
+  const bridgeMintOptions = prepareBridgeMintOptions(assetMap)
+  assetMap = bridgeMintOptions.assetMap
 
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+  utxos = normalizeBridgeUtxos(utxos)
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
+  utxos = removeAssetUtxos(utxos)
   const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
 
   // Check if the result is an error
@@ -562,6 +923,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
       { code: 402, ...errorData }
     )
   }
+  validateBridgeMintResultShape(res, bridgeMintOptions.targetAssetGuid, assetOpts)
 
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
