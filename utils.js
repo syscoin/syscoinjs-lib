@@ -26,7 +26,9 @@ const varuint = require('varuint-bitcoin')
 const { VerifyProof, GetProof } = require('eth-proof')
 const { encode } = require('eth-util-lite')
 const { Log } = require('eth-object')
-const { AbiCoder, JsonRpcProvider, keccak256 } = require('ethers')
+const { AbiCoder } = require('ethers/abi')
+const { keccak256 } = require('ethers/crypto')
+const { JsonRpcProvider } = require('ethers/providers')
 const syscointx = require('syscointx-js')
 
 // Web3 utility replacements using ethers and BN.js

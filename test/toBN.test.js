@@ -1,7 +1,7 @@
 const test = require('tape')
 const { utils } = require('..')
 const { web3, BN } = utils
-const { AbiCoder } = require('ethers')
+const { AbiCoder } = require('ethers/abi')
 
 test('toBN handles ethers BigNumber from AbiCoder.decode', t => {
   const abi = new AbiCoder()
