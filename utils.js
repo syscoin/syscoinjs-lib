@@ -117,7 +117,7 @@ const syscoinZPubTypes = { mainnet: { zprv: '04b2430c', zpub: '04b24746' }, test
 const syscoinXPubTypes = { mainnet: { zprv: syscoinNetworks.mainnet.bip32.private, zpub: syscoinNetworks.mainnet.bip32.public }, testnet: { vprv: syscoinNetworks.testnet.bip32.private, vpub: syscoinNetworks.testnet.bip32.public } }
 const syscoinSLIP44 = 57
 const bitcoinSLIP44 = 0
-const VaultManager = '0x7904299b3D3dC1b03d1DdEb45E9fDF3576aCBd5f'
+const VaultManager = '0x28bD37C0926575f2568ea8f297c0745EF16174Ab'
 const tokenFreezeFunction = '0b8914e27c9a6c88836bc5547f82ccf331142c761f84e9f1d36934a6a31eefad' // token freeze function signature
 const axiosConfig = { withCredentials: false }
 
