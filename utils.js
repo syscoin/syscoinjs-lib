@@ -1150,14 +1150,16 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         newUtxo.type = 'BECH32'
       }
       if (utxo.assetInfo) {
-        newUtxo.assetInfo = { assetGuid: utxo.assetInfo.assetGuid, value: new BN(utxo.assetInfo.value) }
-        const assetObj = sanitizedUtxos.assets.get(utxo.assetInfo.assetGuid)
-        // sanity check to ensure sanitizedUtxos.assets has all of the assets being added to UTXO that are assets
-        if (!assetObj) {
-          return
+        const assetGuid = utxo.assetInfo.assetGuid
+        newUtxo.assetInfo = { assetGuid, value: new BN(utxo.assetInfo.value) }
+        // Current Blockbook returns asset metadata on each UTXO without the
+        // legacy top-level assets collection. Preserve the internal Map shape;
+        // asset selection and accounting use the authoritative UTXO assetInfo.
+        if (!sanitizedUtxos.assets.has(assetGuid)) {
+          sanitizedUtxos.assets.set(assetGuid, {})
         }
         // not sending this asset (assetMap) and assetWhiteList option if set with this asset will skip this check, by default this check is done and inputs will be skipped
-        if ((!assetMap || !assetMap.has(utxo.assetInfo.assetGuid)) && (txOpts.assetWhiteList && !txOpts.assetWhiteList.has(utxo.assetInfo.assetGuid))) {
+        if ((!assetMap || !assetMap.has(assetGuid)) && (txOpts.assetWhiteList && !txOpts.assetWhiteList.has(assetGuid))) {
           console.log('SKIPPING utxo')
           return
         }
