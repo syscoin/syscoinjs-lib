@@ -54,6 +54,26 @@ function bridgeAssetOpts () {
   return { ethaddress: ETH_ADDRESS }
 }
 
+function modernBlockbookExactSysxUtxos () {
+  return [
+    {
+      txid: 'bcc5ffea63a4edebe771cbc60713ac9313b006f5dcde5e523028614e1c97a161',
+      vout: 1,
+      value: '2989998650',
+      height: 1790003,
+      confirmations: 1,
+      address: ADDRESS,
+      path: "m/84'/1'/0'/0/0",
+      assetInfo: {
+        assetGuid: TARGET_ASSET,
+        value: '10000000',
+        valueStr: '0.1',
+        symbol: 'SYSX'
+      }
+    }
+  ]
+}
+
 function utxoFixture () {
   return {
     assets: [
@@ -295,6 +315,84 @@ test('bridge burn supports BN asset GUID inputs', async t => {
 
   t.ok(captured, 'captured builder result')
   t.equal(captured.inputs.filter(input => input.assetInfo && input.assetInfo.assetGuid === TARGET_ASSET).length, 1)
+  t.end()
+})
+
+test('bridge burn accepts modern Blockbook UTXO arrays without a top-level assets collection', async t => {
+  const rawBlockbookUtxos = modernBlockbookExactSysxUtxos()
+
+  const sanitized = utils.sanitizeBlockbookUTXOs(
+    null,
+    rawBlockbookUtxos,
+    utils.syscoinNetworks.testnet,
+    {},
+    assetMapFor(TARGET_ASSET, 10000000),
+    false
+  )
+  t.ok(sanitized.assets.has(TARGET_ASSET), 'shims the legacy assets Map entry')
+  t.equal(Object.keys(sanitized.assets.get(TARGET_ASSET)).length, 0, 'does not invent missing asset properties')
+
+  const { captured } = await captureResult(syscoin => syscoin.assetAllocationBurn(
+    bridgeAssetOpts(),
+    {},
+    assetMapFor(TARGET_ASSET, 10000000),
+    ADDRESS,
+    new BN(10),
+    null,
+    rawBlockbookUtxos
+  ))
+
+  t.ok(captured, 'captured builder result')
+  t.equal(captured.inputs.length, 1, 'uses the mixed SYS/SYSX UTXO')
+  t.equal(captured.inputs[0].txId, rawBlockbookUtxos[0].txid)
+  t.equal(captured.inputs[0].assetInfo.assetGuid, TARGET_ASSET)
+
+  const decoder = new Syscoin(null, null, utils.syscoinNetworks.testnet)
+  const psbt = await decoder.createPSBTFromRes(captured)
+  const decoded = decoder.decodeRawTransaction(psbt)
+  t.equal(decoded.vin[0].assetInfo.assetGuid, TARGET_ASSET, 'keeps the consumed asset metadata on the input')
+  t.equal(decoded.vout.filter(output => output.assetInfo).length, 0, 'does not expose a false asset-bearing output to wallet confirmation UIs')
+  t.end()
+})
+
+test('legacy Blockbook responses reject UTXO assets missing from the top-level assets collection', async t => {
+  const legacyUtxos = {
+    assets: [
+      { assetGuid: OTHER_ASSET, maxSupply: '100000000000', decimals: 8 }
+    ],
+    utxos: modernBlockbookExactSysxUtxos()
+  }
+  const sanitized = utils.sanitizeBlockbookUTXOs(
+    null,
+    legacyUtxos,
+    utils.syscoinNetworks.testnet,
+    {},
+    assetMapFor(TARGET_ASSET, 10000000),
+    false
+  )
+
+  t.equal(sanitized.utxos.length, 0, 'rejects inconsistent per-UTXO asset metadata')
+  t.equal(sanitized.assets.has(TARGET_ASSET), false, 'does not synthesize an entry for a legacy response')
+  t.ok(sanitized.assets.has(OTHER_ASSET), 'preserves the supplied legacy asset metadata')
+  t.end()
+})
+
+test('asset send accepts an exact modern Blockbook SYSX UTXO', async t => {
+  const rawBlockbookUtxos = modernBlockbookExactSysxUtxos()
+  const { captured } = await captureResult(syscoin => syscoin.assetAllocationSend(
+    {},
+    assetMapFor(TARGET_ASSET, 10000000),
+    ADDRESS,
+    new BN(2),
+    null,
+    rawBlockbookUtxos
+  ))
+
+  t.ok(captured, 'captured builder result')
+  t.equal(captured.inputs.length, 1, 'uses the one mixed SYS/SYSX UTXO')
+  t.equal(captured.inputs[0].txId, rawBlockbookUtxos[0].txid)
+  t.equal(captured.outputs.filter(output => output.assetInfo).length, 1, 'creates one SYSX allocation output')
+  t.equal(captured.outputs.find(output => output.assetInfo).assetInfo.value.toString(), '10000000', 'sends the full 0.1 SYSX balance')
   t.end()
 })
 
