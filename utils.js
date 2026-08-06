@@ -1122,22 +1122,34 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
     txOpts = { rbf: false }
   }
   const sanitizedUtxos = { utxos: [], assets: new Map() }
-  const hasTopLevelAssets = Object.prototype.hasOwnProperty.call(utxoObj, 'assets')
+  // An already-sanitized object always carries an assets Map, empty or not, so an
+  // empty Map must not be read as a legacy top-level assets collection.
+  const hasTopLevelAssets = Object.prototype.hasOwnProperty.call(utxoObj, 'assets') &&
+    !(utxoObj.assets instanceof Map && utxoObj.assets.size === 0)
   if (Array.isArray(utxoObj)) {
     utxoObj.utxos = utxoObj
   }
   if (utxoObj.assets) {
-    utxoObj.assets.forEach(asset => {
-      const assetObj = {}
-      if (asset.contract) {
-        asset.contract = asset.contract.replace(/^0x/, '')
-        assetObj.contract = Buffer.from(asset.contract, 'hex')
-      }
-      assetObj.maxsupply = new BN(asset.maxSupply)
-      assetObj.precision = asset.decimals
+    // A Map means this object has already been sanitized: its entries are
+    // internal assetObj values keyed by guid, not raw Blockbook asset records.
+    // Copy them through rather than re-parsing them as raw records.
+    if (utxoObj.assets instanceof Map) {
+      utxoObj.assets.forEach((assetObj, assetGuid) => {
+        sanitizedUtxos.assets.set(assetGuid, assetObj)
+      })
+    } else {
+      utxoObj.assets.forEach(asset => {
+        const assetObj = {}
+        if (asset.contract) {
+          asset.contract = asset.contract.replace(/^0x/, '')
+          assetObj.contract = Buffer.from(asset.contract, 'hex')
+        }
+        assetObj.maxsupply = new BN(asset.maxSupply)
+        assetObj.precision = asset.decimals
 
-      sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
-    })
+        sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
+      })
+    }
   }
   if (utxoObj.utxos) {
     utxoObj.utxos.forEach(utxo => {
@@ -1146,13 +1158,17 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
       if (excludeZeroConf && utxo.confirmations <= 0) {
         return
       }
-      const newUtxo = { type: 'LEGACY', address: utxo.address, txId: utxo.txid, path: utxo.path, vout: utxo.vout, value: new BN(utxo.value), locktime: utxo.locktime }
+      // Normalize per UTXO so that sanitizing is idempotent: an entry may arrive raw
+      // from Blockbook (txid, string value) or already sanitized (txId, BN value), and
+      // a single list may mix both. Policy below is applied to every entry regardless.
+      const txId = utxo.txId !== undefined ? utxo.txId : utxo.txid
+      const newUtxo = { type: 'LEGACY', address: utxo.address, txId, path: utxo.path, vout: utxo.vout, value: web3.utils.toBN(utxo.value), locktime: utxo.locktime, confirmations: utxo.confirmations }
       if (newUtxo.address.startsWith(network.bech32)) {
         newUtxo.type = 'BECH32'
       }
       if (utxo.assetInfo) {
         const assetGuid = utxo.assetInfo.assetGuid
-        newUtxo.assetInfo = { assetGuid, value: new BN(utxo.assetInfo.value) }
+        newUtxo.assetInfo = { assetGuid, value: web3.utils.toBN(utxo.assetInfo.value) }
         // Current Blockbook returns asset metadata on each UTXO without the
         // legacy top-level assets collection. Preserve the internal Map shape;
         // asset selection and accounting use the authoritative UTXO assetInfo.
