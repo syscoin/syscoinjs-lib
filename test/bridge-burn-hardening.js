@@ -355,6 +355,28 @@ test('bridge burn accepts modern Blockbook UTXO arrays without a top-level asset
   t.end()
 })
 
+test('legacy Blockbook responses reject UTXO assets missing from the top-level assets collection', async t => {
+  const legacyUtxos = {
+    assets: [
+      { assetGuid: OTHER_ASSET, maxSupply: '100000000000', decimals: 8 }
+    ],
+    utxos: modernBlockbookExactSysxUtxos()
+  }
+  const sanitized = utils.sanitizeBlockbookUTXOs(
+    null,
+    legacyUtxos,
+    utils.syscoinNetworks.testnet,
+    {},
+    assetMapFor(TARGET_ASSET, 10000000),
+    false
+  )
+
+  t.equal(sanitized.utxos.length, 0, 'rejects inconsistent per-UTXO asset metadata')
+  t.equal(sanitized.assets.has(TARGET_ASSET), false, 'does not synthesize an entry for a legacy response')
+  t.ok(sanitized.assets.has(OTHER_ASSET), 'preserves the supplied legacy asset metadata')
+  t.end()
+})
+
 test('asset send accepts an exact modern Blockbook SYSX UTXO', async t => {
   const rawBlockbookUtxos = modernBlockbookExactSysxUtxos()
   const { captured } = await captureResult(syscoin => syscoin.assetAllocationSend(

@@ -1122,6 +1122,7 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
     txOpts = { rbf: false }
   }
   const sanitizedUtxos = { utxos: [], assets: new Map() }
+  const hasTopLevelAssets = Object.prototype.hasOwnProperty.call(utxoObj, 'assets')
   if (Array.isArray(utxoObj)) {
     utxoObj.utxos = utxoObj
   }
@@ -1156,6 +1157,9 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
         // legacy top-level assets collection. Preserve the internal Map shape;
         // asset selection and accounting use the authoritative UTXO assetInfo.
         if (!sanitizedUtxos.assets.has(assetGuid)) {
+          if (hasTopLevelAssets) {
+            return
+          }
           sanitizedUtxos.assets.set(assetGuid, {})
         }
         // not sending this asset (assetMap) and assetWhiteList option if set with this asset will skip this check, by default this check is done and inputs will be skipped
