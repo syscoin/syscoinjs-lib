@@ -1122,10 +1122,12 @@ function sanitizeBlockbookUTXOs (sysFromXpubOrAddress, utxoObj, network, txOpts,
     txOpts = { rbf: false }
   }
   const sanitizedUtxos = { utxos: [], assets: new Map() }
-  // An already-sanitized object always carries an assets Map, empty or not, so an
-  // empty Map must not be read as a legacy top-level assets collection.
+  // An already-sanitized object always carries an assets Map, empty or not, so a
+  // Map must not be read as a legacy top-level assets collection. Raw modern
+  // asset UTXOs may be appended to a previously sanitized result and legitimately
+  // introduce GUIDs that are not present in the existing Map yet.
   const hasTopLevelAssets = Object.prototype.hasOwnProperty.call(utxoObj, 'assets') &&
-    !(utxoObj.assets instanceof Map && utxoObj.assets.size === 0)
+    !(utxoObj.assets instanceof Map)
   if (Array.isArray(utxoObj)) {
     utxoObj.utxos = utxoObj
   }

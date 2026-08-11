@@ -167,3 +167,32 @@ test('sanitizeBlockbookUTXOs re-sanitizes modern asset UTXOs with no legacy asse
   t.equal(twice.utxos[0].assetInfo.value.toString(), '50', 'keeps the asset amount')
   t.end()
 })
+
+test('sanitizeBlockbookUTXOs accepts a new raw asset beside a nonempty sanitized assets Map', t => {
+  const bothAssets = new Map([[TARGET_ASSET, {}], [OTHER_ASSET, {}]])
+  const once = sanitize(
+    { utxos: [rawUtxo('a', { assetGuid: TARGET_ASSET })] },
+    {},
+    bothAssets,
+    false
+  )
+  const mixed = sanitize(
+    {
+      utxos: [once.utxos[0], rawUtxo('b', { assetGuid: OTHER_ASSET })],
+      assets: once.assets
+    },
+    {},
+    bothAssets,
+    false
+  )
+
+  t.equal(mixed.utxos.length, 2, 'keeps both the sanitized and newly appended raw asset UTXOs')
+  t.deepEqual(
+    mixed.utxos.map(u => u.assetInfo.assetGuid),
+    [TARGET_ASSET, OTHER_ASSET],
+    'keeps both asset GUIDs'
+  )
+  t.ok(mixed.assets.has(TARGET_ASSET), 'keeps the existing sanitized asset metadata')
+  t.ok(mixed.assets.has(OTHER_ASSET), 'adds metadata for the newly encountered modern asset')
+  t.end()
+})
