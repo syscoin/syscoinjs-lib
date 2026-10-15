@@ -24,6 +24,20 @@ fixtures.forEach(async function (f) {
     // 'null' for no password encryption for local storage and 'true' for testnet
     const HDSigner = new sjs.utils.HDSigner(f.mnemonic, null, true)
     const syscoinjs = new sjs.SyscoinJSLib(HDSigner)
+    if (f.expected.error) {
+      // A 138 conversion creates a spendable native payout: one satoshi is dust.
+      // The separate positive 138 fixture still verifies a valid conversion.
+      t.same(f.version, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_BURN_TO_SYSCOIN)
+      try {
+        await syscoinjs.assetAllocationBurn(f.assetOpts, txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
+        t.fail('Dust payout must not produce a signed transaction')
+      } catch (error) {
+        t.same(error.code, f.expected.error, 'One-satoshi spendable payout is rejected with DUST_OUTPUT')
+      }
+      t.same(txOpts.rbf, f.expected.rbf)
+      t.end()
+      return
+    }
     if (f.version === syscointx.utils.SYSCOIN_TX_VERSION_SYSCOIN_BURN_TO_ALLOCATION) {
       const result = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, f.assetMap, f.sysChangeAddress, f.feeRate, f.sysFromXpubOrAddress, utxos)
       const psbt = result.psbt
