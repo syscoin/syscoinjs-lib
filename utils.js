@@ -1792,41 +1792,8 @@ function scriptWitnessToWitnessStack (buffer) {
   return readVector()
 }
 
-function addNonWitnessTxCache (cache, input, inputIndex) {
-  cache.__NON_WITNESS_UTXO_BUF_CACHE[inputIndex] = input.nonWitnessUtxo
-  const tx = bjs.Transaction.fromBuffer(input.nonWitnessUtxo)
-  cache.__NON_WITNESS_UTXO_TX_CACHE[inputIndex] = tx
-  const self = cache
-  const selfIndex = inputIndex
-  delete input.nonWitnessUtxo
-  Object.defineProperty(input, 'nonWitnessUtxo', {
-    enumerable: true,
-    get () {
-      const buf = self.__NON_WITNESS_UTXO_BUF_CACHE[selfIndex]
-      const txCache = self.__NON_WITNESS_UTXO_TX_CACHE[selfIndex]
-      if (buf !== undefined) {
-        return buf
-      } else {
-        const newBuf = txCache.toBuffer()
-        self.__NON_WITNESS_UTXO_BUF_CACHE[selfIndex] = newBuf
-        return newBuf
-      }
-    },
-    set (data) {
-      self.__NON_WITNESS_UTXO_BUF_CACHE[selfIndex] = data
-    }
-  })
-}
-
-function nonWitnessUtxoTxFromCache (cache, input, inputIndex) {
-  const c = cache.__NON_WITNESS_UTXO_TX_CACHE
-  if (!c[inputIndex]) {
-    addNonWitnessTxCache(cache, input, inputIndex)
-  }
-  return c[inputIndex]
-}
-
-// override of psbt.js inputFinalizeGetAmts without fee < 0 check
+// Match bitcoinjs prevout validation without its fee < 0 restriction:
+// Syscoin allocation burns can legitimately produce more native SYS than they consume.
 function inputFinalizeGetAmts (inputs, tx, cache, mustFinalize) {
   let inputAmount = 0n
   inputs.forEach((input, idx) => {
@@ -1836,14 +1803,26 @@ function inputFinalizeGetAmts (inputs, tx, cache, mustFinalize) {
         input.finalScriptWitness
       )
     }
-    if (input.witnessUtxo) {
-      inputAmount += input.witnessUtxo.value
-    } else if (input.nonWitnessUtxo) {
-      const nwTx = nonWitnessUtxoTxFromCache(cache, input, idx)
-      const vout = tx.ins[idx].index
-      const out = nwTx.outs[vout]
-      inputAmount += out.value
+    let prevout
+    if (input.nonWitnessUtxo) {
+      // Parse the current bytes each time so stale PSBT caches cannot hide edits.
+      const nwTx = bjs.Transaction.fromBuffer(input.nonWitnessUtxo)
+      const txInput = cache.__TX.ins[idx]
+      if (!Buffer.from(txInput.hash).equals(Buffer.from(nwTx.getHash()))) {
+        throw new Error(`Non-witness UTXO hash for input #${idx} does not match its prevout`)
+      }
+      prevout = nwTx.outs[txInput.index]
+      if (!prevout) throw new Error(`Non-witness UTXO for input #${idx} has no referenced output`)
+      if (input.witnessUtxo &&
+          (input.witnessUtxo.value !== prevout.value ||
+           !Buffer.from(input.witnessUtxo.script).equals(Buffer.from(prevout.script)))) {
+        throw new Error(`Witness UTXO for input #${idx} does not match its non-witness UTXO`)
+      }
+    } else {
+      prevout = input.witnessUtxo
     }
+    if (!prevout) throw new Error(`Need a UTXO input item for input #${idx}`)
+    inputAmount += prevout.value
   })
   const outputAmount = tx.outs.reduce((total, o) => total + o.value, 0n)
   const fee = inputAmount - outputAmount
@@ -1862,7 +1841,7 @@ function isFinalized (input) {
 }
 
 function checkFees (psbt, cache, opts) {
-  const feeRate = cache.__FEE_RATE || psbt.getFeeRate()
+  const feeRate = psbt.getFeeRate()
   const vsize = cache.__EXTRACTED_TX.virtualSize()
   const satoshis = feeRate * vsize
   if (feeRate >= opts.maximumFeeRate) {
@@ -1878,17 +1857,9 @@ function checkFees (psbt, cache, opts) {
 
 function getTxCacheValue (key, name, inputs, c) {
   if (!inputs.every(isFinalized)) { throw new Error(`PSBT must be finalized to calculate ${name}`) }
-  if (key === '__FEE_RATE' && c.__FEE_RATE) return c.__FEE_RATE
-  if (key === '__FEE' && c.__FEE) return c.__FEE
-  let tx
-  let mustFinalize = true
-  if (c.__EXTRACTED_TX) {
-    tx = c.__EXTRACTED_TX
-    mustFinalize = false
-  } else {
-    tx = c.__TX.clone()
-  }
-  inputFinalizeGetAmts(inputs, tx, c, mustFinalize)
+  // Input metadata can change after a previous calculation; revalidate it.
+  const tx = c.__TX.clone()
+  inputFinalizeGetAmts(inputs, tx, c, true)
   if (key === '__FEE_RATE') return c.__FEE_RATE
   else if (key === '__FEE') return c.__FEE
 }
@@ -1911,12 +1882,14 @@ class SPSBT extends bjs.Psbt {
   extractTransaction (disableFeeCheck, disableFinalize) {
     if (!disableFinalize && !this.data.inputs.every(isFinalized)) throw new Error('Not finalized')
     const c = this.__CACHE
+    // Unsigned display does not need UTXOs. Do not turn its incomplete data
+    // into a cached fee or a cached finalized transaction.
+    if (disableFeeCheck && disableFinalize) return c.__TX.clone()
     if (!disableFeeCheck) {
       checkFees(this, c, this.opts)
+      return c.__EXTRACTED_TX
     }
-    if (c.__EXTRACTED_TX) return c.__EXTRACTED_TX
     const tx = c.__TX.clone()
-    // When disableFinalize is true (unsigned preview), do not inject final scripts/witness
     inputFinalizeGetAmts(this.data.inputs, tx, c, !disableFinalize)
     return tx
   }
