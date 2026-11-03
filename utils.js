@@ -23,9 +23,6 @@ bjs.ECPair = ECPair
 bjs.bip32 = bip32
 const bitcoinops = require('bitcoin-ops')
 const varuint = require('varuint-bitcoin')
-const { VerifyProof, GetProof } = require('eth-proof')
-const { encode } = require('eth-util-lite')
-const { Log } = require('eth-object')
 const { AbiCoder } = require('ethers/abi')
 const { keccak256 } = require('ethers/crypto')
 const { JsonRpcProvider } = require('ethers/providers')
@@ -1042,6 +1039,9 @@ Param assetOpts: Required. Object containing web3url and ethtxid fields populate
 Returns: Returns JSON object in response, SPV proof object in JSON
 */
 async function buildEthProof (assetOpts) {
+  const { VerifyProof, GetProof } = require('eth-proof')
+  const { encode } = require('eth-util-lite')
+  const { Log } = require('eth-object')
   const ethProof = new GetProof(assetOpts.web3url)
   const web3Provider = new JsonRpcProvider(assetOpts.web3url)
   try {
