@@ -310,10 +310,22 @@ Param addressOrXpub: Required. An address or XPUB to fetch UTXO's for
 Param options: Optional. Optional queries based on https://github.com/syscoin/blockbook/blob/master/docs/api.md#get-xpub
 Param xpub: Optional. If addressOrXpub is an XPUB set to true.
 Param mySignerObj: Optional. Signer object if you wish to update change/receiving indexes from backend provider (and XPUB token information is provided in response)
+Param transport: Optional. Host-owned fetch and AbortSignal. Errors propagate to that host; existing callers retain the default transport and error behavior.
 Returns: Returns JSON object in response, account object in JSON
 */
-async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, mySignerObj) {
+async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, mySignerObj, transport) {
+  const fetcher = transport === undefined ? null : transport.fetch
+  if (transport !== undefined && typeof fetcher !== 'function') throw new TypeError('Invalid account fetch transport')
+  const signal = transport && transport.signal
+  const check = () => {
+    if (signal && signal.aborted) {
+      const error = new Error('Account request aborted')
+      error.name = 'AbortError'
+      throw error
+    }
+  }
   return retryWithBackoff(async () => {
+    check()
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -329,10 +341,12 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     if (options) {
       url += '?' + options
     }
-    if (hasFetch) {
-      const response = await globalThis.fetch(url)
+    if (fetcher || hasFetch) {
+      const response = await (fetcher ? fetcher(url, { method: 'GET', signal }) : globalThis.fetch(url))
+      check()
       if (response.ok) {
         const data = await response.json()
+        check()
         if (xpub && data.tokens && mySignerObj) {
           mySignerObj.setLatestIndexesFromXPubTokens(data.tokens)
         }
@@ -355,6 +369,7 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
     }
     return null
   }).catch(e => {
+    if (transport !== undefined) throw e
     console.log('Exception: ' + e.message)
     return null
   })
