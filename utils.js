@@ -437,18 +437,33 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
 Purpose: Get transaction from txid from backend Blockbook provider
 Param backendURL: Required. Fully qualified URL for blockbook
 Param txid: Required. Transaction ID to get information for
+Param transport: Optional. Host-owned fetch and AbortSignal; existing callers retain the default transport.
 Returns: Returns JSON object in response, transaction object in JSON
 */
-async function fetchBackendRawTx (backendURL, txid) {
+async function fetchBackendRawTx (backendURL, txid, transport) {
+  const fetcher = transport === undefined ? null : transport.fetch
+  if (transport !== undefined && typeof fetcher !== 'function') throw new TypeError('Invalid transaction fetch transport')
+  const signal = transport && transport.signal
+  const check = () => {
+    if (signal && signal.aborted) {
+      const error = new Error('Transaction request aborted')
+      error.name = 'AbortError'
+      throw error
+    }
+  }
   return retryWithBackoff(async () => {
+    check()
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    if (hasFetch) {
-      const response = await globalThis.fetch(blockbookURL + '/api/v2/tx/' + txid)
+    if (fetcher || hasFetch) {
+      const url = blockbookURL + '/api/v2/tx/' + txid
+      const response = await (fetcher ? fetcher(url, { method: 'GET', signal }) : globalThis.fetch(url))
+      check()
       if (response.ok) {
         const data = await response.json()
+        check()
         if (data) {
           return data
         }
