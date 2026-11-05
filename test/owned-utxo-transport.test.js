@@ -229,6 +229,49 @@ test('owned legacy PSBTs reject funding values and addresses that contradict the
   } catch (error) { t.fail(error) } finally { t.end() }
 })
 
+test('owned P2PKH prevout validation works with browser Buffer and BitcoinJS byte arrays', async t => {
+  const nodeBuffer = globalThis.Buffer
+  const browserBuffer = require('buffer/').Buffer
+  globalThis.Buffer = browserBuffer
+  try {
+    await offline(async () => {
+      const script = bitcoin.address.toOutputScript(legacy.address, network)
+      t.ok(script instanceof Uint8Array, 'BitcoinJS yields a byte array')
+      t.equal(browserBuffer.isBuffer(script), false, 'BitcoinJS script is not a browser Buffer')
+      const calls = []
+      const main = new SyscoinJSLib(null, backend, network, {
+        async fetch (url) {
+          calls.push(url)
+          if (url === fundingUrl) return respond(url, funding())
+          assert.equal(url, rawUrl)
+          return respond(url, { hex: previous.toHex() })
+        }
+      })
+      const { psbt, fee } = await nativeBuild(main)
+      t.equal(browserBuffer.from(psbt.data.inputs[0].nonWitnessUtxo).toString('hex'), previous.toHex(), 'keeps the exact previous transaction bytes')
+      t.equal(finalize(psbt).getFee(), BigInt(fee.toString(10)), 'signing pays the verified fee')
+      t.deepEqual(calls, [fundingUrl, rawUrl], 'reads only the scoped source and selected prevout')
+
+      const otherAddress = bitcoin.payments.p2pkh({
+        pubkey: bitcoin.ECPair.fromPrivateKey(browserBuffer.alloc(32, 2), { network }).publicKey,
+        network
+      }).address
+      const wrongScript = new SyscoinJSLib(null, backend, network, {
+        async fetch (url) {
+          if (url === fundingUrl) return respond(url, [{ ...funding()[0], address: otherAddress }])
+          assert.equal(url, rawUrl)
+          return respond(url, { hex: previous.toHex() })
+        }
+      })
+      await assert.rejects(nativeBuild(wrongScript), /Mismatched owned legacy previous transaction script/)
+      t.pass('rejects an address with a different output script under browser Buffer')
+    })
+  } catch (error) { t.fail(error) } finally {
+    globalThis.Buffer = nodeBuffer
+    t.end()
+  }
+})
+
 test('owned legacy prevout values distinguish adjacent atoms above the safe Number range', async t => {
   try {
     await offline(async () => {

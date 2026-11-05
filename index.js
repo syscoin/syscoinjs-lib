@@ -498,7 +498,7 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
         let script
         if (ownedAddress) {
           try {
-            script = utils.bitcoinjs.address.toOutputScript(ownedAddress, this.network)
+            script = Buffer.from(utils.bitcoinjs.address.toOutputScript(ownedAddress, this.network))
           } catch {
             throw new Error('Invalid owned legacy previous transaction address')
           }
