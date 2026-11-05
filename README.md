@@ -101,6 +101,14 @@ These are some supporting functions used to support the library like working wit
 - [buildEthProof()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L190)
 - [sanitizeBlockbookUTXOs()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L277)
 
+### Owned Blockbook transaction transport
+
+Hosts can supply `{ fetch, signal }` as the fourth argument to `fetchBackendUTXOS` or `fetchEstimateFee`. Pass the same shape as the fourth argument to `new SyscoinJSLib(null, backendUrl, network, transport)` to bind funding and legacy previous-transaction reads for a read-only PSBT builder. Supply the source and change address as usual. Owned legacy reads verify the previous transaction ID and compare the referenced output's exact value and advertised address script with the funding input. Owned fee estimates require a successful response with a finite positive decimal quote. The transport owns origin verification, redirect refusal, response size limits and deadlines for its reads. Aborting the signal also cancels a pending retry wait.
+
+An owned submit uses `send(psbt, undefined, submission)` or `sendRawTransaction(backendUrl, rawHex, undefined, submission)`. Supply `{ fetch, signal, prepare, assertCurrent }`. The synchronous `assertCurrent` verifies the host's current authorization. `prepare({ url, rawTransaction, txid })` returns a `Promise<void>` that resolves after durable preparation for these exact bytes. The supplied fetch must enforce response size and time bounds before exposing the acknowledgment body. After preparation and a final guard, the library enters one POST with the captured signal and accepts only a matching canonical transaction ID from the same URL. The owned PSBT method returns `{ txid }` and the owned raw method returns `{ result: txid }`.
+
+Owned submission declines PoDA before durable preparation. `UTXO_SUBMISSION_NOT_DISPATCHED` means the library did not enter the transport, even if durable preparation is uncertain. `UTXO_SUBMISSION_UNKNOWN` means the library entered the transport without verifying acknowledgment. A caller can inspect the locally set `transactionNotBroadcast` flag and the canonical `txid` when available. Omit these options to use the existing transport and return values.
+
 These are the HDSigner exported functions, HDSigner is used to manage creating addresses and sign transactions internally using your XPUB (HD wallets). BIP44/BIP84 are supported. P2WPKH, P2WSH, P2PKH, P2SH:
 
 - [HDSigner()()](https://github.com/syscoin/syscoinjs-lib/blob/master/utils.js#L378)

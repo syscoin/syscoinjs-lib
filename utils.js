@@ -121,6 +121,52 @@ const axiosConfig = { withCredentials: false }
 // Detect availability of fetch in a safe, cross-environment way
 const hasFetch = (typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function')
 
+function captureBlockbookRead (transport) {
+  if (transport === undefined) return undefined
+  const { fetch, signal } = transport || {}
+  if (typeof fetch !== 'function') throw new TypeError('Invalid Blockbook read transport')
+  return { fetch, signal }
+}
+
+function assertBlockbookActive (signal) {
+  if (signal?.aborted) throw blockbookAbort()
+}
+
+function blockbookAbort () {
+  return Object.assign(new Error('Blockbook request aborted'), { name: 'AbortError' })
+}
+
+function ownedBlockbookUrl (backendURL, path, query) {
+  if (typeof backendURL !== 'string' || (query !== undefined && typeof query !== 'string')) {
+    throw new TypeError('Invalid Blockbook endpoint or query')
+  }
+  const endpoint = new URL(backendURL)
+  if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || /[?#]/.test(endpoint.href)) {
+    throw new TypeError('Invalid Blockbook endpoint')
+  }
+  endpoint.pathname = endpoint.pathname.replace(/\/$/, '') + path
+  if (query) endpoint.search = query
+  return endpoint.href
+}
+
+function waitForBlockbookRetry (delay, signal) {
+  if (!signal) return new Promise(resolve => setTimeout(resolve, delay))
+  assertBlockbookActive(signal)
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', abort)
+      reject(blockbookAbort())
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', abort)
+      resolve()
+    }, delay)
+    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+  })
+}
+
 // Retry configuration for blockbook API calls
 const MAX_RETRIES = 3
 const INITIAL_RETRY_DELAY = 1000 // 1 second
@@ -131,7 +177,7 @@ Param fn: Required. Function to retry
 Param retryCount: Internal. Current retry attempt (starts at 0)
 Returns: Returns the result of the function or throws error after max retries
 */
-async function retryWithBackoff (fn, retryCount = 0) {
+async function retryWithBackoff (fn, retryCount = 0, signal) {
   try {
     return await fn()
   } catch (error) {
@@ -150,8 +196,8 @@ async function retryWithBackoff (fn, retryCount = 0) {
     if (isRetryableError && retryCount < MAX_RETRIES) {
       const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount)
       console.log(`[syscoinjs-lib] Blockbook API rate limited, retrying after ${delay}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`)
-      await new Promise(resolve => setTimeout(resolve, delay))
-      return retryWithBackoff(fn, retryCount + 1)
+      await waitForBlockbookRetry(delay, signal)
+      return retryWithBackoff(fn, retryCount + 1, signal)
     }
 
     // If not retryable or max retries reached, throw the error
@@ -268,8 +314,17 @@ Param addressOrXpub: Required. An address or XPUB to fetch UTXO's for
 Param options: Optional. Optional queries based on https://github.com/syscoin/blockbook/blob/master/docs/api.md#get-utxo
 Returns: Returns JSON object in response, UTXO object array in JSON
 */
-async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
+async function fetchBackendUTXOS (backendURL, addressOrXpub, options, transport) {
+  const owned = captureBlockbookRead(transport)
+  let ownedUrl
+  if (owned) {
+    if (typeof addressOrXpub !== 'string' || !addressOrXpub || /(?:^|\/)\.{1,2}(?:\/|$)|\\/.test(addressOrXpub)) {
+      throw new TypeError('Invalid Blockbook funding identifier')
+    }
+    ownedUrl = ownedBlockbookUrl(backendURL, '/api/v2/utxo/' + encodeURIComponent(addressOrXpub), options)
+  }
   return retryWithBackoff(async () => {
+    assertBlockbookActive(owned?.signal)
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -279,10 +334,12 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
     if (options) {
       url += '?' + options
     }
-    if (hasFetch) {
-      const response = await globalThis.fetch(url)
+    if (owned || hasFetch) {
+      const response = await (owned ? owned.fetch(ownedUrl, { method: 'GET', signal: owned.signal }) : globalThis.fetch(url))
+      assertBlockbookActive(owned?.signal)
       if (response.ok) {
         const data = await response.json()
+        assertBlockbookActive(owned?.signal)
         if (data) {
           data.addressOrXpub = addressOrXpub
           return data
@@ -300,7 +357,7 @@ async function fetchBackendUTXOS (backendURL, addressOrXpub, options) {
       }
     }
     return null
-  })
+  }, 0, owned?.signal)
 }
 
 /* fetchBackendAccount
@@ -368,7 +425,7 @@ async function fetchBackendAccount (backendURL, addressOrXpub, options, xpub, my
       }
     }
     return null
-  }).catch(e => {
+  }, 0, signal).catch(e => {
     if (transport !== undefined) throw e
     console.log('Exception: ' + e.message)
     return null
@@ -382,7 +439,8 @@ Param txHex: Required. Raw transaction hex
 Param mySignerObj: Optional. Signer object if you wish to update change/receiving indexes from backend provider through fetchBackendAccount()
 Returns: Returns txid in response or error
 */
-async function sendRawTransaction (backendURL, txHex, mySignerObj) {
+async function sendRawTransaction (backendURL, txHex, mySignerObj, submission) {
+  if (submission !== undefined) return sendOwnedRawTransaction(backendURL, txHex, mySignerObj, submission)
   return retryWithBackoff(async () => {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
@@ -433,6 +491,55 @@ async function sendRawTransaction (backendURL, txHex, mySignerObj) {
   })
 }
 
+async function sendOwnedRawTransaction (backendURL, txHex, signer, submission) {
+  let dispatched = false
+  let txid
+  try {
+    const { fetch, signal, prepare, assertCurrent } = submission || {}
+    if (signer || typeof fetch !== 'function' || typeof prepare !== 'function' || typeof assertCurrent !== 'function' ||
+        typeof signal?.aborted !== 'boolean') throw new TypeError('Invalid owned Blockbook submission')
+    const url = ownedBlockbookUrl(backendURL, '/api/v2/sendtx/')
+    const guard = () => {
+      assertBlockbookActive(signal)
+      const result = assertCurrent()
+      if (result !== undefined) {
+        if (result && typeof result.then === 'function') Promise.resolve(result).catch(() => {})
+        throw new TypeError('Blockbook submission guard must be synchronous')
+      }
+      assertBlockbookActive(signal)
+    }
+    guard()
+    if (typeof txHex !== 'string' || txHex.length % 2 !== 0 || !/^[0-9a-f]+$/.test(txHex)) throw new Error('Invalid transaction bytes')
+    const transaction = bjs.Transaction.fromHex(txHex)
+    if (transaction.toHex() !== txHex || !transaction.ins.length || !transaction.outs.length) throw new Error('Invalid transaction bytes')
+    if (syscointx.utils.isPoDATx(transaction.version)) throw new Error('Owned PoDA submission is unavailable')
+    txid = transaction.getId()
+    const admitted = prepare(Object.freeze({ url, rawTransaction: txHex, txid }))
+    if (!admitted || typeof admitted.then !== 'function') throw new TypeError('Blockbook submission prepare must return a Promise')
+    if (await admitted !== undefined) throw new TypeError('Blockbook submission prepare must resolve without a value')
+    guard()
+    dispatched = true
+    const response = await fetch(url, { method: 'POST', body: txHex, signal, credentials: 'omit', redirect: 'error' })
+    if (signal.aborted || response?.ok !== true || response.redirected !== false || response.url !== url) {
+      if (response?.body) response.body.cancel().catch(() => {})
+      throw new Error('Blockbook submission response is unavailable')
+    }
+    // The owned HTTP adapter bounds the body before supplying a response.
+    const body = await response.json()
+    if (signal.aborted || !body || typeof body !== 'object' || Array.isArray(body) ||
+        Object.hasOwn(body, 'error') || Object.getOwnPropertyDescriptor(body, 'result')?.value !== txid) {
+      throw new Error('Invalid Blockbook transaction acknowledgment')
+    }
+    return { result: txid }
+  } catch {
+    throw Object.assign(new Error(dispatched ? 'UTXO submission outcome is unknown' : 'UTXO submission was not dispatched'), {
+      code: dispatched ? 'UTXO_SUBMISSION_UNKNOWN' : 'UTXO_SUBMISSION_NOT_DISPATCHED',
+      transactionNotBroadcast: !dispatched,
+      ...(txid ? { txid } : {})
+    })
+  }
+}
+
 /* fetchBackendRawTx
 Purpose: Get transaction from txid from backend Blockbook provider
 Param backendURL: Required. Fully qualified URL for blockbook
@@ -444,6 +551,11 @@ async function fetchBackendRawTx (backendURL, txid, transport) {
   const fetcher = transport === undefined ? null : transport.fetch
   if (transport !== undefined && typeof fetcher !== 'function') throw new TypeError('Invalid transaction fetch transport')
   const signal = transport && transport.signal
+  let ownedUrl
+  if (fetcher) {
+    if (typeof txid !== 'string' || !/^[0-9a-fA-F]{64}$/.test(txid)) throw new TypeError('Invalid Blockbook transaction id')
+    ownedUrl = ownedBlockbookUrl(backendURL, '/api/v2/tx/' + txid.toLowerCase())
+  }
   const check = () => {
     if (signal && signal.aborted) {
       const error = new Error('Transaction request aborted')
@@ -459,7 +571,7 @@ async function fetchBackendRawTx (backendURL, txid, transport) {
     }
     if (fetcher || hasFetch) {
       const url = blockbookURL + '/api/v2/tx/' + txid
-      const response = await (fetcher ? fetcher(url, { method: 'GET', signal }) : globalThis.fetch(url))
+      const response = await (fetcher ? fetcher(ownedUrl, { method: 'GET', signal }) : globalThis.fetch(url))
       check()
       if (response.ok) {
         const data = await response.json()
@@ -479,7 +591,7 @@ async function fetchBackendRawTx (backendURL, txid, transport) {
       }
     }
     return null
-  })
+  }, 0, signal)
 }
 
 /* fetchProviderInfo
@@ -553,8 +665,15 @@ Param blocks: Required. How many blocks to estimate fee for.
 Param options: Optional. possible value conservative=true or false for conservative fee. Default is true.
 Returns: Returns fee response in integer. Fee rate in coins per kilobytes.
 */
-async function fetchEstimateFee (backendURL, blocks, options) {
+async function fetchEstimateFee (backendURL, blocks, options, transport) {
+  const owned = captureBlockbookRead(transport)
+  let ownedUrl
+  if (owned) {
+    if (!Number.isSafeInteger(blocks) || blocks <= 0) throw new TypeError('Invalid Blockbook fee target')
+    ownedUrl = ownedBlockbookUrl(backendURL, '/api/v2/estimatefee/' + blocks, options)
+  }
   return retryWithBackoff(async () => {
+    assertBlockbookActive(owned?.signal)
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {
       blockbookURL = blockbookURL.replace(/\/$/, '')
@@ -563,8 +682,21 @@ async function fetchEstimateFee (backendURL, blocks, options) {
     if (options) {
       url += '?' + options
     }
-    if (hasFetch) {
-      const response = await globalThis.fetch(url)
+    if (owned || hasFetch) {
+      const response = await (owned ? owned.fetch(ownedUrl, { method: 'GET', signal: owned.signal }) : globalThis.fetch(url))
+      if (owned) {
+        assertBlockbookActive(owned.signal)
+        if (response?.ok !== true) throw Object.assign(new Error('Blockbook fee request failed'), { status: response?.status })
+        const body = await response.json()
+        assertBlockbookActive(owned.signal)
+        const result = body && typeof body === 'object' && !Array.isArray(body) && !Object.hasOwn(body, 'error')
+          ? Object.getOwnPropertyDescriptor(body, 'result')?.value
+          : undefined
+        if (typeof result !== 'string' || !/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(result)) throw new Error('Invalid Blockbook fee quote')
+        const fee = Number(result)
+        if (!Number.isFinite(fee) || fee <= 0) throw new Error('Invalid Blockbook fee quote')
+        return fee
+      }
       if (response.ok) {
         const data = await response.json()
         if (data && data.result) {
@@ -593,7 +725,8 @@ async function fetchEstimateFee (backendURL, blocks, options) {
       }
     }
     return 0.001 // Default fallback: 0.001 SYS/KB
-  }).catch(e => {
+  }, 0, owned?.signal).catch(e => {
+    if (owned) throw e
     return 0.001
   })
 }

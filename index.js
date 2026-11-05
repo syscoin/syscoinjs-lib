@@ -1,6 +1,7 @@
 const utils = require('./utils')
 const syscointx = require('syscointx-js')
 const BN = require('bn.js')
+const ownedBlockbookReads = new WeakMap()
 
 /* Syscoin
 Purpose: Top level object used by consuming libraries to craft Syscoin/Bitcoin transactions. For Syscoin SPT support is provided
@@ -8,7 +9,24 @@ Param Signer: Optional. If you want to manage XPUB keys with this package you wo
 Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and required information to sign. User can always provide their own list of UTXO's in the same format as blockbook using utils.sanitizeBlockbookUTXOs to sanitize the UTXO data to acceptable internal format
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
-function Syscoin (SignerIn, blockbookURL, network) {
+function Syscoin (SignerIn, blockbookURL, network, transport) {
+  if (transport !== undefined) {
+    const { fetch, signal } = transport || {}
+    if (SignerIn || typeof blockbookURL !== 'string' || !blockbookURL || typeof fetch !== 'function') {
+      throw new TypeError('Owned Blockbook reads require a read-only builder')
+    }
+    const configuredNetwork = network || utils.syscoinNetworks.mainnet
+    Object.defineProperties(this, {
+      blockbookURL: { value: blockbookURL, enumerable: true },
+      Signer: { value: null, enumerable: true },
+      network: {
+        value: Object.freeze({ ...configuredNetwork, bip32: Object.freeze({ ...configuredNetwork.bip32 }) }),
+        enumerable: true
+      }
+    })
+    ownedBlockbookReads.set(this, { fetch, signal })
+    return
+  }
   this.blockbookURL = blockbookURL
   if (SignerIn) {
     this.Signer = SignerIn
@@ -453,9 +471,12 @@ Returns: psbt from bitcoinjs-lib
 Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript) {
   const psbt = new utils.bitcoinjs.Psbt({ network: this.network })
   const prevTx = new Map()
+  const owned = ownedBlockbookReads.get(this)
   psbt.setVersion(res.txVersion)
   for (let i = 0; i < res.inputs.length; i++) {
     const input = res.inputs[i]
+    const ownedLegacy = owned && input.type === 'LEGACY'
+    const ownedAddress = ownedLegacy ? input.address : undefined
     const inputObj = {
       hash: input.txId,
       index: input.vout,
@@ -466,7 +487,43 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
     // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
     // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
     if (input.type === 'LEGACY') {
-      if (prevTx.has(input.txId)) {
+      if (ownedLegacy) {
+        const { hash, index } = inputObj
+        if (typeof hash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(hash) ||
+            !Number.isSafeInteger(index) || index < 0 || index > 0xffffffff) {
+          throw new Error('Invalid owned legacy previous transaction reference')
+        }
+        if (!utils.BN.isBN(input.value)) throw new Error('Mismatched owned legacy previous transaction value')
+        const value = BigInt(input.value.toString(10))
+        let script
+        if (ownedAddress) {
+          try {
+            script = utils.bitcoinjs.address.toOutputScript(ownedAddress, this.network)
+          } catch {
+            throw new Error('Invalid owned legacy previous transaction address')
+          }
+        }
+        const txid = hash.toLowerCase()
+        let previous = prevTx.get(txid)
+        if (!previous) {
+          const raw = (await utils.fetchBackendRawTx(this.blockbookURL, txid, owned))?.hex
+          try {
+            if (typeof raw !== 'string' || !raw.length) throw new Error('Missing previous transaction bytes')
+            const transaction = utils.bitcoinjs.Transaction.fromHex(raw)
+            if (transaction.toHex() !== raw || transaction.getId() !== txid) throw new Error('Mismatched previous transaction')
+            previous = { bytes: Buffer.from(raw, 'hex'), outputs: transaction.outs }
+            prevTx.set(txid, previous)
+          } catch {
+            throw new Error('Invalid owned legacy previous transaction')
+          }
+        }
+        const output = previous.outputs[index]
+        if (!output) throw new Error('Missing owned legacy previous transaction output')
+        if (output.value !== value) throw new Error('Mismatched owned legacy previous transaction value')
+        if (script && !Buffer.from(output.script).equals(script)) throw new Error('Mismatched owned legacy previous transaction script')
+        inputObj.nonWitnessUtxo = previous.bytes
+        if (redeemOrWitnessScript) inputObj.redeemScript = redeemOrWitnessScript
+      } else if (prevTx.has(input.txId)) {
         inputObj.nonWitnessUtxo = prevTx.get(input.txId)
       } else {
         const hexTx = await utils.fetchBackendRawTx(this.blockbookURL, input.txId)
@@ -512,10 +569,11 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
       })
     }
 
-    if (input.address) {
+    const address = ownedLegacy ? ownedAddress : input.address
+    if (address) {
       psbt.addUnknownKeyValToInput(i, {
         key: Buffer.from('address'),
-        value: Buffer.from(input.address)
+        value: Buffer.from(address)
       })
     }
   }
@@ -547,7 +605,27 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
   })
   return psbt
 }
-Syscoin.prototype.send = async function (psbt, SignerIn) {
+
+function ownedSubmissionNotDispatched () {
+  return Object.assign(new Error('UTXO submission was not dispatched'), {
+    code: 'UTXO_SUBMISSION_NOT_DISPATCHED',
+    transactionNotBroadcast: true
+  })
+}
+
+Syscoin.prototype.send = async function (psbt, SignerIn, submission) {
+  if (submission !== undefined || ownedBlockbookReads.has(this)) {
+    const backend = this.blockbookURL
+    let raw
+    try {
+      if (submission === undefined || SignerIn || psbt.blobData !== undefined) throw new Error('Unsupported owned Blockbook submission')
+      raw = psbt.extractTransaction().toHex()
+    } catch {
+      throw ownedSubmissionNotDispatched()
+    }
+    const acknowledgment = await utils.sendRawTransaction(backend, raw, undefined, submission)
+    return { txid: acknowledgment.result }
+  }
   let bjstx = null
   try {
     // will fail if not complete
@@ -585,6 +663,7 @@ Param SignerIn: Optional. Signer used to sign transaction
 Returns: PSBT signed success or unsigned if failure
 */
 Syscoin.prototype.signAndSend = async function (psbt, SignerIn) {
+  if (ownedBlockbookReads.has(this)) throw ownedSubmissionNotDispatched()
   const Signer = SignerIn || this.Signer
   psbt = await Signer.sign(psbt)
   return this.send(psbt, Signer)
@@ -597,6 +676,7 @@ Param wif: Required. Private key in WIF format to sign inputs of the transaction
 Returns: PSBT signed success or unsigned if failure
 */
 Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif) {
+  if (ownedBlockbookReads.has(this)) throw ownedSubmissionNotDispatched()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
   return this.send(psbt)
 }
@@ -624,6 +704,7 @@ Param excludeZeroConf: Optional. False by default. Filtering out 0 conf UTXO, ne
 Returns: Returns JSON object in response, sanitized UTXO object array in JSON
 */
 Syscoin.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddress, txOpts, assetMap, excludeZeroConf) {
+  const owned = ownedBlockbookReads.get(this)
   if (!utxos) {
     if (fromXpubOrAddress) {
       if (!Array.isArray(fromXpubOrAddress)) {
@@ -631,7 +712,7 @@ Syscoin.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddre
       }
       const utxoRequests = []
       const concatSanitizedUTXOS = {}
-      fromXpubOrAddress.forEach(addressOrXpub => utxoRequests.push(utils.fetchBackendUTXOS(this.blockbookURL, addressOrXpub)))
+      fromXpubOrAddress.forEach(addressOrXpub => utxoRequests.push(utils.fetchBackendUTXOS(this.blockbookURL, addressOrXpub, ...(owned ? [undefined, owned] : []))))
       const responses = await Promise.all(utxoRequests)
       responses.forEach(response => {
         const utxos = utils.sanitizeBlockbookUTXOs(response.addressOrXpub, response, this.network, txOpts, assetMap, excludeZeroConf)
