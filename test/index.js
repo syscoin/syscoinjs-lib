@@ -801,7 +801,7 @@ tape.test('Full flow: Create asset transaction from UTXOs with assetInfo', async
   const feeRate = new sjs.utils.BN(10)
 
   // Step 1: Use syscointx to create the transaction
-  const result = syscointx.assetAllocationSend(txOpts, utxos, assetMap, changeAddress, feeRate)
+  const result = syscointx.assetAllocationSend(txOpts, utxos, assetMap, changeAddress, feeRate, syscoinjs.network)
   assert.ok(result.success, 'Transaction creation should succeed')
   assert.equal(result.txVersion, syscointx.utils.SYSCOIN_TX_VERSION_ALLOCATION_SEND, 'Should be asset allocation send')
 

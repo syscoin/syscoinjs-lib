@@ -7,7 +7,8 @@ const ownedBlockbookReads = new WeakMap()
 Purpose: Top level object used by consuming libraries to craft Syscoin/Bitcoin transactions. For Syscoin SPT support is provided
 Param Signer: Optional. If you want to manage XPUB keys with this package you would want to use a Signer. With Signer assigned, signing will happen automatically when creating raw transactions.
 Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and required information to sign. User can always provide their own list of UTXO's in the same format as blockbook using utils.sanitizeBlockbookUTXOs to sanitize the UTXO data to acceptable internal format
-Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
+Param network: The blockchain network and bip32 settings. Required for owned Blockbook reads.
+  An unowned builder without an explicit network uses its signer's network or Syscoin mainnet.
 */
 function Syscoin (SignerIn, blockbookURL, network, transport) {
   if (transport !== undefined) {
@@ -15,12 +16,14 @@ function Syscoin (SignerIn, blockbookURL, network, transport) {
     if (SignerIn || typeof blockbookURL !== 'string' || !blockbookURL || typeof fetch !== 'function') {
       throw new TypeError('Owned Blockbook reads require a read-only builder')
     }
-    const configuredNetwork = network || utils.syscoinNetworks.mainnet
+    if (!network || typeof network.bech32 !== 'string' || !Number.isInteger(network.pubKeyHash) || !Number.isInteger(network.scriptHash)) {
+      throw new TypeError('Owned Blockbook reads require an explicit output network')
+    }
     Object.defineProperties(this, {
       blockbookURL: { value: blockbookURL, enumerable: true },
       Signer: { value: null, enumerable: true },
       network: {
-        value: Object.freeze({ ...configuredNetwork, bip32: Object.freeze({ ...configuredNetwork.bip32 }) }),
+        value: Object.freeze({ ...network, bip32: Object.freeze({ ...network.bip32 }) }),
         enumerable: true
       }
     })
@@ -765,7 +768,7 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
   if (inputsArr) {
     inputsArr = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, inputsArr, this.network, txOpts).utxos
   }
-  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, inputsArr)
+  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, this.network, inputsArr)
 
   // Check if the result is an error
   if (isErrorResult(res)) {
@@ -824,7 +827,7 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
   }
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
-  const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
 
   // Check if the result is an error
   if (isErrorResult(res)) {
@@ -891,7 +894,7 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
     utxos = normalizeBridgeUtxos(utxos)
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
-  const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
 
   // Check if the result is an error
   if (isErrorResult(res)) {
@@ -994,7 +997,7 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
   utxos = normalizeBridgeUtxos(utxos)
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
   utxos = removeAssetUtxos(utxos)
-  const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
 
   // Check if the result is an error
   if (isErrorResult(res)) {
@@ -1051,7 +1054,7 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
   }
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
   utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
-  const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate, this.network)
 
   // Check if the result is an error
   if (isErrorResult(res)) {
@@ -1091,7 +1094,7 @@ Syscoin.prototype.createPoDA = async function (txOpts, changeAddress, feeRate, f
   const strData = '0x' + txOpts.blobData
   txOpts.blobData = Buffer.from(txOpts.blobData, 'hex')
   txOpts.blobHash = Buffer.from(utils.web3.utils.sha3(strData).slice(2), 'hex')
-  const res = syscointx.createPoDA(txOpts, utxos, changeAddress, feeRate)
+  const res = syscointx.createPoDA(txOpts, utxos, changeAddress, feeRate, this.network)
 
   // Check if the result is an error
   if (isErrorResult(res)) {
