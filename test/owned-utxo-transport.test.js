@@ -104,6 +104,7 @@ test('owned funding, fee and legacy PSBT use one scoped transport and preserve e
       t.equal(owned.network.bech32, network.bech32, 'network context is detached')
       t.equal(owned.network.bip32.public, network.bip32.public, 'key version is detached')
       t.throws(() => new SyscoinJSLib({}, backend, network, direct), TypeError, 'owned builder cannot auto-sign or auto-send')
+      t.throws(() => new SyscoinJSLib(null, backend, undefined, direct), /explicit output network/, 'owned builder requires a selected network')
     })
   } catch (error) { t.fail(error) } finally { globalThis.fetch = ambient; t.end() }
 })
